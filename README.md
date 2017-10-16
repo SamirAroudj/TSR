@@ -4,8 +4,25 @@
 # Required tools and libraries
 - CMake (for easier building under windows and linux, get also ccmake for linux): https://cmake.org/
 - BaseProject (3-Clause BSD license) and all of its dependencies (tinyxml, glew, glut, etc.): https://github.com/SamirAroudj/BaseProject/
+(TSR expects a build BaseProjectBuilds/targetConfiguration for each target configuration you want to create for TSR, e.g.,
+BaseProject/Build/Release, BaseProject/Build/Debug)
 - Embree (Apache 2.0 license): https://embree.github.io/index.html
- (TSR expects a build embreeBuildDir/targetConfiguration for each target configuration you want to create for TSR, e.g., embreeBuildDir/Debug, embreeBuildDir/Release) 
+ (TSR expects a build EmbreeBuildDir/targetConfiguration for each target configuration you want to create for TSR, e.g., EmbreeBuildDir/Debug, EmbreeBuildDir/Release) 
+
+# Building for Windows
+- Do not use relative paths with CMake!
+- download the source code with "git clone https://github.com/SamirAroudj/TSR.git" into some root folder "SomePath/TSR"
+- create a build folder within the SurfaceReconstruction directory: SomePath/TSR/SurfaceReconstruction/Build
+- run CMake configure within SomePath/TSR/SurfaceReconstruction/Build/ as Build or binaries directory and SomePath/TSR/SurfaceReconstruction/ as source directory
+- run configure
+- set BASE_PROJECT_DIR to the root directory of Base project (e.g. SomePath/Repos/BaseProject/)
+- set EMBREE_BUILD_DIR (e.g.: C:/Dev/3rdParty/embree-2.16.1/Build)
+- set EMBREE_INCLUDE_DIR (e.g.: C:/Dev/3rdParty/embree-2.16.1/include)
+- run configure
+- set BASE_BUILD_DIR to the build directory of BaseProject you want to use. This is usually what you have set for BaseProject via BASE_BUILD_OUTPUT_DIR, e.g.: SomePath/BaseProject/Build. The option simply allows choosing specialized builds of BaseProject for different target architectures while refering to only one BaseProject root directory via BASE_PROJECT_DIR.)
+- set the remaining BASE_someName thingies as described in https://github.com/SamirAroudj/BaseProject/
+- run generate
+- have fun building the code with a toolchain of your liking! (e.g. visual studio and SomePath/TSR/SurfaceReconstruction/Build/SurfaceReconstruction.sln)
 
 # Building for Linux
 - Do not use relative paths with CMake!
