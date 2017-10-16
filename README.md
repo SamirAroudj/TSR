@@ -4,10 +4,10 @@
 # Required tools and libraries
 - CMake (for easier building under windows and linux, get also ccmake for linux): https://cmake.org/
 - BaseProject (3-Clause BSD license) and all of its dependencies (tinyxml, glew, glut, etc.): https://github.com/SamirAroudj/BaseProject/
-(TSR expects a build BaseProjectBuilds/targetConfiguration for each target configuration you want to create for TSR, e.g.,
+(TSR expects a build BaseProjectBuilds/TargetConfiguration for each target configuration you want to create for TSR, e.g.,
 BaseProject/Build/Release, BaseProject/Build/Debug)
 - Embree (Apache 2.0 license): https://embree.github.io/index.html
- (TSR expects a build EmbreeBuildDir/targetConfiguration for each target configuration you want to create for TSR, e.g., EmbreeBuildDir/Debug, EmbreeBuildDir/Release) 
+ (TSR expects a build EmbreeBuildDir/TargetConfiguration for each target configuration you want to create for TSR, e.g., EmbreeBuildDir/Debug, EmbreeBuildDir/Release) 
 
 # Building for Windows
 - Do not use relative paths with CMake!
@@ -29,7 +29,7 @@ BaseProject/Build/Release, BaseProject/Build/Debug)
 - download the source code with "git clone https://github.com/SamirAroudj/TSR.git" into some root folder "SomePath/TSR"
 - create a build folder within the SurfaceReconstruction directory: SomePath/TSR/SurfaceReconstruction/Build
 - create a sub build folder for each target you want to build, e.g., SomePath/TSR/SurfaceReconstruction/Build/Debug or SomePath/TSR/SurfaceReconstruction/Build/Release
-- within the sub folder Build/target run "ccmake ../.."
+- within the sub folder Build/Target run "ccmake ../.."
 - run configure
 - set BASE_PROJECT_DIR to the root directory of Base project (e.g. SomePath/Repos/BaseProject/)
 - set the CMAKE_BUILD_TYPE to your target configuration (e.g.: Debug, Release)
