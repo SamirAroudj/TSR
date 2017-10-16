@@ -1,5 +1,6 @@
 # TSR
 3D surface reconstruction software: from point clouds to triangle meshes.
+See the official project web site https://www.gcc.tu-darmstadt.de/home/proj/tsr/tsr.en.jsp for the accompanying paper, supplemental material and further information.
 
 # Required tools and libraries
 - CMake (for easier building under windows and linux, get also ccmake for linux): https://cmake.org/
@@ -62,3 +63,15 @@ The start mesh is defined via the third and optional command line argument. The 
 
 TSR accesses app configuration data and input data descriptions.
 See WorkingDirectory\Data\ExampleInputDataDescriptions for example files showing how to configure TSR and define input data.
+
+# Creating Input Data
+TSR expects either a simple .ply-file as synthetic ground truth object or input point clouds with visibility information.
+
+For captured real world data, the input point clouds and visibility information can be generated using the MVE fork https://github.com/SamirAroudj/mve:
+First, TSR requires the capture sensor positions as input (e.g., camera projection centers during capturing). If you save a MVE scene using the previously mentioned fork then a Cameras.txt file is saved in the MVE scene root directory containing all the required sensor data in the right format ready to be used by TSR.</br>
+Second, TSR expects point clouds with samples linked to sensors which have seen them during capturing.
+These can also be produced by the MVE fork by using the corresponding command line arguments during reconstruction.
+During depth map reconstruction with <code>dmrecon</code>, the local view selections must be saved. These are the identifiers of views or capture devices that are used for reconstructing specific samples and thus should see the samples and can be linked to them.
+To additionally store the view identifiers for each reconstructed depth map pixel, run <code>dmrecon</code> with the command line option <code>-V</code> or <code>--keep-views</code>, e.g., <code>dmrecon -s4 -V "mve scene root directory"</code>. Further, when you create sample point clouds from views using <code>scene2pset</code>, you must enable outputting the view identifiers that link the sample points to the views in the Cameras.txt file. The view ID links for sample points are enabled by the command line argument <code>-V</code> or <code>--viewmap=ARG</code>, e.g., <code>-Vviews-L2</code>, <code>--viewmap=views-L1</code>. This produces point clouds with view identifier properties as links to the sensor data (usually "property int viewID0" up to "property int viewID4"). Note that TSR further requires sample normals, confidences and scale values which are enabled by the three command line arguments <code>-n -c -s</code>. Here is an example call for producing sample points for TSR: <code>scene2pset -iundist-L2 -ddepth-L2 -Vviews-L2 -ncs -w2,4 "mve scene root directory" pointCloudL2W2,4.ply
+</code>.</br>
+See <code>SomePath\TSR\SurfaceReconstruction\WorkingDirectory\Data\ExampleInputDataDescriptions\InputData.txt</code> for describing TSR input data when having produced the point clouds and sensor position files using the MVE fork as stated above.
