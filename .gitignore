@@ -1,0 +1,6 @@
+*~
+Build/
+CMakeCache.txt
+CMakeFiles/
+2DSR.creator.user
+SurfaceReconstruction/WorkingDirectory/Data/Window.cfg

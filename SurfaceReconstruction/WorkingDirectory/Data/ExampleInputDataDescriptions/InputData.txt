@@ -1,0 +1,21 @@
+// scene root folder where all the data is
+string sceneFolder = C:\Dev\Scenes\WedgeComplex;
+
+// defines sensors' data for captured real world scenes, e.g., contains sensor device positions, currently supported: MVE format, see https://github.com/SamirAroudj/mve
+string relativeCamerasFileName = Results\Cameras.txt; 
+string imageTag = undistorted.png; // not used at the moment 
+
+// preprocess: points are transformed: x' = R^-1 * x - t with R^-1 from R from extrinsic angles and t from translationXYZ
+// R via 3 Euler angles
+Real extrinsicAngleX = 0.0f; // euler angle for the x-axis to rotate the input points before reconstruction, unit: radians
+Real extrinsicAngleY = 0.0f; // euler angle for the y-axis to rotate the input points before reconstruction, unit: radians
+Real extrinsicAngleZ = 0.0f; // euler angle for the z-axis to rotate the input points before reconstruction, unit: radians
+
+// t
+Real translationX = 0.0f; // input points are moved translationX world units along the x-axis before reconstruction
+Real translationY = 0.0f; // input points are moved translationY world units along the x-axis before reconstruction
+Real translationZ = 0.0f; // input points are moved translationZ world units along the x-axis before reconstruction
+
+// multiple input point clouds are possible, format: string plyFile = <absolute point cloud ply file name>;
+string plyFile = C:\Dev\Scenes\WedgeComplex\Results\SceneSamples.ply; // view_id properties refer to camera file relativeCamerasFileName
+//string plyFile = C:\Dev\Scenes\WedgeComplex\Results\SceneSamples2.ply; 

@@ -1,0 +1,78 @@
+# author: Samir Aroudj
+# test executable for SurfaceReconstruction library
+set(componentName App)
+set(appName TSR)
+set(componentPath ${PROJECT_SOURCE_DIR}/${componentName})
+
+#include OpenGL, glut and glew headers
+include(${BASE_PROJECT_DIR}/CMake/LibPNG.h.cmake)
+include(${BASE_PROJECT_DIR}/CMake/OpenGL.h.cmake)
+
+# external include directories
+link_directories(${EMBREE_BUILD_DIR}/${CMAKE_BUILD_TYPE})
+
+# CMake files
+set(cmakeFiles
+	${componentPath}/CMakeLists.txt
+)
+
+# header files
+set(headerFiles
+	${componentPath}/MagicConstants.h
+	${componentPath}/TSR.h
+)
+
+# source files
+set(sourceFiles
+	${componentPath}/MagicConstants.cpp
+	${componentPath}/Main.cpp
+	${componentPath}/TSR.cpp
+)
+
+# get all file groups together
+set(sourceCode
+	${cmakeFiles}
+	${generatedHeaderFiles}
+	${generatedSourceFiles}
+	${headerFiles}
+	${sourceFiles}
+)
+
+# define executable
+add_executable(${appName} ${sourceCode})
+
+# required libs
+set(requiredLibs ${requiredLibs}
+	SurfaceReconstruction
+	embree
+	Graphics
+	Utilities	
+	Platform
+	CollisionDetection
+	${mathLibName}	
+	Patterns
+	debug "${TINYXML2_DEBUG_LIBRARY}"
+	optimized "${TINYXML2_RELEASE_LIBRARY}"
+)
+
+# required 3rd party libs
+addPNGLibs(requiredLibs)
+addOpenGLLibs(requiredLibs)
+
+# do platform specific things (link required libs, enable windows window support etc.)
+if (WIN32)
+	addWindowsLibs(requiredLibs)
+	enableWindowsSubsystem(${appName})
+
+elseif (${LINUX})
+	addLinuxLibs(requiredLibs)
+
+endif (WIN32)
+
+target_link_libraries(${appName} ${requiredLibs})
+
+# define source groups for file management within IDE
+source_group("CMake Files" FILES ${cmakeFiles})
+source_group("Header Files" FILES ${headerFiles})
+source_group("Source Files" FILES ${sourceFiles})
+
