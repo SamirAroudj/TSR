@@ -19,7 +19,9 @@
 #include "Platform/Input/InputManager.h"
 #include "SurfaceReconstruction/Image/Image.h"
 #include "SurfaceReconstruction/Refinement/FSSFRefiner.h"
-#include "SurfaceReconstruction/Refinement/PCSRefiner.h"
+#ifdef PCS_REFINEMENT
+	#include "SurfaceReconstruction/Refinement/PCSRefiner.h"
+#endif // PCS_REFINEMENT
 #include "SurfaceReconstruction/Scene/CapturedScene.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/Tree/DualCells.h"

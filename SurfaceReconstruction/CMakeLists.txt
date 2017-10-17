@@ -1,4 +1,12 @@
-# author: Samir Aroudj
+#
+# Copyright (C) 2017 by Author: Aroudj, Samir
+# TU Darmstadt - Graphics, Capture and Massively Parallel Computing
+# All rights reserved.
+#
+# This software may be modified and distributed under the terms
+# of the BSD 3-Clause license. See the License.txt file for details.
+#
+
 # project SurfaceReconstruction
 # main CMakeLists.txt file
 cmake_minimum_required(VERSION 2.8)
@@ -9,9 +17,9 @@ project(SurfaceReconstruction)
 option(PCS_REFINEMENT "Enables PCS refinement - not finished and disabled at the moment." off)
 
 # external projects: cached paths to directories
-set(BASE_PROJECT_DIR "../BaseProject" CACHE PATH "Path to BaseProject root directory.")
-set(EMBREE_INCLUDE_DIR "../embree/include" CACHE PATH "Path to the embree include directory.")
-set(EMBREE_BUILD_DIR "../embree/Build/Release" CACHE PATH "Path to the folder containing the embree build with Release and Debug sub folders.")
+set(BASE_PROJECT_DIR "../../BaseProject" CACHE PATH "Path to BaseProject root directory.")
+set(EMBREE_INCLUDE_DIR "../../embree-2.16.1/include" CACHE PATH "Path to the embree include directory.")
+set(EMBREE_BUILD_DIR "../../embree-2.16.1/Build/" CACHE PATH "Path to the folder containing the embree build with Release and Debug sub folders.")
 
 # extra CMake functionality from base project
 include(${BASE_PROJECT_DIR}/CMake/CommonProject.h.cmake)

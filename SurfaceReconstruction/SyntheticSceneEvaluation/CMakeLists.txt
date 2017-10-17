@@ -1,7 +1,15 @@
-# author: Samir Aroudj
+#
+# Copyright (C) 2017 by Author: Aroudj, Samir
+# TU Darmstadt - Graphics, Capture and Massively Parallel Computing
+# All rights reserved.
+#
+# This software may be modified and distributed under the terms
+# of the BSD 3-Clause license. See the License.txt file for details.
+#
+
 # synthetic scene evaluation executable for SurfaceReconstruction library
 set(componentName SyntheticSceneEvaluation)
-set(appName ${componentName}.exe)
+set(appName SyntheticSceneEvaluator)
 set(componentPath ${PROJECT_SOURCE_DIR}/${componentName})
 
 # CMake files

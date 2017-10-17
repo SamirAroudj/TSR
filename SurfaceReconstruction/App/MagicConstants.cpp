@@ -13,7 +13,9 @@
 #include "SurfaceReconstruction/Refinement/FSSFRefiner.h"
 #include "SurfaceReconstruction/Refinement/FSSFStatistics.h"
 #include "SurfaceReconstruction/Refinement/MeshRefiner.h"
-#include "SurfaceReconstruction/Refinement/PCSRefiner.h"
+#ifdef PCS_REFINEMENT
+	#include "SurfaceReconstruction/Refinement/PCSRefiner.h"
+#endif // PCS_REFINEMENT
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 #include "SurfaceReconstruction/Scene/Tree/Tree.h"
