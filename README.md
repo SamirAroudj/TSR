@@ -20,7 +20,7 @@ BaseProject/Build/Release, BaseProject/Build/Debug)
 - set EMBREE_BUILD_DIR (e.g.: C:/Dev/3rdParty/embree-2.16.1/Build)
 - set EMBREE_INCLUDE_DIR (e.g.: C:/Dev/3rdParty/embree-2.16.1/include)
 - run configure
-- set BASE_BUILD_DIR to the build directory of BaseProject you want to use. This is usually what you have set for BaseProject via BASE_BUILD_OUTPUT_DIR, e.g.: SomePath/BaseProject/Build. The option simply allows choosing specialized builds of BaseProject for different target architectures while refering to only one BaseProject root directory via BASE_PROJECT_DIR.)
+- set BASE_PROJECT_BUILD_DIR to the build directory of BaseProject you want to use. This is usually what you have set for BaseProject via BASE_BUILD_OUTPUT_DIR, e.g.: SomePath/BaseProject/Build. The option simply allows choosing specialized builds of BaseProject for different target architectures while refering to only one BaseProject root directory via BASE_PROJECT_DIR.)
 - set the remaining BASE_someName thingies as described in https://github.com/SamirAroudj/BaseProject/
 - run generate
 - have fun building the code with a toolchain of your liking! (e.g. visual studio and SomePath/TSR/SurfaceReconstruction/Build/SurfaceReconstruction.sln)
@@ -38,7 +38,7 @@ BaseProject/Build/Release, BaseProject/Build/Debug)
 TSR expects a corresponding build for each target configuration you want to have, e.g., Build/Release, Build/Debug)
 - set EMBREE_INCLUDE_DIR to the include directory containing the embree headers (e.g.: embree-2.16.1/include/)
 - run configure
-- set BASE_BUILD_DIR to the build directory of BaseProject you want to use. This is usually what you have set for BaseProject via BASE_BUILD_OUTPUT_DIR, e.g.: SomePath/Repos/BaseProject/Build. The option simply allows choosing specialized builds of BaseProject for different target architectures while refering to only one BaseProject root directory via BASE_PROJECT_DIR.)
+- set BASE_PROJECT_BUILD_DIR to the build directory of BaseProject you want to use. This is usually what you have set for BaseProject via BASE_BUILD_OUTPUT_DIR, e.g.: SomePath/Repos/BaseProject/Build. The option simply allows choosing specialized builds of BaseProject for different target architectures while refering to only one BaseProject root directory via BASE_PROJECT_DIR.)
 - set the remaining BASE_someName thingies as described in https://github.com/SamirAroudj/BaseProject/
 - run configure
 - have fun building the code using your favourite tool chain! (e.g., simply "make -j" within the build target configuration directory, QtCreator or ...)
