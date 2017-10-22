@@ -396,12 +396,15 @@ void RayTracer::findIntersectionsForViewSamplePairs(
 		ray.org[0] = (float)  startPosWS.x;
 		ray.org[1] = (float)  startPosWS.y;
 		ray.org[2] = (float) -startPosWS.z; // conversion: left-handed to right-handed system
-		
-		// get camera/sample coordinate system
-		const Quaternion &cameraOrientation = view.getCamera().getOrientation();
-		Vector3 t0, t1;
-		cameraOrientation.rotateVector(t0, Vector3(1.0f, 0.0f, 0.0f)); //cameraOrientation.rotateVector(t1, Vector3(0.0f, 1.0f, 0.0f));
-		cameraOrientation.rotateVector(t1, Vector3(0.0f, 1.0f, 0.0f));
+
+		// calculating basis orthogonal to ray from camera to sample
+		const Vector3 &samplePosWS = samples.getPositionWS(sampleIdx);
+		const Vector3 toSamplePosWS = samplePosWS - startPosWS;
+		Vector3 t0 = (toSamplePosWS.x != 0 || toSamplePosWS.y != 0) ? Vector3(0.0, 0.0, 1.0) : Vector3(1.0, 0.0, 0.0);
+		Vector3 t1 = toSamplePosWS.crossProduct(t0);
+		t0 = toSamplePosWS.crossProduct(t1);
+		t0.normalize();
+		t1.normalize();
 
 		// get data for sampling pattern
 		const Real sampleScale = samples.getScale(sampleIdx);
@@ -411,8 +414,7 @@ void RayTracer::findIntersectionsForViewSamplePairs(
 		// ray direction = towards sampling point of sampling pattern of sample patch
 		Vector2 offset = getRelativeSamplingOffset(localSamplingCoords, raysPerViewSamplePair);
 		offset *= sampleScale;
-		
-		const Vector3 &samplePosWS = samples.getPositionWS(sampleIdx);
+
 		const Vector3 targetWS = samplePosWS + t0 * offset.x + t1 * offset.y;
 		const Vector3 toTargetWS = targetWS - startPosWS;
 		ray.dir[0] = (float)  toTargetWS.x;
