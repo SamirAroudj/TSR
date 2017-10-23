@@ -57,6 +57,7 @@ FSSFParameters::FSSFParameters()
 	// rays per view cone
 	ok &= m.get(mRaysPerViewSamplePair[0], "FSSF::raysPerViewSamplePairDim0");
 	ok &= m.get(mRaysPerViewSamplePair[1], "FSSF::raysPerViewSamplePairDim1");
+	ok &= m.get(mOrientSamplingPatternLikeView, "FSSF::orientSamplingPatternLikeView");
 
 	// outlier removal stuff
 	ok &= m.get(mOutlierIsleMinKeepingSize, "FSSF::outlierIsleMinKeepingSize");

@@ -150,7 +150,7 @@ void FSSFRefiner::kernelInterpolation()
 		if (batchSize + startPairIdx > pairCount)
 			batchSize = pairCount - startPairIdx;
 		mRayTracer.findIntersectionsForViewSamplePairs(true, startPairIdx, startPairIdx + batchSize,
-			EMBREE_RAY_BATCH_SIZE, mParams.mRaysPerViewSamplePair);
+			EMBREE_RAY_BATCH_SIZE, mParams.mRaysPerViewSamplePair, mParams.mOrientSamplingPatternLikeView);
 
 		// process ray tracing results
 		cout << "Processing projected samples." << endl;
@@ -1718,7 +1718,7 @@ void FSSFRefiner::findInlierSamples(bool *inliers)
 		if (batchSize + startPairIdx > pairCount)
 			batchSize = pairCount - startPairIdx;
 		mRayTracer.findIntersectionsForViewSamplePairs(true, startPairIdx, startPairIdx + batchSize, 
-			EMBREE_RAY_BATCH_SIZE, mParams.mRaysPerViewSamplePair);
+			EMBREE_RAY_BATCH_SIZE, mParams.mRaysPerViewSamplePair, mParams.mOrientSamplingPatternLikeView);
 	
 		// process intersections
 		#pragma omp parallel for schedule(dynamic, OMP_PAIR_BATCH_SIZE)

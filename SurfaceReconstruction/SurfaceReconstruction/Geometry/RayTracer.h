@@ -59,7 +59,7 @@ namespace SurfaceReconstruction
 		
 		void findIntersectionsForViewSamplePairs(
 			const bool backFaceCulling,	const uint32 startPairIdx, const uint32 endPairIdx, const uint32 rayBatchSize,
-			const Utilities::Size2<uint32> &raysPerViewSamplePair);
+			const Utilities::Size2<uint32> &raysPerViewSamplePair, const bool orientLikeView);
 		void findIntersectionsAlongMeshNormals(const Math::Vector3 *normals, const Real *searchLengths, 
 			const Real searchLengthScaleFactor, const bool backFaceCulling);
 

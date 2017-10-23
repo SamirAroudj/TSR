@@ -351,7 +351,7 @@ void RayTracer::findOcclusions(const GeometryMap &geometryMap, const ImgSize &si
 
 void RayTracer::findIntersectionsForViewSamplePairs(
 	const bool backFaceCulling, const uint32 startPairIdx, const uint32 endPairIdx, const uint32 rayBatchSize,
-	const Utilities::Size2<uint32> &raysPerViewSamplePair)
+	const Utilities::Size2<uint32> &raysPerViewSamplePair, const bool orientLikeViews)
 {
 	cout << "findIntersectionsForViewSamplePairs" << endl;
 
@@ -389,7 +389,7 @@ void RayTracer::findIntersectionsForViewSamplePairs(
 			continue;
 		}
 
-		// set ray start position to camera center
+		// ray start position = camera center
 		const View &view = *(views[viewIdx]);
 		const Vector3 startPosWS = view.getPositionWS();
 
@@ -397,17 +397,29 @@ void RayTracer::findIntersectionsForViewSamplePairs(
 		ray.org[1] = (float)  startPosWS.y;
 		ray.org[2] = (float) -startPosWS.z; // conversion: left-handed to right-handed system
 
-		// calculating basis orthogonal to ray from camera to sample
+		// build coordinate system for supersampling pattern of current view sample pair
+		// sample coordinate system orientation: first basis vector is parallel to viewing direction
 		const Vector3 &samplePosWS = samples.getPositionWS(sampleIdx);
-		const Vector3 toSamplePosWS = samplePosWS - startPosWS;
-		Vector3 t0 = (toSamplePosWS.x != 0 || toSamplePosWS.y != 0) ? Vector3(0.0, 0.0, 1.0) : Vector3(1.0, 0.0, 0.0);
-		Vector3 t1 = toSamplePosWS.crossProduct(t0);
-		t0 = toSamplePosWS.crossProduct(t1);
-		t0.normalize();
-		t1.normalize();
-
-		// get data for sampling pattern
 		const Real sampleScale = samples.getScale(sampleIdx);
+		Vector3 t0, t1;
+
+		if (orientLikeViews)
+		{
+			// oriented like the sensor which captured the sample
+			const Quaternion &cameraOrientation = view.getCamera().getOrientation();		
+			cameraOrientation.rotateVector(t0, Vector3(1.0f, 0.0f, 0.0f)); //cameraOrientation.rotateVector(t1, Vector3(0.0f, 1.0f, 0.0f));
+			cameraOrientation.rotateVector(t1, Vector3(0.0f, 1.0f, 0.0f));
+		}
+		else
+		{
+			// calculating basis orthogonal to ray from camera to sample
+			const Vector3 toSamplePosWS = samplePosWS - startPosWS;
+			t0 = toSamplePosWS.getOrthogonalVector(true);
+			t1 = toSamplePosWS.crossProduct(t0);
+			t1.normalize();
+		}
+
+		// get remaining data for sampling pattern
 		const uint32 localSamplingIdx = (rayIdx % raysPerPair);
 		const uint32 localSamplingCoords[2] = { localSamplingIdx % raysPerViewSamplePair[0], localSamplingIdx / raysPerViewSamplePair[1] };
 

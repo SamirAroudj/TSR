@@ -43,6 +43,7 @@ namespace SurfaceReconstruction
 		uint32 mIterationCountInitialSmoothing;
 		uint32 mOutlierIsleMinKeepingSize;
 		Utilities::Size2<uint32> mRaysPerViewSamplePair;
+		bool mOrientSamplingPatternLikeView;
 	};
 }
 
