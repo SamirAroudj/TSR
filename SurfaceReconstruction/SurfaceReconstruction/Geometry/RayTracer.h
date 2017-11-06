@@ -57,6 +57,7 @@ namespace SurfaceReconstruction
 
 		//void filterForBackFaceCulling(int *valid, RTCRayN *ray, const RTCHitN *potentionHit, const size_t N, const bool forOcclusionTest) const;
 		
+		bool findIntersection(Surfel &surfel, const Math::Vector3 &rayDirWS, const Math::Vector3 &rayStartWS, const bool backFaceCulling = true);
 		void findIntersectionsForViewSamplePairs(
 			const bool backFaceCulling,	const uint32 startPairIdx, const uint32 endPairIdx, const uint32 rayBatchSize,
 			const Utilities::Size2<uint32> &raysPerViewSamplePair, const bool orientLikeView);

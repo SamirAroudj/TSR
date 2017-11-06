@@ -64,8 +64,8 @@ set(requiredLibs ${requiredLibs}
 )
 
 # required 3rd party libs
-addPNGLibs(requiredLibs)
 addOpenGLLibs(requiredLibs)
+addPNGLibs(requiredLibs)
 
 # do platform specific things (link required libs, enable windows window support etc.)
 if (WIN32)

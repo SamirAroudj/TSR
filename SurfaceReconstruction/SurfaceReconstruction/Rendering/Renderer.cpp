@@ -202,7 +202,7 @@ void Renderer::renderGroundTruthMesh()
 	if (!mesh)
 		return;
 
-	renderMesh(*mesh, true);
+	render(*mesh, true);
 }
 
 void Renderer::renderReconstructedMesh()
@@ -218,7 +218,7 @@ void Renderer::renderReconstructedMesh()
 		return;
 
 	// render it!
-	renderMesh(*reconstruction, false);
+	render(*reconstruction, false);
 	if (Scene::RECONSTRUCTION_VIA_SAMPLES == mShownReconstruction)
 		renderRangedVertexSets();
 }
@@ -265,7 +265,7 @@ void Renderer::renderRangedVertexSets() const
 	glPointSize(mElementSizes[0]);
 }
 
-void Renderer::renderMesh(const Mesh &mesh, bool perFaceNormal)
+void Renderer::render(const Mesh &mesh, bool perFaceNormal)
 {
 	// get mesh data
 	const Vector3 *colors = mesh.getColors();

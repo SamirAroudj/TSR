@@ -49,6 +49,7 @@ include_directories(${EMBREE_INCLUDE_DIR})
 
 # projects
 subdirs(
+	SurfaceKernelColoring
 	SurfaceReconstruction
 	SyntheticSceneEvaluation
 	App

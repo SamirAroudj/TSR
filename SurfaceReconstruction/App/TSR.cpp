@@ -8,15 +8,15 @@
  */
 #include "App/TSR.h"
 #include "Git.h"
-#include "Graphics/AnimatedSprite.h"
 #include "Graphics/GraphicsManager.h"
 #include "Graphics/ImageManager.h"
 #include "Graphics/MagicConstants.h"
-#include "MagicConstants.h"
+#include "App/MagicConstants.h"
 #include "Math/MathCore.h"
 #include "Math/MathHelper.h"
 #include "Platform/ApplicationTimer.h"
 #include "Platform/Input/InputManager.h"
+#include "Platform/ParametersManager.h"
 #include "SurfaceReconstruction/Image/Image.h"
 #include "SurfaceReconstruction/Refinement/FSSFRefiner.h"
 #ifdef PCS_REFINEMENT
@@ -28,7 +28,6 @@
 #include "SurfaceReconstruction/Scene/Tree/Nodes.h"
 #include "SurfaceReconstruction/Scene/Tree/Tree.h"
 #include "SurfaceReconstruction/Scene/SyntheticScene.h"
-#include "Platform/ParametersManager.h"
 
 using namespace std;
 using namespace Graphics;

@@ -6,32 +6,25 @@
  * This software may be modified and distributed under the terms
  * of the BSD 3-Clause license. See the License.txt file for details.
  */
-#ifndef _MY_APP_H_
-#define _MY_APP_H_
+#ifndef _SURFACE_KERNEL_COLORING_APP_H_
+#define _SURFACE_KERNEL_COLORING_APP_H_
 
 #include <vector>
 #include "Platform/Application.h"
+#include "SurfaceReconstruction/Geometry/RayTracer.h"
+#include "SurfaceReconstruction/Geometry/StaticMesh.h"
 #include "SurfaceReconstruction/Rendering/Renderer.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 
 /// This is the main object which represents the whole application.
-class TSR : public Platform::Application
+class SurfaceKernelColoring : public Platform::Application
 {
-public:
-	/// Identifies how a the scene for reconstruction shall be created.
-	enum SceneCreationType
-	{
-		SCENE_CREATION_FROM_MVE_DATA,				/// Create the scene from MVE data, such as views, sample positions, normlas etc.
-		SCENE_CREATION_FROM_INTERMEDIATE_RESULTS,	/// Create scene from already computed intermediate results.
-		SCENE_CREATION_SYNTHETIC,					/// Create scene by randomly placing cameras around a ground truth mesh and sampling it by these cameras.
-		SCENE_CREATION_TYPE_COUNT					/// Defines the number of ways to create a scene.
-	};
 
 public:
 	/** Creates the main application object.
 	@param applicationHandle Set this to the WinMain HINSTANCE application handle.
 	@param arguments Set this to the command line arguments without program name. */
-	TSR
+	SurfaceKernelColoring
 	(
 		#ifdef _WINDOWS
 			HINSTANCE applicationHandle, 
@@ -40,7 +33,7 @@ public:
 	);
 
 	/** Releases resources. */
-	virtual ~TSR();
+	virtual ~SurfaceKernelColoring();
 
 protected:
 	/** Is called on window activation, see Application.
@@ -69,21 +62,20 @@ private:
 	/** Processes input regarding scene control / changes. */
 	bool controlScene();
 
-	/** Possibly deletes the old and creates a new scene deterministicly.
-	todo */
-	void createNewScene(const uint32 sceneCreationType, const std::vector<std::string> &arguments);
-
 	/** Sets camera orientation and position to its start values. */
 	void resetCamera();
 
+	/** Spreads a data-driven kernel from the entered start surfel over the mesh.
+	@param startSurfel Defines where to start the Dijkstra search. */
+	void spreadKernel(const SurfaceReconstruction::Surfel &startSurfel);
+
 private:
 	Graphics::Camera3D *mCamera;					/// This is the one and only main rendering camera of the application.
-	
+	SurfaceReconstruction::StaticMesh *mMesh;		/// This is the rendered mesh over which the example data-driven surface kernel spreads
+	SurfaceReconstruction::RayTracer *mRayTracer;	/// For finding the start point of the surface kernel spread.
 	SurfaceReconstruction::Renderer *mRenderer;		/// Is used to draw data like ground truth surface, samples etc.
-	SurfaceReconstruction::Scene *mScene;			/// Represents the scene. (objects, cameras, views & required parameters)
 
 	Real mScale;									/// Defines camera zoom. Is used in a uniform scaling matrix to achieve the zoom effect.
-	uint32 mSceneIndex;								/// Identifies the scene file for the current scene to be used.
 };
 
-#endif // _MY_APP_H_
+#endif // _SURFACE_KERNEL_COLORING_APP_H_

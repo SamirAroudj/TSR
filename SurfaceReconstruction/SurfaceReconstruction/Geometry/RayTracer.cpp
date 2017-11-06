@@ -349,6 +349,30 @@ void RayTracer::findOcclusions(const GeometryMap &geometryMap, const ImgSize &si
 	rtcOccluded1M(mScene, &context, mRays, rayCount, sizeof(RTCRay));
 }
 
+bool RayTracer::findIntersection(Surfel &surfel, const Math::Vector3 &rayDirWS, const Math::Vector3 &rayStartWS, const bool backFaceCulling)
+{
+	setMaximumRayCount(1);
+	setBackFaceCulling(backFaceCulling);
+
+	// set up ray
+	RTCRay &ray = initializeRay(0, 0);
+	ray.tnear = 0.0f;
+	ray.tfar = FLT_MAX;
+	ray.org[0] = (float) rayStartWS.x;
+	ray.org[1] = (float) rayStartWS.y;
+	ray.org[2] = (float) -rayStartWS.z; // necessary due to different conventions
+	ray.dir[0] = (float) rayDirWS.x;
+	ray.dir[1] = (float) rayDirWS.y;
+	ray.dir[2] = (float) -rayDirWS.z; // necessary due to different conventions
+
+	// trace ray
+	rtcIntersect(mScene, ray);
+
+	// return hit data
+	getSurfel(surfel, 0);
+	return getHitValidity(0);
+}
+
 void RayTracer::findIntersectionsForViewSamplePairs(
 	const bool backFaceCulling, const uint32 startPairIdx, const uint32 endPairIdx, const uint32 rayBatchSize,
 	const Utilities::Size2<uint32> &raysPerViewSamplePair, const bool orientLikeViews)

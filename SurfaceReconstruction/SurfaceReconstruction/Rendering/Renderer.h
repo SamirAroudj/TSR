@@ -122,6 +122,9 @@ namespace SurfaceReconstruction
 		@param scaleFactor Applies a uniform scaling matrix to all vertices in view space in order to achieve a zooming effect. */
 		void render(const Real scaleFactor);
 
+		/** todo */
+		void render(const Mesh &mesh, bool perFaceNormal = false);
+
 		/** Changes the way samples are rendered. It simply switches to the "next mode".
 		@see See SAMPLE_RENDERING enumeration for possible modes.*/
 		inline void shiftSampleRendering();
@@ -233,9 +236,6 @@ namespace SurfaceReconstruction
 
 		/** Displays an implicit function.*/
 		void renderLeafResults();
-
-		/** todo */
-		void renderMesh(const Mesh &mesh, bool perFaceNormal = false);
 
 		/** Displays important data regarding variational mesh refinement.
 		@see MeshRefiner */

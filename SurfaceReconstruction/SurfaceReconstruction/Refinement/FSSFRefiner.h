@@ -71,7 +71,6 @@ namespace SurfaceReconstruction
 	protected:
 		FSSFRefiner();
 
-
 		void addFloatingScaleQuantities(const MeshDijkstra &dijkstra, //const std::vector<Real> &edgeWeights,
 			const ProjectedSample &projectedSample, const uint32 sampleIdx);
 		void addFloatingScaleQuantities(Math::Vector3 *targetColor, Math::Vector3 &targetSumOfCorrections,
