@@ -6,6 +6,9 @@
  * This software may be modified and distributed under the terms
  * of the BSD 3-Clause license. See the License.txt file for details.
  */
+#ifdef _WINDOWS
+	#include <Windows.h>
+#endif // _WINDOWS
 #include "Git.h"
 #include "Graphics/GraphicsManager.h"
 #include "Graphics/MagicConstants.h"
@@ -68,11 +71,12 @@ SurfaceKernelColoring::SurfaceKernelColoring
 		const uint32 colorResolution = 32;
 		GraphicsManager *graphicsManager = new GraphicsManager(colorResolution, ::BACK_BUFFER_CLEAR_COLOR);
 		
-		// create camera
+		// create camera & renderer
 		Platform::Window &window = Platform::Window::getSingleton();
 		mCamera = new Camera3D(Math::HALF_PI, window.getAspectRatio(), 0.1f, 25.0f);
 		mCamera->setAsActiveCamera();
 		resetCamera();
+		window.hideOperatingSystemCursor();
 
 		mRenderer = new Renderer();
 	}
@@ -270,19 +274,48 @@ void SurfaceKernelColoring::createKernel(const Vector2 &mouseCoords)
 void SurfaceKernelColoring::spreadKernel(const Surfel &startSurfel)
 {	
 	const uint32 *hitTriangle = mMesh->getTriangle(startSurfel.mTriangleIdx);
-	Real maxCosts = 1.0f;
+	const Real maxCosts = 0.25f;
 
+	// spread kernel
 	MeshDijkstra dijkstra;
 	dijkstra.findVertices(mMesh, mMeshTriangleNormals,
 		mVertexNeighbors.data(), mVertexNeighborsOffsets.data(),
 		startSurfel, hitTriangle,
 		maxCosts, mDijkstraParams);
 
+	// get vertices within range
+	vector<RangedVertexIdx> &vertices = dijkstra.getVertices();
 	const vector<uint32> &order = dijkstra.getOrder();
-	const vector<RangedVertexIdx> &vertices = dijkstra.getVertices();
+	const uint32 neighborhoodSize = (uint32) vertices.size();
+	
+	// kernel weights & maximum weight
+	Real maximum = -FLT_MAX;
 
-	uint32 dummy = 42;
-	++dummy;
+	for (uint32 localIdx = 0; localIdx < neighborhoodSize; ++localIdx)
+	{
+		RangedVertexIdx &v = vertices[localIdx];
+		const Real costs = v.getCosts();
+		const Real weight = getKernel2DPoly3Spiky(costs, maxCosts);
+		v.setCosts(weight);
+		if (weight > maximum)
+			maximum = weight;
+	}
+	
+	// default color = grey
+	Vector3 color(0.5f, 0.5f, 0.5f);
+	const uint32 vertexCount = mMesh->getVertexCount();
+	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
+		mMesh->setColor(color, vertexIdx);
+
+	// color vertices within range according to weights
+	for (uint32 localIdx = 0; localIdx < neighborhoodSize; ++localIdx)
+	{
+		const RangedVertexIdx &v = vertices[localIdx];
+		const Real extra = 0.5f * v.getCosts() / maximum;
+		color.set(0.5f + 0.5f * extra, 0.5f, 0.5f + extra);
+
+		mMesh->setColor(color, v.getGlobalVertexIdx());
+	}	
 }
 
 void SurfaceKernelColoring::resetCamera()
