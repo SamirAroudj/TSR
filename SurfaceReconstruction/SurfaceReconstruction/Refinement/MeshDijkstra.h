@@ -13,8 +13,9 @@
 #include <algorithm>
 #include <map>
 #include <vector>
+#include "SurfaceReconstruction/Geometry/Surfel.h"
+#include "SurfaceReconstruction/Refinement/MeshDijkstraParameters.h"
 #include "SurfaceReconstruction/Refinement/RangedVertexIdx.h"
-
 // todo comments
 
 namespace SurfaceReconstruction
@@ -36,6 +37,10 @@ namespace SurfaceReconstruction
 
 	public:
 		MeshDijkstra();
+		inline void findVertices(const FlexibleMesh *mesh, const Math::Vector3 *triangleNormals,
+			const uint32 *vertexNeighbors, const uint32 *vertexNeighborsOffsets,
+			const Surfel &startSurfel, const uint32 *startTriangle,
+			const Real maxCosts, const MeshDijkstraParameters &params);
 		void findVertices(const FlexibleMesh *mesh, const Math::Vector3 *triangleNormals,
 			const uint32 *vertexNeighbors, const uint32 *vertexNeighborsOffsets,
 			const Math::Vector3 &referenceNormal, const Math::Vector3 &referencePosition,
@@ -106,7 +111,21 @@ namespace SurfaceReconstruction
 			std::push_heap(mWorkingSet.begin(), mWorkingSet.end(),  MeshDijkstra::Comparer(*this));
 		}
 	}
-	
+
+	inline void MeshDijkstra::findVertices(const FlexibleMesh *mesh, const Math::Vector3 *triangleNormals,
+		const uint32 *vertexNeighbors, const uint32 *vertexNeighborsOffsets,
+		const Surfel &startSurfel, const uint32 *startTriangle,
+		const Real maxCosts, const MeshDijkstraParameters &params)
+	{
+		const uint32 count = 3;
+		const Math::Vector3 startNormals[count] = { startSurfel.mNormal, startSurfel.mNormal, startSurfel.mNormal };
+
+		findVertices(mesh, triangleNormals,	vertexNeighbors, vertexNeighborsOffsets,
+			startSurfel.mNormal, startSurfel.mPosition,
+			startNormals, startTriangle, count,
+			maxCosts, params.getMaxAngleDifference(), params.getAngularCostsFactor());
+	}
+
 	inline const std::vector<uint32> &MeshDijkstra::getOrder() const
 	{
 		return mOrder;

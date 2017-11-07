@@ -271,18 +271,14 @@ void FSSFRefiner::processProjectedSample(const ProjectedSample &projectedSample,
 	// normalized data-driven surface kernel: surface positions get Dijkstra costs-based weights
 	// dijkstra search data
 	const Samples &samples = Scene::getSingleton().getSamples();
+	const Real surfaceSupportRange = samples.getScale(sampleIdx) * mDijkstraParams.getBandwidthFactor();
 	const Surfel &surfelWS = projectedSample.mSurfel;
 	const uint32 *hitTriangle = mMesh.getTriangle(surfelWS.mTriangleIdx);
-	const Vector3 hitNormals[3] = { surfelWS.mNormal, surfelWS.mNormal, surfelWS.mNormal };
-	const Real surfaceSupportRange = samples.getScale(sampleIdx) * mDijkstraParams.getBandwidthFactor();
 	
 	// find vertices & edges within the support range of the projected sample
 	MeshDijkstra &dijkstra = mDijkstras[omp_get_thread_num()];
-	dijkstra.findVertices(&mMesh, mTriangleNormals.data(),
-		mVertexNeighbors.data(), mVertexNeighborsOffsets.data(),
-		surfelWS.mNormal, surfelWS.mPosition,
-		hitNormals, hitTriangle, 3,
-		surfaceSupportRange, mDijkstraParams.getMaxAngleDifference(), mDijkstraParams.getAngularCostsFactor());
+	dijkstra.findVertices(&mMesh, mTriangleNormals.data(), mVertexNeighbors.data(), mVertexNeighborsOffsets.data(),
+		surfelWS, hitTriangle, surfaceSupportRange, mDijkstraParams);
 	
 	// compute weights for surface posisionts
 	//vector<Real> &edgeWeights = mLocalEdgeWeights[threadIdx];
