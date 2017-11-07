@@ -158,9 +158,9 @@ void Mesh::computeNormalsWeightedByAngles(Vector3 *normals,
 		const Real cosGamma = -dir1.dotProduct(-dir2);
 		const Real angles[3] =
 		{
-			acosr(clamp(cosAlpha, 1.0f, -1.0f)),
-			acosr(clamp(cosBeta, 1.0f, -1.0f)),
-			acosr(clamp(cosGamma, 1.0f, -1.0f))
+			acosr(clamp<Real>(cosAlpha, 1.0f, -1.0f)),
+			acosr(clamp<Real>(cosBeta, 1.0f, -1.0f)),
+			acosr(clamp<Real>(cosGamma, 1.0f, -1.0f))
 		};
 
 		// update adjacent normals

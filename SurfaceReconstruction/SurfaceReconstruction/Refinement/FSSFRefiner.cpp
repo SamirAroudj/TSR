@@ -249,7 +249,7 @@ Real FSSFRefiner::getProjectionConfidence(const Surfel &surfelWS, const uint32 s
 
 	// probability according to angular distance
 	const Real dotProduct = sampleNormalWS.dotProduct(surfelWS.mNormal);
-	const Real angleDifference = acosr(clamp(dotProduct, 1.0f, -1.0f));
+	const Real angleDifference = acosr(clamp<Real>(dotProduct, 1.0f, -1.0f));
 	if (angleDifference >= angularSupport)
 		return 0.0f;
 
@@ -723,7 +723,7 @@ void FSSFRefiner::computeVertexAngles()
 
 			for (uint32 sideIdx = 0; sideIdx < 2; ++sideIdx)
 			{
-				const Real cosAngle = clamp(normal.dotProduct(triangleNormals[sideIdx]), 1.0f, -1.0f);
+				const Real cosAngle = clamp<Real>(normal.dotProduct(triangleNormals[sideIdx]), 1.0f, -1.0f);
 				const Real angle = acosr(cosAngle);
 
 				sum += angle;
@@ -1856,7 +1856,7 @@ void FSSFRefiner::outputErrorColoredMesh(vector<Real> &temp, const Real *errors,
 	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
 	{
 		const Real error = errors[vertexIdx];
-		const Real colorFactor = clamp(error * scaleFactor, 1.0f, 0.0f);
+		const Real colorFactor = clamp<Real>(error * scaleFactor, 1.0f, 0.0f);
 
 		Vector3 &color = staticMesh.getColor(vertexIdx);
 		if (isBad(vertexIdx))
@@ -1878,7 +1878,7 @@ void FSSFRefiner::saveAngleColoredMesh(const uint32 iteration) const
 	{
 		// already unreliable? -> skip
 		const uint32 vertexIdx = (uint32) i;
-		const Real average = clamp(mAverageAngles[0][vertexIdx], PI, 0.0f);
+		const Real average = clamp<Real>(mAverageAngles[0][vertexIdx], PI, 0.0f);
 
 		Vector3 color;
 		if (average > HALF_PI)

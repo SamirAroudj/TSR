@@ -511,7 +511,7 @@ void Samples::makeNoisy(normal_distribution<Real> noise[3], const uint32 sampleI
 
 	// add noise to scale
 	const Real f = 1.0f + random.getNormal(noise[1]);
-	scale = scale * Math::clamp(f, 1.75f, 0.25f);
+	scale = scale * Math::clamp<Real>(f, 1.75f, 0.25f);
 
 	// add noise to normal
 	Real azimuth;

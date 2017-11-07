@@ -56,7 +56,7 @@ namespace SurfaceReconstruction
 	{
 		// angular difference of normals
 		const Real dotProduct = n0.dotProduct(n1);
-		const Real cosAngle = Math::clamp(dotProduct, 1.0f, -1.0f);
+		const Real cosAngle = Math::clamp<Real>(dotProduct, 1.0f, -1.0f);
 		const Real angle = acosr(cosAngle);
 		if (angle >= maxAngleDifference)
 			return REAL_MAX;//return relativeAngularCostsFactor;

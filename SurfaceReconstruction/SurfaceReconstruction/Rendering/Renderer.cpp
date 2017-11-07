@@ -152,10 +152,8 @@ void Renderer::render(const Real zoom)
 	if (!cam)
 		return;
 
-	// render the complete scene
-	const Scene		&scene	= Scene::getSingleton();
-		  Matrix4x4 zoomMatrix;
-					zoomMatrix.m00 = zoomMatrix.m11 = zoomMatrix.m22 = zoom;
+	Matrix4x4 zoomMatrix;
+	zoomMatrix.m00 = zoomMatrix.m11 = zoomMatrix.m22 = zoom;
 
 	// apply projection matrix
 	glMatrixMode(GL_PROJECTION);
@@ -168,17 +166,19 @@ void Renderer::render(const Real zoom)
 	glMultMatrixr(cam->getViewMatrix().getData());
 	glMultMatrixr(zoomMatrix.getData());
 
-	const Vector4 testWS(0.0f, 0.0f, 0.0f, 1.0f);
-	const Vector4 testVS = testWS * cam->getViewMatrix();
-	const Vector4 testDC = testVS * cam->getProjectionMatrix();
-	const Vector3 testNDC = Vector3(testDC.x / testDC.w, testDC.y / testDC.w, testDC.z / testDC.w);
+	// show center of coordinate system
+	renderOrigin();
+
+	// a scene to be rendered?
+	if (!Scene::exists())
+		return;
 	
 	// render assistant structures
 	renderLeafResults();
 	renderTree();
 
 	// render samples & views
-	render(scene.getViews());
+	render(Scene::getSingleton().getViews());
 	
 	// render ground truth & reconstruction
 	glEnable(GL_LIGHTING);
@@ -186,9 +186,6 @@ void Renderer::render(const Real zoom)
 		renderReconstructedMesh();
 		renderMeshRefinementData();
 	glDisable(GL_LIGHTING);
-
-	// and finally the origin
-	renderOrigin();
 }
 
 void Renderer::renderOrientedPoint(const Vector3 &positionWS, const Vector3 &normalWS) const

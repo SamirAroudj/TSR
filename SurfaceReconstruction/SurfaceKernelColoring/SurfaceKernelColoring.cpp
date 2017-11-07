@@ -72,6 +72,7 @@ SurfaceKernelColoring::SurfaceKernelColoring
 		Platform::Window &window = Platform::Window::getSingleton();
 		mCamera = new Camera3D(Math::HALF_PI, window.getAspectRatio(), 0.1f, 25.0f);
 		mCamera->setAsActiveCamera();
+		mRenderer = new Renderer();
 	}
 	else // if there is no window then reconstruct stuff but do not execute the main loop
 	{
@@ -80,7 +81,10 @@ SurfaceKernelColoring::SurfaceKernelColoring
 	
 	mMesh = new StaticMesh(arguments[1]);
 	mRayTracer = new RayTracer();
-	mRayTracer->createStaticScene(*mMesh);
+	mRayTracer->createStaticScene(*mMesh, false);
+
+	const Graphics::Color backbufferColor(1.0f, 1.0f, 1.0f, 1.0f);
+	GraphicsManager::getSingleton().setClearColor(backbufferColor);
 }
 
 SurfaceKernelColoring::~SurfaceKernelColoring()
@@ -220,29 +224,33 @@ bool SurfaceKernelColoring::controlScene()
 
 	if (mouse.isButtonDown(Mouse::BUTTON_PRIMARY))
 	{
-		// trace a ray from the mouse 2D coords along the corresponding pixel ray through the scene 
-		// ray start
-		const Vector4 &camHWS = mCamera->getPosition();
-		const Vector3 rayStart(camHWS.x, camHWS.y, camHWS.z);
-		
-		// ray direction
 		const Vector3 mouseCoords(mouse.getAbsoluteX(), mouse.getAbsoluteY(), 1.0f);
-		const ImgSize &windowSize = Window::getSingleton().getSize();
-		const Matrix3x3 hPSToNNRayDirWS = mCamera->computeHPSToNNRayDirWS(windowSize);
-		Vector3 rayDir = mouseCoords * hPSToNNRayDirWS;
-		rayDir.normalize();
-
-		// trace ray
-		Surfel surfel;
-		if (mRayTracer->findIntersection(surfel, rayStart, rayDir))
-		{
-			spreadKernel(surfel);
-		}
-
+		createKernel(mouseCoords);
 		return true;
 	}
 
 	return false;
+}
+
+void SurfaceKernelColoring::createKernel(const Vector3 &rayHPS)
+{
+	// trace a ray from the mouse 2D coords along the corresponding pixel ray through the scene 
+	// ray start
+	const Vector4 &camHWS = mCamera->getPosition();
+	const Vector3 rayStart(camHWS.x, camHWS.y, camHWS.z);
+		
+	// ray direction
+	const ImgSize &windowSize = Window::getSingleton().getSize();
+	const Matrix3x3 hPSToNNRayDirWS = mCamera->computeHPSToNNRayDirWS(windowSize);
+	Vector3 rayDir = rayHPS * hPSToNNRayDirWS;
+	rayDir.normalize();
+
+	// trace ray
+	Surfel surfel;
+	if (!mRayTracer->findIntersection(surfel, rayStart, rayDir))
+		return;
+	
+	spreadKernel(surfel);
 }
 
 void SurfaceKernelColoring::spreadKernel(const Surfel &startSurfel)
