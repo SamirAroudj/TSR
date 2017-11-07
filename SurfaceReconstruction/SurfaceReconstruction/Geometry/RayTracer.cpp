@@ -167,6 +167,10 @@ void RayTracer::createStaticScene(const Vector3 *positions, const uint32 vertexC
 	//rtcSetOcclusionFilterFunctionN(mScene, mMeshIdx, filterFunctionForOcclusions);
 	
 	rtcCommit(mScene);
+
+	// set up context for rtcIntersect1M/rtcOccluded1M
+	mIntersectContext.flags = (RTC_SCENE_COHERENT == mSceneCoherency ? RTC_INTERSECT_COHERENT : RTC_INTERSECT_INCOHERENT);
+	mIntersectContext.userRayExt = NULL;
 }
 
 void RayTracer::freeScene()
@@ -236,12 +240,8 @@ void RayTracer::renderFromView(GeometryMap *geometryMap, const ImgSize &size, co
 		}
 	}
 	
-	// trace the scene
-	RTCIntersectContext context;
-	context.flags = (RTC_SCENE_COHERENT == mSceneCoherency ? RTC_INTERSECT_COHERENT : RTC_INTERSECT_INCOHERENT);
-	context.userRayExt = NULL;
-	
-	rtcIntersect1M(mScene, &context, mRays, rayCount, sizeof(RTCRay));
+	// trace
+	rtcIntersect1M(mScene, &mIntersectContext, mRays, rayCount, sizeof(RTCRay));
 	
 	// fill geometry buffer?
 	if (!geometryMap)
@@ -297,12 +297,7 @@ void RayTracer::findOcclusions(const Vector3 *positions, const uint32 positionCo
 		ray.tfar = (float) (1.0f - Math::EPSILON);
 	}
 	
-	// trace the scene
-	RTCIntersectContext context;
-	context.flags = (RTC_SCENE_COHERENT == mSceneCoherency ? RTC_INTERSECT_COHERENT : RTC_INTERSECT_INCOHERENT);
-	context.userRayExt = NULL;
-	
-	rtcOccluded1M(mScene, &context, mRays, rayCount, sizeof(RTCRay));
+	rtcOccluded1M(mScene, &mIntersectContext, mRays, rayCount, sizeof(RTCRay));
 }
 
 void RayTracer::findOcclusions(const GeometryMap &geometryMap, const ImgSize &size, const PinholeCamera &camera, const bool backFaceCulling)
@@ -341,12 +336,8 @@ void RayTracer::findOcclusions(const GeometryMap &geometryMap, const ImgSize &si
 		ray.tfar = 1.0f;
 	}
 	
-	// trace the scene
-	RTCIntersectContext context;
-	context.flags = (RTC_SCENE_COHERENT == mSceneCoherency ? RTC_INTERSECT_COHERENT : RTC_INTERSECT_INCOHERENT);
-	context.userRayExt = NULL;
-	
-	rtcOccluded1M(mScene, &context, mRays, rayCount, sizeof(RTCRay));
+	// trace
+	rtcOccluded1M(mScene, &mIntersectContext, mRays, rayCount, sizeof(RTCRay));
 }
 
 bool RayTracer::findIntersection(Surfel &surfel, const Math::Vector3 &rayDirWS, const Math::Vector3 &rayStartWS, const bool backFaceCulling)
@@ -366,11 +357,15 @@ bool RayTracer::findIntersection(Surfel &surfel, const Math::Vector3 &rayDirWS, 
 	ray.dir[2] = (float) -rayDirWS.z; // necessary due to different conventions
 
 	// trace ray
-	rtcIntersect(mScene, ray);
-
+	rtcIntersect1M(mScene, &mIntersectContext, mRays, 1, sizeof(RTCRay));
+	
 	// return hit data
+	const bool hitSomething = getHitValidity(0);
+	if (!hitSomething)
+		return false;
+
 	getSurfel(surfel, 0);
-	return getHitValidity(0);
+	return hitSomething;
 }
 
 void RayTracer::findIntersectionsForViewSamplePairs(
@@ -467,18 +462,13 @@ void RayTracer::findIntersectionsForViewSamplePairs(
 	#pragma omp parallel for schedule(static)
 	for (int64 batchIdx = 0; batchIdx < rayBatchCount; ++batchIdx)
 	{
-		// context
-		RTCIntersectContext context;
-		context.flags = (RTC_SCENE_COHERENT == mSceneCoherency ? RTC_INTERSECT_COHERENT : RTC_INTERSECT_INCOHERENT);
-		context.userRayExt = NULL;
-	
 		// what rays
 		const uint32 processedCount = (uint32) (rayBatchSize * batchIdx);
 		const uint32 currentBatchSize = (batchIdx < rayBatchCount - 1 ? rayBatchSize : rayCount - processedCount);
 		RTCRay *rayBatch = mRays + processedCount;
 
 		// trace
-		rtcIntersect1M(mScene, &context, rayBatch, currentBatchSize, sizeof(RTCRay));
+		rtcIntersect1M(mScene, &mIntersectContext, rayBatch, currentBatchSize, sizeof(RTCRay));
 	}
 }
 
@@ -516,12 +506,8 @@ void RayTracer::findIntersectionsAlongMeshNormals(const Vector3 *meshNormals, co
 		ray.tfar = (float) (searchLength * searchLengthScaleFactor);
 	}
 	
-	// trace the scene
-	RTCIntersectContext context;
-	context.flags = (RTC_SCENE_COHERENT == mSceneCoherency ? RTC_INTERSECT_COHERENT : RTC_INTERSECT_INCOHERENT);
-	context.userRayExt = NULL;
-	
-	rtcIntersect1M(mScene, &context, mRays, rayCount, sizeof(RTCRay));
+	// trace the rays
+	rtcIntersect1M(mScene, &mIntersectContext, mRays, rayCount, sizeof(RTCRay));
 }
 
 void RayTracer::getHitData(Vector3 *hitNormal, Vector3 &hitPosition, Real &baryCoordsV0, Real &baryCoordsV1, const RTCRay &ray) const

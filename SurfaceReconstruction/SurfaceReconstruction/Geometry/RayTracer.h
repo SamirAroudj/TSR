@@ -113,6 +113,7 @@ namespace SurfaceReconstruction
 		RTCDevice mDevice;
 		RTCScene mScene;
 		RTCSceneFlags mSceneCoherency;
+		RTCIntersectContext mIntersectContext;
 		RTCRay *mRays;
 
 		// pointers to the shared buffers of the current static scene
