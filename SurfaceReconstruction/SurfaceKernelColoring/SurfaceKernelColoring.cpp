@@ -63,16 +63,17 @@ SurfaceKernelColoring::SurfaceKernelColoring
 	}
 
 	// create image manager & rendering objects
-
 	if (Platform::Window::exists())
 	{
 		const uint32 colorResolution = 32;
 		GraphicsManager *graphicsManager = new GraphicsManager(colorResolution, ::BACK_BUFFER_CLEAR_COLOR);
-
+		
 		// create camera
 		Platform::Window &window = Platform::Window::getSingleton();
 		mCamera = new Camera3D(Math::HALF_PI, window.getAspectRatio(), 0.1f, 25.0f);
 		mCamera->setAsActiveCamera();
+		resetCamera();
+
 		mRenderer = new Renderer();
 	}
 	else // if there is no window then reconstruct stuff but do not execute the main loop
@@ -109,9 +110,15 @@ SurfaceKernelColoring::~SurfaceKernelColoring()
 
 void SurfaceKernelColoring::render()
 {
+	// mouse coords
+	const Mouse &mouse =InputManager::getSingleton().getMouse();
+	const Vector2 mouseNDC(mouse.getAbsoluteX(), mouse.getAbsoluteY());
+
+	// render scene
 	GraphicsManager::getSingleton().clearBackAndDepthStencilBuffer();
 		mRenderer->render(mScale);
 		mRenderer->render(*mMesh);
+		mRenderer->renderCursor(mouseNDC, Color(1.0f, 0.0f, 1.0f, 1.0f), 0.05f);
 	GraphicsManager::getSingleton().presentBackBuffer();
 }
 
@@ -232,25 +239,24 @@ bool SurfaceKernelColoring::controlScene()
 
 	if (mouse.isButtonDown(Mouse::BUTTON_PRIMARY))
 	{
-		const Vector3 mouseCoords(mouse.getAbsoluteX(), mouse.getAbsoluteY(), 1.0f);
+		const Vector2 mouseCoords(mouse.getAbsoluteX(), mouse.getAbsoluteY());
 		createKernel(mouseCoords);
-		return true;
 	}
 
 	return false;
 }
 
-void SurfaceKernelColoring::createKernel(const Vector3 &rayHPS)
+void SurfaceKernelColoring::createKernel(const Vector2 &mouseCoords)
 {
 	// trace a ray from the mouse 2D coords along the corresponding pixel ray through the scene 
 	// ray start
 	const Vector4 &camHWS = mCamera->getPosition();
 	const Vector3 rayStart(camHWS.x, camHWS.y, camHWS.z);
-		
+	
 	// ray direction
-	const ImgSize &windowSize = Window::getSingleton().getSize();
-	const Matrix3x3 hPSToNNRayDirWS = mCamera->computeHPSToNNRayDirWS(windowSize);
-	Vector3 rayDir = rayHPS * hPSToNNRayDirWS;
+	const Matrix3x3 hNDCToNNRayDirWS = mCamera->computeHNDCToNNRayDirWS();
+	const Vector3 rayHNDC(mouseCoords.x, mouseCoords.y, 1.0f);
+	Vector3 rayDir = rayHNDC * hNDCToNNRayDirWS;
 	rayDir.normalize();
 
 	// trace ray

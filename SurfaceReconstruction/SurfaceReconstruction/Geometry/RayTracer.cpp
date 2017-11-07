@@ -340,7 +340,7 @@ void RayTracer::findOcclusions(const GeometryMap &geometryMap, const ImgSize &si
 	rtcOccluded1M(mScene, &mIntersectContext, mRays, rayCount, sizeof(RTCRay));
 }
 
-bool RayTracer::findIntersection(Surfel &surfel, const Math::Vector3 &rayDirWS, const Math::Vector3 &rayStartWS, const bool backFaceCulling)
+bool RayTracer::findIntersection(Surfel &surfel, const Math::Vector3 &rayStartWS, const Math::Vector3 &rayDirWS, const bool backFaceCulling)
 {
 	setMaximumRayCount(1);
 	setBackFaceCulling(backFaceCulling);

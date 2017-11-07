@@ -87,6 +87,7 @@ TSR::TSR
 		Platform::Window &window = Platform::Window::getSingleton();
 		mCamera = new Camera3D(Math::HALF_PI, window.getAspectRatio(), 0.1f, 25.0f);
 		mCamera->setAsActiveCamera();
+		resetCamera();
 	}
 
 	// create scene from MVE, synthetic or previous run data?

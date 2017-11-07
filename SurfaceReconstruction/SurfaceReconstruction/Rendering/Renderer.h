@@ -120,6 +120,8 @@ namespace SurfaceReconstruction
 		/** todo */
 		void render(const Mesh &mesh, bool perFaceNormal = false);
 
+		void renderCursor(const Math::Vector2 &cursorPosNDC, const Graphics::Color &color, const Real cursorSize);
+
 		/** Changes the way samples are rendered. It simply switches to the "next mode".
 		@see See SAMPLE_RENDERING enumeration for possible modes.*/
 		inline void shiftSampleRendering();

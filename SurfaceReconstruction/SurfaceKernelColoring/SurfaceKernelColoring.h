@@ -64,9 +64,10 @@ private:
 	/** Processes input regarding scene control / changes. */
 	bool controlScene();
 
-	/** Traces a ray from the camera projection center through the homogeneous pixel space (window coordinates) and possibly creates a surface kernel at a potential hit position.
-	@param rayHPS Set this to the homogeneous pixel space coordinates of the pixel through which the ray from the camera shall go. For example, use mouse coordinates and z = 1. */
-	void createKernel(const Math::Vector3 &rayHPS);
+	/** Traces a ray from the camera projection center through the absolute mouse coords (window coordinates within [0,1]^2).
+		Possibly creates a surface kernel at a potential hit position.
+	@param mouseCoords Set this to the absolute mouse coords relative to the window (within [0,1]^2). */
+	void createKernel(const Math::Vector2 &mouseCoords);
 
 	/** Sets camera orientation and position to its start values. */
 	void resetCamera();

@@ -351,6 +351,28 @@ void Renderer::render(const Mesh &mesh, bool perFaceNormal)
 	}
 }
 
+void Renderer::renderCursor(const Vector2 &cursorPosNDC, const Color &color, const Real cursorSize)
+{
+	const Real halfCursorSize = 0.5f * cursorSize;
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+
+	// camera view & zoom matrix
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	
+	glBegin(GL_LINES);
+		glColor4fv(color.getComponents());
+		glVertex2r(cursorPosNDC.x - halfCursorSize, cursorPosNDC.y);
+		glVertex2r(cursorPosNDC.x + halfCursorSize, cursorPosNDC.y);
+		
+		glVertex2r(cursorPosNDC.x, cursorPosNDC.y - halfCursorSize);
+		glVertex2r(cursorPosNDC.x, cursorPosNDC.y + halfCursorSize);
+	glEnd();
+}
+
 void Renderer::renderMeshRefinementData()
 {
 	// mesh refiner
