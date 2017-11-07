@@ -31,7 +31,6 @@ set(headerFiles
 
 # source files
 set(sourceFiles
-	${componentPath}/MagicConstants.cpp
 	${componentPath}/Main.cpp
 	${componentPath}/TSR.cpp
 )
