@@ -34,6 +34,7 @@ using namespace Storage;
 using namespace SurfaceReconstruction;
 using namespace Utilities;
 
+const uint32 Scene::REFINEMENT_VIA_PHOTOS_MESH_OUTPUT_FREQUENCY = 25;
 const uint32 Scene::VIEWS_FILE_VERSION = 0;
 
 Scene::Scene(const Path &rootFolder, const Path &FSSFReconstruction,

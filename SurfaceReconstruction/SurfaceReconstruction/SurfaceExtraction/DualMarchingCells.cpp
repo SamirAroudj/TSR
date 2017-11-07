@@ -15,9 +15,13 @@
 #include "SurfaceReconstruction/SurfaceExtraction/DualMarchingCells.h"
 #include "SurfaceReconstruction/SurfaceExtraction/Occupancy.h"
 
+using namespace Graphics;
 using namespace Math;
 using namespace std;
 using namespace SurfaceReconstruction;
+
+// constants 
+const Color DualMarchingCells::SURFACE_COLOR(0.79f, 0.69f, 0.1f, 0.0f);
 
 DualMarchingCells::DualMarchingCells(const Occupancy &occupancy, const uint32 minTriangleIsleSize)
 {

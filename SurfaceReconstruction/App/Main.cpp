@@ -13,6 +13,12 @@
 using namespace Platform;
 using namespace std;
 
+#ifdef MEMORY_MANAGEMENT
+	const uint32 ResourceManagement::DEFAULT_POOL_BUCKET_NUMBER = 5;
+	const uint16 ResourceManagement::DEFAULT_POOL_BUCKET_CAPACITIES[DEFAULT_POOL_BUCKET_NUMBER] = { 1024, 1024, 1024, 1024, 1024 };
+	const uint16 ResourceManagement::DEFAULT_POOL_BUCKET_GRANULARITIES[DEFAULT_POOL_BUCKET_NUMBER] = { 16, 32, 64, 128, 256 };
+#endif /// MEMORY_MANAGEMENT
+
 #ifdef _WINDOWS
 	int32 WINAPI WinMain(HINSTANCE applicationHandle, HINSTANCE unused, LPSTR commandLineArguments, int32 windowShowState)
 	{

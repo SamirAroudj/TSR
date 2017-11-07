@@ -19,13 +19,11 @@ set(cmakeFiles
 
 # header files
 set(headerFiles
-	${componentPath}/MagicConstants.h
 	${componentPath}/Evaluator.h
 )
 
 # source files
 set(sourceFiles
-	${componentPath}/MagicConstants.cpp
 	${componentPath}/Main.cpp
 	${componentPath}/Evaluator.cpp
 )

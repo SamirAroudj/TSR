@@ -34,6 +34,13 @@ using namespace Storage;
 using namespace SurfaceReconstruction;
 using namespace Utilities;
 
+// constants
+const uint32 FSSFRefiner::EMBREE_PAIR_BATCH_SIZE = FSSFRefiner::OMP_PAIR_BATCH_COUNT * FSSFRefiner::OMP_PAIR_BATCH_SIZE;
+const uint32 FSSFRefiner::EMBREE_RAY_BATCH_SIZE = 0x1 << 16;
+const uint32 FSSFRefiner::MEMORY_ALLOCATION_FACTOR = 0x1 << 4;
+const uint32 FSSFRefiner::OMP_PAIR_BATCH_COUNT = 0x1 << 15;
+const uint32 FSSFRefiner::OMP_PAIR_BATCH_SIZE = 0x1 << 7;
+
 FSSFRefiner::FSSFRefiner(const FlexibleMesh &initialMesh) :
 	FSSFRefiner()
 {

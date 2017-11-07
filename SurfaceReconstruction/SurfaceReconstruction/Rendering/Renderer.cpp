@@ -42,17 +42,30 @@ using namespace SurfaceReconstruction;
 using namespace std;
 using namespace Utilities;
 
+// constants
+const Color Renderer::COLOR_HIGHLIGHTED(1.0f, 1.0f, 1.0f, 1.0f);
+const Color Renderer::COLOR_SAMPLES[3] =	{
+												Color(0.25f, 1.0f,  0.15f, 0.7f),
+												Color(0.7f,  0.45f, 0.25f, 0.7f),
+												Color(1.0f,  1.0f,  0.0f,  1.0f)
+											};
+const Color Renderer::COLOR_SURFACES[3] =	{
+												Color(0.0f, 1.0f, 1.0f, 0.5f),
+												Color(0.5f, 0.5f, 0.5f, 0.5f),
+												Color(1.0f, 0.95f, 0.25f, 0.5f)
+											};
+const Color Renderer::COLOR_VIEW(0.9f, 0.025f, 0.9f, 1.0f);
+
+const Real Renderer::NORMAL_SIZE = (Real) 0.2;
+const Real Renderer::VIEW_SIZE = (Real) 0.1; 
+
 TreeIntersectionTriangle::TreeIntersectionTriangle() :
 	mTriangleIdx(Triangle::INVALID_IDX)
 {
 
 }
 
-Renderer::Renderer(const Color &highlightColor, const Graphics::Color sampleColors[3],
-				   const Color surfaceColors[3], const Color &viewColor) :
-	mHighlightColor(highlightColor),
-	mViewColor(viewColor),
-
+Renderer::Renderer() :
 	mLightAzimuth(0.0f),
 
 	mHighlightedView(0),
@@ -78,13 +91,6 @@ Renderer::Renderer(const Color &highlightColor, const Graphics::Color sampleColo
 	mShowGroundTruth(false),
 	mShowMeshNormals(false)
 {
-	// forward colors
-	for (uint32 i = 0; i < 3; ++i)
-	{
-		mSampleColors[i] = sampleColors[i];
-		mSurfaceColors[i] = surfaceColors[i];
-	}
-
 	// enable back face culling
 	if (mBackfaceCulling)
 	{
@@ -604,7 +610,7 @@ void Renderer::render(const Polybezier<Vector3> *curves, const std::vector<uint3
 		uint32 lastSubsetIdx	= 0;
 		uint32 colorIdx			= 2;
 		uint32 startColorIdx	= colorIdx;
-		glColor4fv(mSurfaceColors[startColorIdx].getComponents());
+		glColor4fv(COLOR_SURFACES[startColorIdx].getComponents());
 		if (!partition.empty())
 			lastSubsetIdx = (uint32) (partition[0] == 0 ? partition.size() - 1 : partition.size() - 2);
 
@@ -636,7 +642,7 @@ void Renderer::render(const Polybezier<Vector3> *curves, const std::vector<uint3
 							colorIdx = 0;
 					}
 
-					glColor4fv(mSurfaceColors[colorIdx].getComponents());
+					glColor4fv(COLOR_SURFACES[colorIdx].getComponents());
 					++subsetIdx;
 				}
 
@@ -701,8 +707,8 @@ void Renderer::render(const vector<View *> &views)
 		return;
 
 	// views
-	render(views, viewCount, mViewColor.getComponents());
-	render(views, mHighlightedView, mHighlightColor.getComponents());
+	render(views, viewCount, COLOR_VIEW.getComponents());
+	render(views, mHighlightedView, COLOR_HIGHLIGHTED.getComponents());
 
 	if (SAMPLE_RENDERING_INVISIBLE == mSampleRendering)
 		return;

@@ -14,7 +14,6 @@
 #include "Platform/ApplicationTimer.h"
 #include "Platform/Input/InputManager.h"
 #include "Platform/ParametersManager.h"
-#include "SurfaceKernelColoring/MagicConstants.h"
 #include "SurfaceKernelColoring/SurfaceKernelColoring.h"
 
 using namespace std;

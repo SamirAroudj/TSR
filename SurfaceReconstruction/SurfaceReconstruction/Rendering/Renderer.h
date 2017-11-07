@@ -92,13 +92,8 @@ namespace SurfaceReconstruction
 		};
 
 	public:
-		/** Creates the renderer and configures rendering colors.
-		@param higlightColor Selected view and samples are drawn with this color.
-		@param sampleColors Defines the color of the surface samples. ([0]: evaluated ones, [1]: unprocessed samples, [2]: Mean Shift candidates)
-		@param surfaceColors Defines the colors of the ground truth object surfaces. Up to 3 colors are necessary to visualize object surface partitions.
-		@param viewColor Defines the color with which views are rendered. */
-		Renderer( const Graphics::Color &highlightColor, const Graphics::Color sampleColors[3],
-				 const Graphics::Color surfaceColors[3], const Graphics::Color &viewColor);
+		/** Creates the renderer and configures rendering colors. */
+		Renderer();
 
 		/** Releases resources. */
 		virtual ~Renderer();
@@ -281,16 +276,16 @@ namespace SurfaceReconstruction
 		void renderTree();
 
 	public:
-		static const Real NORMAL_SIZE; /// Defines the length of each normal visualization.
-		static const Real VIEW_SIZE; /// Defines the view length of each view visualization. This is a scaling factor to control the size of the view representations. 
+
+		static const Graphics::Color COLOR_HIGHLIGHTED;	/// Defines how the color of emphasized elements.
+		static const Graphics::Color COLOR_SAMPLES[3];	/// Defines the colors for rendering of surface samples created by views. [0] -> evaluated ones, [1] -> unprocessed, [2] -> Mean Shift
+		static const Graphics::Color COLOR_SURFACES[3];	/// Defines the colors for rendering of object surfaces. Each surface might be partitioned into subsets. 3 colors are required to render the subsets.
+		static const Graphics::Color COLOR_VIEW;		/// Defines the color for rendering of capturing views which create samples.
+		static const Real NORMAL_SIZE;					/// Defines the length of each normal visualization.
+		static const Real VIEW_SIZE;					/// Defines the view length of each view visualization. This is a scaling factor to control the size of the view representations. 
 
 	private:
 		TreeIntersectionTriangle mInterTriangle;	/// For test rendering of triangle and nodes/tree intersection data
-
-		Graphics::Color mHighlightColor;			/// Defines how the color of emphasized elements.
-		Graphics::Color	mSampleColors[3];			/// Defines the colors for rendering of surface samples created by views. [0] -> evaluated ones, [1] -> unprocessed, [2] -> Mean Shift
-		Graphics::Color	mSurfaceColors[3];			/// Defines the colors for rendering of object surfaces. Each surface might be partitioned into subsets. 3 colors are required to render the subsets.
-		Graphics::Color	mViewColor;					/// Defines the color for rendering of capturing views which create samples.
 
 		Real mLightAzimuth;				/// Stores the angle which is used to animate the lights. (They are rotating in a horizontal plane.)		
 		float mElementSizes[2];			/// Default size/width of points and lines in pixels.

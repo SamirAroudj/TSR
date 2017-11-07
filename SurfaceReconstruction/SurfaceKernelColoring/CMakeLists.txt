@@ -26,13 +26,11 @@ set(cmakeFiles
 
 # header files
 set(headerFiles
-	${componentPath}/MagicConstants.h
 	${componentPath}/SurfaceKernelColoring.h
 )
 
 # source files
 set(sourceFiles
-	${componentPath}/MagicConstants.cpp
 	${componentPath}/Main.cpp
 	${componentPath}/SurfaceKernelColoring.cpp
 )

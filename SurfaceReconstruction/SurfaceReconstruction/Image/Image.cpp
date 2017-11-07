@@ -22,11 +22,15 @@ using namespace Storage;
 using namespace SurfaceReconstruction;
 using namespace Utilities;
 
+// constants
 template <>
 const char *Image::Resource<Image>::msResourcePath = NULL;
 
 template <>
 vector<Image *> Image::Resource<Image>::msResources(0);
+
+template <>
+uint32 VolatileResource<Image>::msMaximumNumber = 0x1 << 10;
 
 void Image::freeMemory()
 {

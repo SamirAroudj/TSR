@@ -26,7 +26,6 @@ set(cmakeFiles
 
 # header files
 set(headerFiles
-	${componentPath}/MagicConstants.h
 	${componentPath}/TSR.h
 )
 

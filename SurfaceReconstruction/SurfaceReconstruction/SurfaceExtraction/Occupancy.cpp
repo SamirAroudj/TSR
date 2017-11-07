@@ -40,6 +40,7 @@ using namespace Storage;
 using namespace SurfaceReconstruction;
 using namespace Utilities;
 
+// Possible kernel functions for occupancy scalar field computation:
 /** Enables switching between different functions to compute partial free space weights within view to sample cones
 	whereas such a function is always defined as orthogonal to the central ray of the view cone it belongs to. */
 //#define CONE_PCD_KERNEL_CONSTANT									// No tangential falloff (kernel = 1 / kernel area)
@@ -67,8 +68,13 @@ using namespace Utilities;
 //#define SPHERICAL_KERNEL_POLY_6	// Use Mullers 3D Poly6 kernel
 //#define SPHERICAL_KERNEL_SPIKY	// Use Mullers 3D spiky kernel
 
-const uint32 Occupancy::MAX_DEPTH_DIFFERENCE = 3;
+// constants
 const uint32 Occupancy::FILE_VERSION = 0;
+const uint32 Occupancy::MAX_DEPTH_DIFFERENCE = 3;
+
+const uint32 Occupancy::OMP_PRIOR_LEAF_BATCH_SIZE = 0x1 << 9;
+const uint32 Occupancy::OMP_SAMPLE_BATCH_SIZE = 0x1 << 7;
+const uint32 Occupancy::OMP_VIEW_CONE_BATCH_SIZE = 0x1 << 7;
 
 Occupancy::Occupancy(const Tree *tree) :
 	Occupancy()

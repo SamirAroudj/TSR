@@ -11,7 +11,6 @@
 #include "Graphics/GraphicsManager.h"
 #include "Graphics/ImageManager.h"
 #include "Graphics/MagicConstants.h"
-#include "App/MagicConstants.h"
 #include "Math/MathCore.h"
 #include "Math/MathHelper.h"
 #include "Platform/ApplicationTimer.h"
@@ -424,7 +423,7 @@ void TSR::createNewScene(const uint32 sceneCreationType, const vector<string> &a
 	{
 		// reset rendering
 		delete mRenderer;
-		mRenderer = new Renderer(COLOR_HIGHLIGHTED, COLOR_SAMPLES, COLOR_SURFACES, COLOR_VIEW);
+		mRenderer = new Renderer();
 
 		observers.push_back(mRenderer);
 		resetCamera();

@@ -41,6 +41,10 @@ using namespace SurfaceReconstruction;
 using namespace tinyxml2;
 using namespace Utilities;
 
+// constants
+const Real SyntheticScene::DEPTH_DIFFERENCE_FACTOR = 5.0f;
+const uint32 SyntheticScene::RANDOM_SEED = 0;
+
 SyntheticScene::SyntheticScene(const Path &fileName, const std::vector<IReconstructorObserver *> &observers) :
 	Scene(observers)
 {
