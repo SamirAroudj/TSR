@@ -11,6 +11,7 @@
 
 #include <vector>
 #include "Platform/Application.h"
+#include "Platform/Storage/Path.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/RayTracer.h"
 #include "SurfaceReconstruction/Refinement/MeshDijkstra.h"
@@ -71,6 +72,9 @@ private:
 
 	/** Sets camera orientation and position to its start values. */
 	void resetCamera();
+	
+	/** Saves the current mesh to a ply file. */
+	void saveMesh();
 
 	/** Spreads a data-driven kernel from the entered start surfel over the mesh.
 	@param startSurfel Defines where to start the Dijkstra search. */
@@ -91,8 +95,11 @@ private:
 	Graphics::Camera3D *mCamera;									/// This is the one and only main rendering camera of the application.
 	SurfaceReconstruction::RayTracer *mRayTracer;					/// For finding the start point of the surface kernel spread.
 	SurfaceReconstruction::Renderer *mRenderer;						/// Is used to draw data like ground truth surface, samples etc.
-
 	Real mScale;													/// Defines camera zoom. Is used in a uniform scaling matrix to achieve the zoom effect.
+
+	// for saving meshes
+	Storage::Path mOutputFolder;									/// Where to save meshes.
+	uint32 mOutputMeshCounter;										/// For numbering output meshes.
 };
 
 #endif // _SURFACE_KERNEL_COLORING_APP_H_

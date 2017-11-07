@@ -25,6 +25,7 @@ using namespace Graphics;
 using namespace Input;
 using namespace Math;
 using namespace Platform;
+using namespace Storage;
 using namespace SurfaceReconstruction;
 using namespace Utilities;
 
@@ -46,19 +47,20 @@ SurfaceKernelColoring::SurfaceKernelColoring
 	mMesh(NULL),
 	mRayTracer(NULL),
 	mRenderer(NULL),
-	mScale(1.0f)
+	mScale(1.0f),
+	mOutputMeshCounter(0)
 {
 	// output git data
 	cout << Git::getStatus() << endl;
 
 	// check command line arguments
 	uint32 argumentCount = (uint32) arguments.size();
-	if (2 != argumentCount)
+	if (3 != argumentCount)
 	{
 		// log this
 		cerr << "Invalid argument count!\n";
 		cerr << "Required arguments:\n";
-		cerr << "<path/program config file> <path>/Mesh.ply\n";
+		cerr << "<path/program config file> <path>/Mesh.ply <path>/outputFolder\n";
 		cerr << flush;
 
 		mRunning = false;
@@ -97,6 +99,9 @@ SurfaceKernelColoring::SurfaceKernelColoring
 
 	const Graphics::Color backbufferColor(1.0f, 1.0f, 1.0f, 1.0f);
 	GraphicsManager::getSingleton().setClearColor(backbufferColor);
+
+	// set output folder
+	mOutputFolder = arguments[2];
 }
 
 SurfaceKernelColoring::~SurfaceKernelColoring()
@@ -241,6 +246,9 @@ bool SurfaceKernelColoring::controlScene()
 	const Keyboard &keyboard = inputManager.getKeyboard(); 
 	const Mouse &mouse = inputManager.getMouse();
 
+	if (keyboard.isKeyPressed(KEY_S))
+		saveMesh();
+
 	if (mouse.isButtonDown(Mouse::BUTTON_PRIMARY))
 	{
 		const Vector2 mouseCoords(mouse.getAbsoluteX(), mouse.getAbsoluteY());
@@ -316,6 +324,19 @@ void SurfaceKernelColoring::spreadKernel(const Surfel &startSurfel)
 
 		mMesh->setColor(color, v.getGlobalVertexIdx());
 	}	
+}
+
+void SurfaceKernelColoring::saveMesh()
+{
+	// mesh name
+	char buffer[1000];
+	sprintf(buffer, "%.4uMesh.ply", mOutputMeshCounter);
+	const string name = buffer;
+
+	// save to file
+	const Path fileName = Path::appendChild(mOutputFolder, name);
+	mMesh->saveToFile(fileName, true, false);
+	++mOutputMeshCounter;
 }
 
 void SurfaceKernelColoring::resetCamera()
