@@ -15,6 +15,7 @@
 #include "Platform/Input/InputManager.h"
 #include "Platform/ParametersManager.h"
 #include "SurfaceKernelColoring/SurfaceKernelColoring.h"
+#include "SurfaceReconstruction/Refinement/MeshDijkstra.h"
 
 using namespace std;
 using namespace Graphics;
@@ -79,7 +80,13 @@ SurfaceKernelColoring::SurfaceKernelColoring
 		mRunning = false;
 	}
 	
-	mMesh = new StaticMesh(arguments[1]);
+	// mesh data
+	mMesh = new FlexibleMesh(arguments[1]);
+	mMeshTriangleNormals = new Vector3[mMesh->getTriangleCount()];
+	mMesh->computeNormalsOfTriangles(mMeshTriangleNormals);
+	mMesh->getVertexNeighbors(mVertexNeighbors, mVertexNeighborsOffsets);
+
+	// ray tracing data
 	mRayTracer = new RayTracer();
 	mRayTracer->createStaticScene(*mMesh, false);
 
@@ -89,11 +96,12 @@ SurfaceKernelColoring::SurfaceKernelColoring
 
 SurfaceKernelColoring::~SurfaceKernelColoring()
 {
-	// free visualization stuff
+	// free data
 	delete mRayTracer;
+	delete mMeshTriangleNormals;
 	delete mMesh;
-	delete mCamera;
 	delete mRenderer;
+	delete mCamera;
 
 	if (GraphicsManager::exists())
 		delete GraphicsManager::getSingletonPointer();
@@ -254,8 +262,21 @@ void SurfaceKernelColoring::createKernel(const Vector3 &rayHPS)
 }
 
 void SurfaceKernelColoring::spreadKernel(const Surfel &startSurfel)
-{
+{	
+	const uint32 *hitTriangle = mMesh->getTriangle(startSurfel.mTriangleIdx);
+	Real maxCosts = 1.0f;
 
+	MeshDijkstra dijkstra;
+	dijkstra.findVertices(mMesh, mMeshTriangleNormals,
+		mVertexNeighbors.data(), mVertexNeighborsOffsets.data(),
+		startSurfel, hitTriangle,
+		maxCosts, mDijkstraParams);
+
+	const vector<uint32> &order = dijkstra.getOrder();
+	const vector<RangedVertexIdx> &vertices = dijkstra.getVertices();
+
+	uint32 dummy = 42;
+	++dummy;
 }
 
 void SurfaceKernelColoring::resetCamera()

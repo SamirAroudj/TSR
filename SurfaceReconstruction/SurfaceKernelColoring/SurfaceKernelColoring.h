@@ -11,8 +11,10 @@
 
 #include <vector>
 #include "Platform/Application.h"
+#include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/RayTracer.h"
-#include "SurfaceReconstruction/Geometry/StaticMesh.h"
+#include "SurfaceReconstruction/Refinement/MeshDijkstra.h"
+#include "SurfaceReconstruction/Refinement/MeshDijkstraParameters.h"
 #include "SurfaceReconstruction/Rendering/Renderer.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 
@@ -74,12 +76,22 @@ private:
 	void spreadKernel(const SurfaceReconstruction::Surfel &startSurfel);
 
 private:
-	Graphics::Camera3D *mCamera;					/// This is the one and only main rendering camera of the application.
-	SurfaceReconstruction::StaticMesh *mMesh;		/// This is the rendered mesh over which the example data-driven surface kernel spreads
-	SurfaceReconstruction::RayTracer *mRayTracer;	/// For finding the start point of the surface kernel spread.
-	SurfaceReconstruction::Renderer *mRenderer;		/// Is used to draw data like ground truth surface, samples etc.
+	// Dijkstra data
+	SurfaceReconstruction::MeshDijkstra mDijkstra;					/// Dijkstra search object for data-driven surface kernel computation.
+	SurfaceReconstruction::MeshDijkstraParameters mDijkstraParams;	/// Parameters for running a Dijkstra search (for data-driven surface kernel calculation) over the mesh.
 
-	Real mScale;									/// Defines camera zoom. Is used in a uniform scaling matrix to achieve the zoom effect.
+	// mesh data
+	SurfaceReconstruction::FlexibleMesh *mMesh;						/// This is the rendered mesh over which the example data-driven surface kernel spreads.
+	Math::Vector3 *mMeshTriangleNormals;							/// Necessary for Dijkstra search. Contains a normal for each triangle of mMesh.
+	std::vector<uint32> mVertexNeighbors;							/// Contains for each vertex of mMesh the indices of its direct neighbors which are connected by an edge.
+	std::vector<uint32> mVertexNeighborsOffsets;					/// Contains for each vertex the index of the first direct neighbor index of its neighborhood in mVertexNeighbors. mVertexNeighborsOffsets[vertexCount] = end index
+
+	// rendering & ray tracing stuff
+	Graphics::Camera3D *mCamera;									/// This is the one and only main rendering camera of the application.
+	SurfaceReconstruction::RayTracer *mRayTracer;					/// For finding the start point of the surface kernel spread.
+	SurfaceReconstruction::Renderer *mRenderer;						/// Is used to draw data like ground truth surface, samples etc.
+
+	Real mScale;													/// Defines camera zoom. Is used in a uniform scaling matrix to achieve the zoom effect.
 };
 
 #endif // _SURFACE_KERNEL_COLORING_APP_H_
