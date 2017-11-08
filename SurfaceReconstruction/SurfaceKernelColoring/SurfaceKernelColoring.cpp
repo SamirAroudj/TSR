@@ -60,7 +60,7 @@ SurfaceKernelColoring::SurfaceKernelColoring
 		// log this
 		cerr << "Invalid argument count!\n";
 		cerr << "Required arguments:\n";
-		cerr << "<path/program config file> <path>/Mesh.ply <path>/outputFolder\n";
+		cerr << "<path/program config file> <path>/outputFolder <path>/Mesh.ply\n";
 		cerr << flush;
 
 		mRunning = false;
@@ -86,12 +86,21 @@ SurfaceKernelColoring::SurfaceKernelColoring
 	{
 		mRunning = false;
 	}
-	
-	// mesh data
-	mMesh = new FlexibleMesh(arguments[1]);
+
+	// set output folder
+	mOutputFolder = arguments[1];
+
+	// load mesh data
+	mMesh = new FlexibleMesh(arguments[2]);
+	mMesh->getVertexNeighbors(mVertexNeighbors, mVertexNeighborsOffsets);
 	mMeshTriangleNormals = new Vector3[mMesh->getTriangleCount()];
 	mMesh->computeNormalsOfTriangles(mMeshTriangleNormals);
-	mMesh->getVertexNeighbors(mVertexNeighbors, mVertexNeighborsOffsets);
+
+	// scale mesh
+	const Real scale = 10.0f;
+	const uint32 vertexCount = mMesh->getVertexCount();
+	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
+		mMesh->setPosition(mMesh->getPosition(vertexIdx) * scale, vertexIdx);
 
 	// ray tracing data
 	mRayTracer = new RayTracer();
@@ -99,9 +108,6 @@ SurfaceKernelColoring::SurfaceKernelColoring
 
 	const Graphics::Color backbufferColor(1.0f, 1.0f, 1.0f, 1.0f);
 	GraphicsManager::getSingleton().setClearColor(backbufferColor);
-
-	// set output folder
-	mOutputFolder = arguments[2];
 }
 
 SurfaceKernelColoring::~SurfaceKernelColoring()
@@ -196,7 +202,7 @@ void SurfaceKernelColoring::controlCamera()
 
 	// zoom effect
 	const Real SCALE_CHANGE_FACTOR = 1.5f;
-	const Real MIN_SCALE	= 0.01f;
+	const Real MIN_SCALE = 0.01f;
 	if (mouse.getRelativeZMotion() > 0.0f)
 	{
 		mScale /= SCALE_CHANGE_FACTOR;
@@ -310,7 +316,8 @@ void SurfaceKernelColoring::spreadKernel(const Surfel &startSurfel)
 	}
 	
 	// default color = grey
-	Vector3 color(0.5f, 0.5f, 0.5f);
+	const Real minColor = 0.5f;
+	Vector3 color(minColor, minColor, minColor);
 	const uint32 vertexCount = mMesh->getVertexCount();
 	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
 		mMesh->setColor(color, vertexIdx);
@@ -319,8 +326,8 @@ void SurfaceKernelColoring::spreadKernel(const Surfel &startSurfel)
 	for (uint32 localIdx = 0; localIdx < neighborhoodSize; ++localIdx)
 	{
 		const RangedVertexIdx &v = vertices[localIdx];
-		const Real extra = 0.5f * v.getCosts() / maximum;
-		color.set(0.5f + 0.5f * extra, 0.5f, 0.5f + extra);
+		const Real extra = (1.0f - minColor) * v.getCosts() / maximum;
+		color.set(minColor + extra, minColor + 0.5f * extra, minColor + extra);
 
 		mMesh->setColor(color, v.getGlobalVertexIdx());
 	}	
