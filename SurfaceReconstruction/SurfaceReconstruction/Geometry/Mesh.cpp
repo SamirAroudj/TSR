@@ -371,7 +371,7 @@ void Mesh::saveToFile(const Path &fileNameBeginning, const bool saveAsPly, const
 	// save in ply file format?
 	if (saveAsPly)
 	{
-		const Path fileName = Path::extendLastName(fileNameBeginning, ".ply");
+		const Path fileName = Path::extendLeafName(fileNameBeginning, ".ply");
 		cout << "Saving " << fileName << "\n";
 
 		PlyFile file(fileName, File::CREATE_WRITING, true);
@@ -383,7 +383,7 @@ void Mesh::saveToFile(const Path &fileNameBeginning, const bool saveAsPly, const
 	// save in internal file format?
 	if (saveAsMesh)
 	{
-		const Path fileName = Path::extendLastName(fileNameBeginning, ".Mesh");
+		const Path fileName = Path::extendLeafName(fileNameBeginning, ".Mesh");
 		cout << "Saving " << fileName << "\n";
 
 		File file(fileName, File::CREATE_WRITING, true, FILE_VERSION);

@@ -102,6 +102,11 @@ SurfaceKernelColoring::SurfaceKernelColoring
 	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
 		mMesh->setPosition(mMesh->getPosition(vertexIdx) * scale, vertexIdx);
 
+	// get mesh name
+	Path path(arguments[2]);
+	mMeshName = path.getLeafName();
+	mMeshName.resize(mMeshName.length() - 4);
+
 	// ray tracing data
 	mRayTracer = new RayTracer();
 	mRayTracer->createStaticScene(*mMesh, false);
@@ -335,10 +340,11 @@ void SurfaceKernelColoring::spreadKernel(const Surfel &startSurfel)
 
 void SurfaceKernelColoring::saveMesh()
 {
-	// mesh name
+	// output mesh name
 	char buffer[1000];
-	sprintf(buffer, "%.4uMesh.ply", mOutputMeshCounter);
-	const string name = buffer;
+	sprintf(buffer, "%.4u", mOutputMeshCounter);
+	const string counter = buffer;
+	const string name = counter + mMeshName;
 
 	// save to file
 	const Path fileName = Path::appendChild(mOutputFolder, name);

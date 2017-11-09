@@ -126,14 +126,14 @@ void Tree::loadFromFile(const Path &filesBeginning)
 	cout << "Loading scene octree." << endl;
 	clear();
 
-	mNodes = new Nodes(Path::extendLastName(filesBeginning, ".Nodes"));
-	mLeaves = new Leaves(*mNodes, Path::extendLastName(filesBeginning, ".Leaves"));
-	mDualCells = new DualCells(*mNodes, *mLeaves, Path::extendLastName(filesBeginning, ".DualCells"));
+	mNodes = new Nodes(Path::extendLeafName(filesBeginning, ".Nodes"));
+	mLeaves = new Leaves(*mNodes, Path::extendLeafName(filesBeginning, ".Leaves"));
+	mDualCells = new DualCells(*mNodes, *mLeaves, Path::extendLeafName(filesBeginning, ".DualCells"));
 }
 
 void Tree::saveToFiles(const Path &filesBeginning) const
 {
-	mNodes->saveToFile(Path::extendLastName(filesBeginning, ".Nodes"));
-	mLeaves->saveToFile(Path::extendLastName(filesBeginning, ".Leaves"));
-	mDualCells->saveToFile(Path::extendLastName(filesBeginning, ".DualCells"));
+	mNodes->saveToFile(Path::extendLeafName(filesBeginning, ".Nodes"));
+	mLeaves->saveToFile(Path::extendLeafName(filesBeginning, ".Leaves"));
+	mDualCells->saveToFile(Path::extendLeafName(filesBeginning, ".DualCells"));
 }

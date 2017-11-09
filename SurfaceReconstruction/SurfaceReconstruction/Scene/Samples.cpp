@@ -693,7 +693,7 @@ void Samples::saveToFile(const Path &beginning, const bool saveAsPly, const bool
 	// as Stanford ply mesh?
 	if (saveAsPly)
 	{
-		const Path fileName = Path::extendLastName(beginning, ".ply");
+		const Path fileName = Path::extendLeafName(beginning, ".ply");
 		PlyFile file(fileName, File::CREATE_WRITING, true);
 		file.saveTriangleMesh(ENCODING_BINARY_LITTLE_ENDIAN, true,
 			getCount(), 0, mColors.data(), mNormals.data(), mPositions.data(), 
@@ -704,7 +704,7 @@ void Samples::saveToFile(const Path &beginning, const bool saveAsPly, const bool
 	if (saveAsSamples)
 	{
 		// create file & write version
-		const Path fileName = Path::extendLastName(beginning, ".Samples");
+		const Path fileName = Path::extendLeafName(beginning, ".Samples");
 		File file(fileName, File::CREATE_WRITING, true, FILE_VERSION);
 
 		// save sample count, views per sample & AABB

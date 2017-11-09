@@ -123,7 +123,7 @@ bool Scene::reconstruct()
 
 	// save mata data & views
 	const Path beginning = getFileBeginning();
-	saveViewsToFile(Path::extendLastName(beginning, ".Views"));
+	saveViewsToFile(Path::extendLeafName(beginning, ".Views"));
 
 	// check samples
 	if (0 == sampleCount)
@@ -139,7 +139,7 @@ bool Scene::reconstruct()
 
 	// save unfiltered / initial non-zero confidence surface samples
 	if (!mOccupancy && !mTree)
-		mSamples->saveToFile(Path::extendLastName(beginning, "Samples"), true, true);
+		mSamples->saveToFile(Path::extendLeafName(beginning, "Samples"), true, true);
 		
 	if (!mTree)
 	{
@@ -154,8 +154,8 @@ bool Scene::reconstruct()
 		mTree->getNodes().checkSamplesOrder(mTree->getRootScope());
 
 		// save tree & samples
-		mSamples->saveToFile(Path::extendLastName(beginning, "SamplesReordered"), true, true);
-		mTree->saveToFiles(Path::extendLastName(beginning, ".Tree"));
+		mSamples->saveToFile(Path::extendLeafName(beginning, "SamplesReordered"), true, true);
+		mTree->saveToFiles(Path::extendLeafName(beginning, ".Tree"));
 	}
 
 	// create scene tree and estimate free space?
@@ -169,7 +169,7 @@ bool Scene::reconstruct()
 		//mSamples->saveToFile(beginning + "SamplesFiltered", true, true);
 
 		// save filtered samples, free space & scene tree
-		mOccupancy->saveToFile(Path::extendLastName(beginning, ".Occupancy"));
+		mOccupancy->saveToFile(Path::extendLeafName(beginning, ".Occupancy"));
 	}
 
 	if (!mReconstructions[RECONSTRUCTION_VIA_OCCUPANCIES])
@@ -353,9 +353,9 @@ void Scene::eraseSamples(const bool *inliers, const bool saveResults)
 	cout << "Saving data." << endl;
 	const Path beginning = getFileBeginning();
 
-	mSamples->saveToFile(Path::extendLastName(beginning, "SamplesFiltered2"), true, true);
-	mTree->saveToFiles(Path::extendLastName(beginning, ".Tree"));
-	mOccupancy->saveToFile(Path::extendLastName(beginning, ".Occupancy"));
+	mSamples->saveToFile(Path::extendLeafName(beginning, "SamplesFiltered2"), true, true);
+	mTree->saveToFiles(Path::extendLeafName(beginning, ".Tree"));
+	mOccupancy->saveToFile(Path::extendLeafName(beginning, ".Occupancy"));
 }
 
 Path Scene::getFileBeginning() const
@@ -407,7 +407,7 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 	// there must be a valid meta, views and samples file otherwise the scene is useless
 	try
 	{
-		loadViewsFromFile(Path::extendLastName(beginning, ".Views"));
+		loadViewsFromFile(Path::extendLeafName(beginning, ".Views"));
 	}
 	catch (Exception &exception)
 	{
@@ -422,7 +422,7 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 	// try to load the scene tree
 	try
 	{
-		mTree = new Tree(Path::extendLastName(beginning, ".Tree"));
+		mTree = new Tree(Path::extendLeafName(beginning, ".Tree"));
 	}
 	catch(Exception &exception)
 	{
@@ -432,16 +432,16 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 
 	// load the right sample set
 	if (mTree)
-		mSamples = new Samples(Path::extendLastName(beginning, "SamplesReordered.Samples"));
+		mSamples = new Samples(Path::extendLeafName(beginning, "SamplesReordered.Samples"));
 	else
-		mSamples = new Samples(Path::extendLastName(beginning, "Samples.Samples"));
+		mSamples = new Samples(Path::extendLeafName(beginning, "Samples.Samples"));
 	
 	// try to load the free space
 	if (mTree)
 	{
 		try
 		{
-			mOccupancy = new Occupancy(Path::extendLastName(beginning, ".Occupancy"));
+			mOccupancy = new Occupancy(Path::extendLeafName(beginning, ".Occupancy"));
 		}
 		catch(Exception &exception)
 		{
@@ -469,7 +469,7 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 	Path fileName;
 	try
 	{
-		fileName = Path::extendLastName(beginning, "GroundTruth.Mesh");
+		fileName = Path::extendLeafName(beginning, "GroundTruth.Mesh");
 		mGroundTruth = new StaticMesh(fileName);
 	}
 	catch (FileException &exception)

@@ -99,6 +99,7 @@ private:
 
 	// for saving meshes
 	Storage::Path mOutputFolder;									/// Where to save meshes.
+	std::string mMeshName;											/// Name of the mesh without path and file extension.
 	uint32 mOutputMeshCounter;										/// For numbering output meshes.
 };
 
