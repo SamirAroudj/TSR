@@ -97,7 +97,7 @@ SurfaceKernelColoring::SurfaceKernelColoring
 	mMesh->computeNormalsOfTriangles(mMeshTriangleNormals);
 
 	// scale mesh
-	const Real scale = 10.0f;
+	const Real scale = 5.0f;
 	const uint32 vertexCount = mMesh->getVertexCount();
 	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
 		mMesh->setPosition(mMesh->getPosition(vertexIdx) * scale, vertexIdx);
@@ -260,6 +260,9 @@ bool SurfaceKernelColoring::controlScene()
 	if (keyboard.isKeyPressed(KEY_S))
 		saveMesh();
 
+	if (keyboard.isKeyPressed(KEY_C))
+		clearMeshColors();
+
 	if (mouse.isButtonDown(Mouse::BUTTON_PRIMARY))
 	{
 		const Vector2 mouseCoords(mouse.getAbsoluteX(), mouse.getAbsoluteY());
@@ -319,15 +322,11 @@ void SurfaceKernelColoring::spreadKernel(const Surfel &startSurfel)
 		if (weight > maximum)
 			maximum = weight;
 	}
-	
-	// default color = grey
-	const Real minColor = 0.5f;
-	Vector3 color(minColor, minColor, minColor);
-	const uint32 vertexCount = mMesh->getVertexCount();
-	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
-		mMesh->setColor(color, vertexIdx);
 
 	// color vertices within range according to weights
+	const Real minColor = 0.5f;
+	Vector3 color;
+
 	for (uint32 localIdx = 0; localIdx < neighborhoodSize; ++localIdx)
 	{
 		const RangedVertexIdx &v = vertices[localIdx];
@@ -336,6 +335,15 @@ void SurfaceKernelColoring::spreadKernel(const Surfel &startSurfel)
 
 		mMesh->setColor(color, v.getGlobalVertexIdx());
 	}	
+}
+
+void SurfaceKernelColoring::clearMeshColors()
+{
+	// default color for all vertices = grey
+	Vector3 color(0.5f, 0.5f, 0.5f);
+	const uint32 vertexCount = mMesh->getVertexCount();
+	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
+		mMesh->setColor(color, vertexIdx);
 }
 
 void SurfaceKernelColoring::saveMesh()

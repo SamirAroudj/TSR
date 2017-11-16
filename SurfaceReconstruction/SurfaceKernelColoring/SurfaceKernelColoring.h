@@ -56,6 +56,9 @@ protected:
 
 private:
 
+	/** Sets the color of all vertices to the default mesh clearing color. */
+	void clearMeshColors();
+
 	/** Processes input to control / change the camera. */
 	void controlCamera();
 
