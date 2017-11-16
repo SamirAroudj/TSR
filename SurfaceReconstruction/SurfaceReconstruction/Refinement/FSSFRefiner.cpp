@@ -90,7 +90,7 @@ void FSSFRefiner::refine()
 
 	// prepare mesh
 	for (uint32 iteration = 0; iteration < mParams.mIterationCountInitialSmoothing; ++iteration)
-		mMesh.umbrellaSmooth(mVectorField.data(), mWeightField.data(), mParams.mUmbrellaSmoothingLambdaHigh);
+		mMesh.smoothByUmbrellaOp(mVectorField.data(), mWeightField.data(), mParams.mUmbrellaSmoothingLambdaHigh);
 
 	bool converged = false;
 	for (uint32 iteration = 0; !converged; ++iteration)
@@ -618,7 +618,7 @@ void FSSFRefiner::enforceRegularGeometry(const uint32 iteration)
 	// deletion of unsupported small parts
 	enforceRegularGeometryForOutliers(iteration);
 	
-	mMesh.umbrellaSmooth(mVectorField.data(), mWeightField.data(), mParams.mUmbrellaSmoothingLambdaLow);
+	mMesh.smoothByUmbrellaOp(mVectorField.data(), mWeightField.data(), mParams.mUmbrellaSmoothingLambdaLow);
 	updateObservers(iteration, "FSSFMoreRegular", IReconstructorObserver::RECONSTRUCTION_VIA_SAMPLES);
 }
 

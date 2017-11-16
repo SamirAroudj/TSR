@@ -199,8 +199,8 @@ namespace SurfaceReconstruction
 		void subdivideTriangles(std::vector<uint32> &doomedTriangles, std::vector<uint32> *possiblyDoomedTriangles = NULL);
 		
 		
-		inline void umbrellaSmooth(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda);
-		void umbrellaSmooth(Math::Vector3 *vectorField, const std::vector<uint32> &vertices, const Real lambda);
+		inline void smoothByUmbrellaOp(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda);
+		void smoothByUmbrellaOp(Math::Vector3 *vectorField, const std::vector<uint32> &vertices, const Real lambda);
 
 		inline void zeroColors();
 
@@ -560,9 +560,9 @@ namespace SurfaceReconstruction
 		mScales[vertexIdx] = scale;
 	}
 
-	inline void FlexibleMesh::umbrellaSmooth(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda)
+	inline void FlexibleMesh::smoothByUmbrellaOp(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda)
 	{
-		Mesh::umbrellaSmooth(movementField, weightField, smoothingLambda);
+		Mesh::smoothByUmbrellaOp(movementField, weightField, smoothingLambda);
 	}
 
 	inline void FlexibleMesh::zeroColors()

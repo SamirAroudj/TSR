@@ -68,23 +68,7 @@ void MeshRefiner::clear()
 
 void MeshRefiner::applyMovementField()
 {
-	//cout << "Applying vertex movements." << endl;
-	const Vector3 *positions = mMesh.getPositions();
-	const int64 vertexCount = mVectorField.size();
-
-	#pragma omp parallel for
-	for (int64 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
-	{
-		const Vector3 &move = mVectorField[vertexIdx];
-		const Vector3 &oldP = positions[vertexIdx];
-
-		if (move.hasNaNComponent())
-			continue;
-
-		const Vector3 &newP = oldP + move;
-		mMesh.setPosition(newP, (uint32) vertexIdx);
-	}
-
+	mMesh.applyMovementField(mVectorField.data());
 	doSelfCheck();
 }
 

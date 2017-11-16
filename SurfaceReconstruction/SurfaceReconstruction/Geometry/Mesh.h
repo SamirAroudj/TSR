@@ -37,7 +37,7 @@ namespace SurfaceReconstruction
 		static void computeNormalsWeightedByArea(Math::Vector3 *normals,
 			const Math::Vector3 *positions, const uint32 vertexCount, const uint32 *indices, const uint32 indexCount);
 
-		static inline Real computeUmbrellaSmoothingWeight(const Math::Vector3 &p0, const Math::Vector3 &p1);
+		static inline Real computeLaplacianWeight(const Math::Vector3 &p0, const Math::Vector3 &p1);
 
 		static void computeVertexScales(Real *scales, const std::vector<uint32> *vertexNeighbors, const Math::Vector3 *positions, const uint32 vertexCount);
 		static Real computeVertexScale(const uint32 *neighbors, const uint32 *neighborOffsets, const Math::Vector3 *positions, const uint32 vertexIdx);
@@ -48,6 +48,8 @@ namespace SurfaceReconstruction
 
 	public:
 		virtual ~Mesh();
+
+		void applyMovementField(const Math::Vector3 *vertexMovements);
 
 		virtual void clear() = 0;
 		
@@ -78,12 +80,27 @@ namespace SurfaceReconstruction
 
 		void saveToFile(const Storage::Path &fileName, const bool saveAsPly, const bool saveAsMesh) const;
 
-		void umbrellaSmooth(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda);
+		/** Non-shrinking smoothing operator based on the paper:\n
+			A Signal Processing Approach To Fair Surface Design
+			Authors: Gabriel Taubin,
+			The paper is about a low-pass filter for meshes that has the transfer function: f(k) = (1 - smoothingMy * k)(1 - smoothingLambda * k)
+			with smoothingLambda \in [0, 1] and smoothingMy < -smothingLambda.
+			It should quickly decrease within the eigenvalue frequency period k \in [0, 2]. (Low frequencies k should be kept and high k \in [0, 2] attenuated.
+			The transfer function can be defined by means of two parameters: \n
+			- the pass-band eigenvalue k_bp (for which f(k_pb) = 1 holds since f(0) = 1 ^ smoothingMy < -smoothingLambda): it defines which low frequencies k_l \in [0, k_bp] are not attenuated \n
+			- the smoothingLambda factor: it defines how where (at k_0) the transfer function reaches zero along the positive direction of k, k_0 = 1 / smoothingLambda
+			See the paper for details.
+		@param movementField For each vertex a movement is computed that is added to the old vertex position. This array temporarily stores all these movements and must have space for all vertices.
+		@param weightField Is temporarily needed to store sums of vertex neighbor weights. Must have space for all vertices.
+		@param smoothingLambda Defines the low pass filter transfer function f(k) for mesh smoothing. Must be positive. See the above description and paper for details.
+		@param passBandEigenvalue Defines the eigenvalue frequencies k \in [0, passBandEigenvalue] that are not attenuated. Values within [0.01, 0.1] produce good results. */
+		void smoothByTaubinOp(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda = 0.6307f, const Real passBandEigenvalue = 0.1f);
+		void smoothByUmbrellaOp(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda);
 
 	protected:
 		virtual void allocateMemory(const uint32 vertexCount, const uint32 indexCount) = 0;
 
-		void computeUmbrellaSmoothingMovementField(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda);
+		void computeLaplacianVectorField(Math::Vector3 *movementField, Real *weightField);
 
 		virtual Math::Vector3 &getColor(const uint32 vertexIdx)= 0;
 		virtual Math::Vector3 *getColors() = 0;
@@ -105,7 +122,7 @@ namespace SurfaceReconstruction
 		void loadFromPly(const Storage::Path &fileName);
 		void loadVertices(Utilities::PlyFile &plyFile, const Graphics::VerticesDescription &verticesFormat);
 		
-		void prepareUmbrellaSmoothing(Math::Vector3 *movementField, Real *weightField, const uint32 vertexIdx0, const uint32 vertexIdx1) const;
+		void prepareLaplacianSmoothing(Math::Vector3 *movementField, Real *weightField, const uint32 vertexIdx0, const uint32 vertexIdx1) const;
 		virtual void setIndices(const uint32 *indices, const uint32 indexCount) = 0;
 
 	private:
@@ -130,7 +147,7 @@ namespace SurfaceReconstruction
 		Mesh::computeAABB(min, max, getPositions(), getVertexCount());
 	}
 
-	inline Real Mesh::computeUmbrellaSmoothingWeight(const Math::Vector3 &p0, const Math::Vector3 &p1)
+	inline Real Mesh::computeLaplacianWeight(const Math::Vector3 &p0, const Math::Vector3 &p1)
 	{
 		const Real distance = (p0 - p1).getLength();
 		const Real weight = 1.0f / (1.0f + distance);

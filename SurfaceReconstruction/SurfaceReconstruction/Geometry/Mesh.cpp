@@ -25,6 +25,26 @@ using namespace Utilities;
 // Mesh constants
 const uint32 Mesh::FILE_VERSION = 0;
 
+void Mesh::applyMovementField(const Vector3 *vectorField)
+{
+	//cout << "Applying vertex movements." << endl;
+	const Vector3 *positions = getPositions();
+	const int64 vertexCount = getVertexCount();
+
+	#pragma omp parallel for
+	for (int64 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
+	{
+		const Vector3 &move = vectorField[vertexIdx];
+		const Vector3 &oldP = positions[vertexIdx];
+
+		if (move.hasNaNComponent())
+			continue;
+
+		const Vector3 newP = oldP + move;
+		getPosition((uint32) vertexIdx) = newP;
+	}
+}
+
 void Mesh::computeAABB(Vector3 &min, Vector3 &max, const Vector3 *positions, const uint32 vertexCount)
 {
 	// initial bounding box values
@@ -405,23 +425,50 @@ void Mesh::saveToFile(const Path &fileNameBeginning, const bool saveAsPly, const
 	cout << flush;
 }
 
-void Mesh::umbrellaSmooth(Vector3 *movementField, Real *weightField, const Real smoothingLambda)
+
+void Mesh::smoothByTaubinOp(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda, const Real passBandEigenvalue)
 {
+	// compute laplacian for each vertex
 	const uint32 vertexCount = getVertexCount();
-	computeUmbrellaSmoothingMovementField(movementField, weightField, smoothingLambda);
-	
+	computeLaplacianVectorField(movementField, weightField);
+
+	// transfer function parameters
+	Real temp = 1 - smoothingLambda * passBandEigenvalue;
+	temp = 1.0f - 1.0f / temp;
+	const Real smoothingMy = temp / passBandEigenvalue;
+
+	// Taubin (non-shrinking) smoothing vector field
 	#pragma omp parallel for
 	for (int64 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
-		getPosition((uint32) vertexIdx) += movementField[vertexIdx];
+	{
+		const Vector3 laplacian = movementField[vertexIdx];
+		movementField[vertexIdx] = laplacian * smoothingLambda + laplacian * smoothingMy;
+	}
+
+	applyMovementField(movementField);
 }
 
-void Mesh::computeUmbrellaSmoothingMovementField(Vector3 *movementField, Real *weightField, const Real smoothingLambda)
+void Mesh::smoothByUmbrellaOp(Vector3 *movementField, Real *weightField, const Real smoothingLambda)
+{
+	// compute laplacian for each vertex
+	const uint32 vertexCount = getVertexCount();
+	computeLaplacianVectorField(movementField, weightField);
+
+	// umbrella smoothing vector field
+	#pragma omp parallel for
+	for (int64 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
+		movementField[vertexIdx] *= smoothingLambda;
+
+	applyMovementField(movementField);
+}
+
+void Mesh::computeLaplacianVectorField(Vector3 *laplacianVectorField, Real *weightField)
 {
 	// zero movments & weights
 	const uint32 vertexCount = getVertexCount();
 	#pragma omp parallel for
 	for (int64 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
-		movementField[vertexIdx].set(0.0f, 0.0f, 0.0f);
+		laplacianVectorField[vertexIdx].set(0.0f, 0.0f, 0.0f);
 
 	#pragma omp parallel for
 	for (int64 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
@@ -436,7 +483,7 @@ void Mesh::computeUmbrellaSmoothingMovementField(Vector3 *movementField, Real *w
 	{
 		const uint32 *triangle = indices + i;
 		for (uint32 cornerIdx = 0; cornerIdx < 3; ++cornerIdx)
-			prepareUmbrellaSmoothing(movementField, weightField, triangle[cornerIdx], triangle[(cornerIdx + 1) % 3]);
+			prepareLaplacianSmoothing(laplacianVectorField, weightField, triangle[cornerIdx], triangle[(cornerIdx + 1) % 3]);
 	}
 
 	// normalize weighted sums and subtract vertex positions to get umbrella operator movements
@@ -448,14 +495,14 @@ void Mesh::computeUmbrellaSmoothingMovementField(Vector3 *movementField, Real *w
 		if (sumOfWeights < EPSILON)
 			continue;
 
-		const Vector3 &weightedSum = movementField[vertexIdx];
+		const Vector3 &weightedSum = laplacianVectorField[vertexIdx];
 		const Vector3 &position = getPosition(vertexIdx);
-		const Vector3 umbrellaMovement = (weightedSum / sumOfWeights) - position;
-		movementField[vertexIdx] = umbrellaMovement * smoothingLambda;
+		const Vector3 laplacian = (weightedSum / sumOfWeights) - position;
+		laplacianVectorField[vertexIdx] = laplacian;
 	}
 }
 
-void Mesh::prepareUmbrellaSmoothing(Vector3 *movementField, Real *weightField, const uint32 vertexIdx0, const uint32 vertexIdx1) const
+void Mesh::prepareLaplacianSmoothing(Vector3 *movementField, Real *weightField, const uint32 vertexIdx0, const uint32 vertexIdx1) const
 {
 	// vertex positions
 	const Vector3 *positions = getPositions();
@@ -463,7 +510,7 @@ void Mesh::prepareUmbrellaSmoothing(Vector3 *movementField, Real *weightField, c
 	const Vector3 &position1 = positions[vertexIdx1];
 
 	// weight & movments
-	const Real weight = computeUmbrellaSmoothingWeight(position0, position1);
+	const Real weight = computeLaplacianWeight(position0, position1);
 	const Vector3 t0 = position1 * weight;
 	const Vector3 t1 = position0 * weight;
 

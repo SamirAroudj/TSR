@@ -288,7 +288,7 @@ void FlexibleMesh::computeScalesViaEdgeDistances()
 	}
 }
 
-void FlexibleMesh::umbrellaSmooth(Vector3 *vectorField, const vector<uint32> &vertices, const Real lambda)
+void FlexibleMesh::smoothByUmbrellaOp(Vector3 *vectorField, const vector<uint32> &vertices, const Real lambda)
 {
 	const uint32 vertexCount = (uint32) vertices.size();
 
@@ -333,7 +333,7 @@ Vector3 FlexibleMesh::computeUmbrellaSmoothingMovement(const uint32 vertexIdx, c
 		const Vector3 &neighborPos = getPosition(neighborVertexIdx);
 
 		// weight & weighted position
-		const Real neighborWeight = Mesh::computeUmbrellaSmoothingWeight(vertexPos, neighborPos);
+		const Real neighborWeight = Mesh::computeLaplacianWeight(vertexPos, neighborPos);
 		const Vector3 weightedPosition = neighborPos * neighborWeight;
 
 		// update sums
@@ -343,7 +343,8 @@ Vector3 FlexibleMesh::computeUmbrellaSmoothingMovement(const uint32 vertexIdx, c
 	weightedSum /= sumOfWeights;
 
 	// return final umbrella smoothing movement vector
-	const Vector3 umbrellaMove = (weightedSum - vertexPos) * lambda;
+	const Vector3 laplacian = (weightedSum - vertexPos);
+	const Vector3 umbrellaMove = laplacian * lambda;
 	return umbrellaMove;
 }
 

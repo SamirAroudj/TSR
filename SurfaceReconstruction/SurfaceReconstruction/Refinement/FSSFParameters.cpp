@@ -48,8 +48,8 @@ FSSFParameters::FSSFParameters()
 	ok &= m.get(mSurfaceErrorRelativeThreshold, "FSSF::surfaceErrorRelativeThreshold");
 
 	// smoothing
-	ok &= m.get(mUmbrellaSmoothingLambdaHigh, "FSSF::umbrellaSmoothingLambdaWeaklySupported");
-	ok &= m.get(mUmbrellaSmoothingLambdaLow, "FSSF::umbrellaSmoothingLambdaWellSupported");
+	ok &= m.get(mUmbrellaSmoothingLambdaHigh, "FSSF::smoothByUmbrellaOpLambdaWeaklySupported");
+	ok &= m.get(mUmbrellaSmoothingLambdaLow, "FSSF::smoothByUmbrellaOpLambdaWellSupported");
 	
 	// iteration counts
 	ok &= m.get(mIterationCountInitialSmoothing, "FSSF::iterationCountInitialSmoothing");
