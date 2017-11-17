@@ -54,6 +54,7 @@ set(requiredLibs ${requiredLibs}
 	Graphics
 	Platform
 	Utilities
+	Utilities
 	CollisionDetection
 	${mathLibName}	
 	Patterns
