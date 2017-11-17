@@ -92,9 +92,9 @@ namespace SurfaceReconstruction
 			See the paper for details.
 		@param movementField For each vertex a movement is computed that is added to the old vertex position. This array temporarily stores all these movements and must have space for all vertices.
 		@param weightField Is temporarily needed to store sums of vertex neighbor weights. Must have space for all vertices.
-		@param smoothingLambda Defines the low pass filter transfer function f(k) for mesh smoothing. Must be positive. See the above description and paper for details.
-		@param passBandEigenvalue Defines the eigenvalue frequencies k \in [0, passBandEigenvalue] that are not attenuated. Values within [0.01, 0.1] produce good results. */
-		void smoothByTaubinOp(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda = 0.6307f, const Real passBandEigenvalue = 0.1f);
+		@param passBandEigenvalue Defines the eigenvalue frequencies k \in [0, passBandEigenvalue] that are not attenuated. Values within [0.01, 0.1] produce good results. 
+		@param smoothingLambda Defines the low pass filter transfer function f(k) for mesh smoothing. Must be positive. See the above description and paper for details.*/
+		void smoothByTaubinOp(Math::Vector3 *movementField, Real *weightField, const Real passBandEigenvalue = 0.01f, const Real smoothingLambda = 0.6307f);
 		void smoothByUmbrellaOp(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda);
 
 	protected:

@@ -90,7 +90,7 @@ void FSSFRefiner::refine()
 
 	// prepare mesh
 	for (uint32 iteration = 0; iteration < mParams.mIterationCountInitialSmoothing; ++iteration)
-		mMesh.smoothByUmbrellaOp(mVectorField.data(), mWeightField.data(), mParams.mUmbrellaSmoothingLambdaHigh);
+		mMesh.smoothByTaubinOp(mVectorField.data(), mWeightField.data());
 
 	bool converged = false;
 	for (uint32 iteration = 0; !converged; ++iteration)
@@ -126,6 +126,11 @@ bool FSSFRefiner::doRefinementStep(const uint32 iteration)
 	saveResult(iteration);
 	if (stop)
 		return true;
+
+	// frequency-based smoothing term
+	// (non-shrinking) smoothing
+	for (uint32 i = 0; i < 10; ++i)
+		mMesh.smoothByTaubinOp(mVectorField.data(), mWeightField.data());
 
 	subdivideMesh();
 	mMesh.checkEdges();

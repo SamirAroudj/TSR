@@ -426,26 +426,34 @@ void Mesh::saveToFile(const Path &fileNameBeginning, const bool saveAsPly, const
 }
 
 
-void Mesh::smoothByTaubinOp(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda, const Real passBandEigenvalue)
+void Mesh::smoothByTaubinOp(Math::Vector3 *movementField, Real *weightField, const Real passBandEigenvalue, const Real smoothingLambda)
 {
-	// compute laplacian for each vertex
-	const uint32 vertexCount = getVertexCount();
-	computeLaplacianVectorField(movementField, weightField);
-
-	// transfer function parameters
+	// transfer function parameters: f(k) = (1 - smothingLambda * k) * (1 - smoothingMy * k) for Taubin operator
 	Real temp = 1 - smoothingLambda * passBandEigenvalue;
 	temp = 1.0f - 1.0f / temp;
 	const Real smoothingMy = temp / passBandEigenvalue;
-
-	// Taubin (non-shrinking) smoothing vector field
-	#pragma omp parallel for
-	for (int64 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
+	
+	// 1. the shrinking step
 	{
-		const Vector3 laplacian = movementField[vertexIdx];
-		movementField[vertexIdx] = laplacian * smoothingLambda + laplacian * smoothingMy;
+		smoothByUmbrellaOp(movementField, weightField, smoothingLambda);
 	}
 
-	applyMovementField(movementField);
+	// 2. the un-shrinking step 
+	{
+		// compute laplacian again for each vertex
+		const uint32 vertexCount = getVertexCount();
+		computeLaplacianVectorField(movementField, weightField);
+
+		// Taubin (un-shrinking) vector field
+		#pragma omp parallel for
+		for (int64 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
+		{
+			const Vector3 laplacian = movementField[vertexIdx];
+			movementField[vertexIdx] = laplacian * smoothingMy;
+		}
+
+		applyMovementField(movementField);
+	}
 }
 
 void Mesh::smoothByUmbrellaOp(Vector3 *movementField, Real *weightField, const Real smoothingLambda)
@@ -510,7 +518,7 @@ void Mesh::prepareLaplacianSmoothing(Vector3 *movementField, Real *weightField, 
 	const Vector3 &position1 = positions[vertexIdx1];
 
 	// weight & movments
-	const Real weight = computeLaplacianWeight(position0, position1);
+	const Real weight = 1.0f;//computeLaplacianWeight(position0, position1);
 	const Vector3 t0 = position1 * weight;
 	const Vector3 t1 = position0 * weight;
 
