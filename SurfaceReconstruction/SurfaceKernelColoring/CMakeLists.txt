@@ -52,8 +52,8 @@ set(requiredLibs ${requiredLibs}
 	SurfaceReconstruction
 	embree
 	Graphics
-	Utilities	
 	Platform
+	Utilities	
 	CollisionDetection
 	${mathLibName}	
 	Patterns
