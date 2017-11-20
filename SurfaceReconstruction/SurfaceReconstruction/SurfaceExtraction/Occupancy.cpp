@@ -187,6 +187,7 @@ void Occupancy::updateKernels(const bool forRemoval, const DataType dataType, co
 		Vector3 end = sampleWS;
 		if (SAMPLENESS == dataType)
 		{
+			// cone ends half cone length after sample center
 			const Vector3 viewToSample = sampleWS - viewWS;
 			const Real totalLength = viewToSample.getLength();
 			const Vector3 viewDir = viewToSample / totalLength;
