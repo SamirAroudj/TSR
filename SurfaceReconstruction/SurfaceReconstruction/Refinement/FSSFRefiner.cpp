@@ -196,7 +196,7 @@ void FSSFRefiner::getProjectedSample(ProjectedSample &projectedSample,
 	const Samples &samples = Scene::getSingleton().getSamples();
 	const uint32 patternSize = mParams.mRaysPerViewSamplePair.getElementCount();
 	const uint32 startRayIdx = localPairIdx * patternSize;
-	//vector<Real> &localConfidences = mLocalConfidences[omp_get_thread_num()];
+	vector<Real> &localConfidences = mLocalConfidences[omp_get_thread_num()];
 	uint32 localSamplingCoords[2];
 	uint32 localRayIdx = 0;
 
@@ -208,13 +208,9 @@ void FSSFRefiner::getProjectedSample(ProjectedSample &projectedSample,
 		{
 			const uint32 rayIdx = startRayIdx + localRayIdx;
 			const Vector2 offset = RayTracer::getRelativeSamplingOffset(localSamplingCoords, mParams.mRaysPerViewSamplePair);
-			
-			// output surfel if in center && not a low confidence
-			if (offset.getLengthSquared() >= EPSILON * EPSILON)
-				continue;
 
 			// sample confidence & (ray hit, sample) mismatch confidence -> kernel weight factor
-			//localConfidences[localRayIdx] = 0.0f;
+			localConfidences[localRayIdx] = 0.0f;
 			if (!mRayTracer.getHitValidity(rayIdx))
 				continue;
 		
@@ -224,24 +220,27 @@ void FSSFRefiner::getProjectedSample(ProjectedSample &projectedSample,
 
 			// matching confidence
 			const Real projectionConfidence = getProjectionConfidence(currentSurfelWS, sampleIdx);
-			//localConfidences[localRayIdx] = projectionConfidence;
+			localConfidences[localRayIdx] = projectionConfidence;
+	
+			// output surfel if in center && not a low confidence
+			if (offset.getLengthSquared() >= EPSILON * EPSILON)
+				continue;
 			if (projectionConfidence <= EPSILON)
 				return;
 
 			projectedSample.mSurfel = currentSurfelWS;
 			projectedSample.mViewingDir = mRayTracer.getRayDirection(rayIdx);
-			projectedSample.mConfidence = samples.getConfidence(sampleIdx) * projectionConfidence;
 		}
 	}
 
-	//// get & check median value
-	//vector<Real>::iterator middle = localConfidences.begin() + (localConfidences.size() / 2);
-	//std::nth_element(localConfidences.begin(), middle, localConfidences.end());
+	// get & check median value
+	vector<Real>::iterator middle = localConfidences.begin() + (localConfidences.size() / 2);
+	std::nth_element(localConfidences.begin(), middle, localConfidences.end());
 
-	//// goodish projected sample
-	//const Real medianValue = *middle;
-	//if (medianValue > EPSILON)
-	//	projectedSample.mConfidence = medianValue * samples.getConfidence(sampleIdx);
+	// goodish projected sample
+	const Real medianValue = *middle;
+	if (medianValue > EPSILON)
+		projectedSample.mConfidence = medianValue * samples.getConfidence(sampleIdx);
 }
 
 Real FSSFRefiner::getProjectionConfidence(const Surfel &surfelWS, const uint32 sampleIdx) const
