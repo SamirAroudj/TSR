@@ -90,7 +90,7 @@ void FSSFRefiner::refine()
 
 	// prepare mesh
 	for (uint32 iteration = 0; iteration < mParams.mIterationCountInitialSmoothing; ++iteration)
-		mMesh.smoothByTaubinOp(mVectorField.data(), mWeightField.data());
+		mMesh.smoothByUmbrellaOp(mVectorField.data(), mWeightField.data(), mParams.mUmbrellaSmoothingLambdaHigh);
 
 	bool converged = false;
 	for (uint32 iteration = 0; !converged; ++iteration)
