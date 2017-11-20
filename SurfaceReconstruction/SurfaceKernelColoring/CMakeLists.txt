@@ -9,7 +9,7 @@
 
 # Surface kernel coloring executable for SurfaceReconstruction library to visualize spread of data-driven surface kernels over meshes
 set(componentName SurfaceKernelColoring)
-set(appName SurfaceKernelColoring)
+set(appName SurfaceKernelColoringApp)
 set(componentPath ${PROJECT_SOURCE_DIR}/${componentName})
 
 #include OpenGL, glut and glew headers
@@ -52,8 +52,9 @@ set(requiredLibs ${requiredLibs}
 	SurfaceReconstruction
 	embree
 	Graphics
-	Utilities	
 	Platform
+	Utilities
+	Utilities
 	CollisionDetection
 	${mathLibName}	
 	Patterns
