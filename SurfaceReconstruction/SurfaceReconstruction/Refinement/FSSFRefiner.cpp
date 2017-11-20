@@ -196,7 +196,7 @@ void FSSFRefiner::getProjectedSample(ProjectedSample &projectedSample,
 	const Samples &samples = Scene::getSingleton().getSamples();
 	const uint32 patternSize = mParams.mRaysPerViewSamplePair.getElementCount();
 	const uint32 startRayIdx = localPairIdx * patternSize;
-	vector<Real> &localConfidences = mLocalConfidences[omp_get_thread_num()];
+	//vector<Real> &localConfidences = mLocalConfidences[omp_get_thread_num()];
 	uint32 localSamplingCoords[2];
 	uint32 localRayIdx = 0;
 
@@ -208,9 +208,13 @@ void FSSFRefiner::getProjectedSample(ProjectedSample &projectedSample,
 		{
 			const uint32 rayIdx = startRayIdx + localRayIdx;
 			const Vector2 offset = RayTracer::getRelativeSamplingOffset(localSamplingCoords, mParams.mRaysPerViewSamplePair);
+			
+			// output surfel if in center && not a low confidence
+			if (offset.getLengthSquared() >= EPSILON * EPSILON)
+				continue;
 
 			// sample confidence & (ray hit, sample) mismatch confidence -> kernel weight factor
-			localConfidences[localRayIdx] = 0.0f;
+			//localConfidences[localRayIdx] = 0.0f;
 			if (!mRayTracer.getHitValidity(rayIdx))
 				continue;
 		
@@ -220,27 +224,24 @@ void FSSFRefiner::getProjectedSample(ProjectedSample &projectedSample,
 
 			// matching confidence
 			const Real projectionConfidence = getProjectionConfidence(currentSurfelWS, sampleIdx);
-			localConfidences[localRayIdx] = projectionConfidence;
-			
-			// output surfel if in center && not a low confidence
-			if (offset.getLengthSquared() >= EPSILON * EPSILON)
-				continue;
+			//localConfidences[localRayIdx] = projectionConfidence;
 			if (projectionConfidence <= EPSILON)
 				return;
 
 			projectedSample.mSurfel = currentSurfelWS;
 			projectedSample.mViewingDir = mRayTracer.getRayDirection(rayIdx);
+			projectedSample.mConfidence = samples.getConfidence(sampleIdx) * projectionConfidence;
 		}
 	}
 
-	// get & check median value
-	vector<Real>::iterator middle = localConfidences.begin() + (localConfidences.size() / 2);
-	std::nth_element(localConfidences.begin(), middle, localConfidences.end());
+	//// get & check median value
+	//vector<Real>::iterator middle = localConfidences.begin() + (localConfidences.size() / 2);
+	//std::nth_element(localConfidences.begin(), middle, localConfidences.end());
 
-	// goodish projected sample
-	const Real medianValue = *middle;
-	if (medianValue > EPSILON)
-		projectedSample.mConfidence = medianValue * samples.getConfidence(sampleIdx);
+	//// goodish projected sample
+	//const Real medianValue = *middle;
+	//if (medianValue > EPSILON)
+	//	projectedSample.mConfidence = medianValue * samples.getConfidence(sampleIdx);
 }
 
 Real FSSFRefiner::getProjectionConfidence(const Surfel &surfelWS, const uint32 sampleIdx) const
@@ -1217,43 +1218,44 @@ bool FSSFRefiner::computeErrorStatistics(const uint32 iteration)
 	const vector<uint32> *verticesToEdges = mMesh.getVerticesToEdges();
 	const uint32 vertexCount = mMesh.getVertexCount();
 	
-	// average scales of vertex neighborhoods
-	vector<Real> temp[2];
-	temp[0].resize(vertexCount);
-	temp[1].resize(vertexCount);
-	mMesh.computeScalesViaEdgeDistances();
-	memcpy(temp[0].data(), mMesh.getScales(), sizeof(Real) * vertexCount);
+	//// average scales of vertex neighborhoods
+	//vector<Real> temp[2];
+	//temp[0].resize(vertexCount);
+	//temp[1].resize(vertexCount);
+	//mMesh.computeScalesViaEdgeDistances();
+	//memcpy(temp[0].data(), mMesh.getScales(), sizeof(Real) * vertexCount);
 
-	uint32 sourceIdx = 0;
-	for (uint32 smoothingIt = 0; smoothingIt < 3; ++smoothingIt, sourceIdx = !sourceIdx)
-	{
-		#pragma omp parallel for
-		for (int64 i = 0; i < vertexCount; ++i)
-		{
-			const uint32 vertexIdx = (uint32) i;
-			const vector<uint32> &localEdges = verticesToEdges[vertexIdx];
-			const uint32 edgeCount = (uint32) localEdges.size();
-			Real &avgScale = temp[!sourceIdx][vertexIdx];
+	//// for each vertex: average scale
+	//uint32 sourceIdx = 0;
+	//for (uint32 smoothingIt = 0; smoothingIt < 3; ++smoothingIt, sourceIdx = !sourceIdx)
+	//{
+	//	#pragma omp parallel for
+	//	for (int64 i = 0; i < vertexCount; ++i)
+	//	{
+	//		const uint32 vertexIdx = (uint32) i;
+	//		const vector<uint32> &localEdges = verticesToEdges[vertexIdx];
+	//		const uint32 edgeCount = (uint32) localEdges.size();
+	//		Real &avgScale = temp[!sourceIdx][vertexIdx];
 
-			avgScale = temp[sourceIdx][vertexIdx];
-			for (uint32 edgeIdx = 0; edgeIdx < edgeCount; ++edgeIdx)
-			{
-				const uint32 neighborIdx = edges[localEdges[edgeIdx]].getOtherVertex(vertexIdx);
-				avgScale += temp[sourceIdx][neighborIdx];
-			}
+	//		avgScale = temp[sourceIdx][vertexIdx];
+	//		for (uint32 edgeIdx = 0; edgeIdx < edgeCount; ++edgeIdx)
+	//		{
+	//			const uint32 neighborIdx = edges[localEdges[edgeIdx]].getOtherVertex(vertexIdx);
+	//			avgScale += temp[sourceIdx][neighborIdx];
+	//		}
 
-			avgScale /= (edgeCount + 1);
-		}
-	}
+	//		avgScale /= (edgeCount + 1);
+	//	}
+	//}
 
-	// errors relative to vertex scales / mesh resolution
-	mRelativeSurfaceErrors.resize(vertexCount);
-	#pragma omp parallel for
-	for (int64 i = 0; i < vertexCount; ++i)
-	{
-		const uint32 vertexIdx = (uint32) i;
-		mRelativeSurfaceErrors[vertexIdx] = mSurfaceErrors[vertexIdx] / temp[sourceIdx][vertexIdx];
-	}
+	//// errors relative to vertex scales / mesh resolution
+	//mRelativeSurfaceErrors.resize(vertexCount);
+	//#pragma omp parallel for
+	//for (int64 i = 0; i < vertexCount; ++i)
+	//{
+	//	const uint32 vertexIdx = (uint32) i;
+	//	mRelativeSurfaceErrors[vertexIdx] = mSurfaceErrors[vertexIdx] / temp[sourceIdx][vertexIdx];
+	//}
 
 	// error statistics
 	const uint32 arrayCount = 1;
@@ -1267,8 +1269,9 @@ bool FSSFRefiner::computeErrorStatistics(const uint32 iteration)
 	const Path fileName = Path::appendChild(folder, "ErrorStatistics.txt");
 	mStatistics.saveToFile(fileName);
 	
-	outputErrorColoredMesh(temp[0], mSurfaceErrors.data(), iteration, "absoluteErrors");
-	outputErrorColoredMesh(temp[0], mRelativeSurfaceErrors.data(), iteration, "RelativeErrors");
+	mMesh.computeNormalsWeightedByAngles();
+	outputErrorColoredMesh(mAverageAngles[0].data(), mSurfaceErrors.data(), iteration, "absoluteErrors");
+	//outputErrorColoredMesh(temp[0], mRelativeSurfaceErrors.data(), iteration, "RelativeErrors");
 
 	return mStatistics.hasConverged();
 }
@@ -1820,7 +1823,7 @@ FSSFRefiner::FSSFRefiner(const FSSFRefiner &copy) :
 	assert(false);
 }
 
-void FSSFRefiner::outputErrorColoredMesh(vector<Real> &temp, const Real *errors, const uint32 iteration, const string &coreName) const
+void FSSFRefiner::outputErrorColoredMesh(Real *tempVertexColors, const Real *errors, const uint32 iteration, const string &coreName) const
 {
 	cout << "Saving reconstruction with error-based colors." << endl;
 
@@ -1831,25 +1834,27 @@ void FSSFRefiner::outputErrorColoredMesh(vector<Real> &temp, const Real *errors,
 		return;
 	
 	// compute & save scalar errors & find minimum & maximum
-	temp.resize(mMesh.getVertexCount());
 	#pragma omp parallel for
 	for (int64 i = 0; i < vertexCount; ++i)
 	{
 		const uint32 vertexIdx = (uint32) i;
 
 		if (!isBad(vertexIdx))
-			temp[vertexIdx] = errors[vertexIdx];
+			tempVertexColors[vertexIdx] = errors[vertexIdx];
 		else
-			temp[vertexIdx] = 0.0f;
+			tempVertexColors[vertexIdx] = 0.0f;
 	}
 
 	// find nth element as maximum
-	vector<Real>::iterator it = temp.begin() + (uint32) (temp.size() * 0.9f);
-	std::nth_element(temp.begin(), it, temp.end());
-	const Real maximum = *it;
+	const Real percentile = 0.9f;
+	Real *begin = tempVertexColors;
+	Real *nthElement = begin + (uint32) (vertexCount * percentile);
+	Real *end = tempVertexColors + vertexCount;
+	std::nth_element(begin, nthElement, end);
+	const Real maximum = *nthElement;
 	
-	StaticMesh staticMesh(mMesh.getColors(), mMesh.getNormals(), mMesh.getPositions(), mMesh.getScales(), mMesh.getIndices(),
-		vertexCount, indexCount);
+	StaticMesh staticMesh(mMesh.getColors(), mMesh.getNormals(), mMesh.getPositions(), mMesh.getScales(),
+		mMesh.getIndices(),	vertexCount, indexCount);
 
 	// compute error colors
 	cout << "Computing error-based colors." << endl;
