@@ -435,7 +435,7 @@ void FSSFRefiner::addFloatingScaleQuantities(Vector3 *targetColor, Vector3 &targ
 	//const Real lengthSq = correction.getLengthSquared();
 	//const Real loss = logr(1.0f + lengthSq);
 	//const Real loss = correction.getLength();
-	const Real loss = logr(1.0f + correction.getLength());
+	const Real loss = correction.getLength();
 	#pragma omp atomic
 	targetSumOfSurfaceErrors += loss * weight;
 
@@ -800,34 +800,40 @@ bool FSSFRefiner::moveSpikyGeometryBack()
 
 void FSSFRefiner::enforceRegularGeometryForOutliers(const uint32 iteration)
 {
-	// any outliers?
-	cout << "Finding outlier vertices." << endl;
-	findOutliersUsingReliability();
+	// find outlier isles for deletion
+	{
+		// any outliers?
+		cout << "Finding outlier vertices." << endl;
+		findOutliersUsingReliability();
 
-	// outlier isles which will be replaced by flat geometry?
-	IslesEraser outlierFinder(mMesh, mVertexStates.data(), OUTLIER);
-	if (!outlierFinder.hasFoundTooSmallIsle(mParams.mOutlierIsleMinKeepingSize))
-		return;
+		// outlier isles which will be replaced by flat geometry?
+		IslesEraser outlierFinder(mMesh, mVertexStates.data(), OUTLIER);
+		if (!outlierFinder.hasFoundTooSmallIsle(mParams.mOutlierIsleMinKeepingSize))
+			return;
 
-	// nice isles for easy deletion & easy hole filling
-	maskLargeOutlierIsles(outlierFinder);
-	createWellFormedOutlierIsles();
-	saveOutlierColoredMesh(iteration);
+		// nice isles for easy deletion & easy hole filling
+		maskLargeOutlierIsles(outlierFinder);
+		createWellFormedOutlierIsles();
+		saveOutlierColoredMesh(iteration);
+	}
 
-	// offsets for removal of small isles of outliers
-	IslesEraser outlierEraser(mMesh, mVertexStates.data(), OUTLIER);
-	if (!outlierEraser.computeOffsets(mParams.mOutlierIsleMinKeepingSize))
-		return;
+	// delete bad geometry
+	{
+		// offsets for removal of small isles of outliers
+		IslesEraser outlierEraser(mMesh, mVertexStates.data(), OUTLIER);
+		if (!outlierEraser.computeOffsets(mParams.mOutlierIsleMinKeepingSize))
+			return;
 
-	// replace bad geometry by simple & flat geometry
-	const vector<vector<uint32>> &holeBorders = outlierEraser.computeRingBordersOfDoomedIsles();
-	mMesh.deleteGeometry(outlierEraser.getVertexOffsets(), outlierEraser.getEdgeOffsets(), outlierEraser.getTriangleOffsets());
-	fillHoles(holeBorders);
-	mMesh.checkEdges();
+		// replace bad geometry by simple & flat geometry
+		const vector<vector<uint32>> &holeBorders = outlierEraser.computeRingBordersOfDoomedIsles();
+		mMesh.deleteGeometry(outlierEraser.getVertexOffsets(), outlierEraser.getEdgeOffsets(), outlierEraser.getTriangleOffsets());
+		fillHoles(holeBorders);
+		mMesh.checkEdges();
 
-	// remove small, isolated geometry & smooth spiky stuff
-	mMesh.deleteIsolatedGeometry(Scene::getSingleton().getMinIsleSize());
-	mMesh.checkEdges();
+		// remove small, isolated outlier geometry
+		mMesh.deleteIsolatedGeometry(Scene::getSingleton().getMinIsleSize());
+		mMesh.checkEdges();
+	}
 }
 
 void FSSFRefiner::findOutliersUsingReliability()
@@ -1259,10 +1265,10 @@ bool FSSFRefiner::computeErrorStatistics(const uint32 iteration)
 
 	// error statistics
 	const uint32 arrayCount = 1;
-	const Real *errors[arrayCount] = { mSurfaceErrors.data() };
+	const Real *bestErrors[arrayCount] = { mBestSurfaceErrors.data() };
 	const Real *weights[arrayCount] = { mWeightField.data() };
 	const uint32 sizes[arrayCount] = { vertexCount };
-	mStatistics.processIteration(errors, weights, sizes, arrayCount, mParams.mSupportWeakThreshold);
+	mStatistics.processIteration(bestErrors, weights, sizes, arrayCount, mParams.mSupportWeakThreshold);
 
 	// save statistics
 	const Path &folder = Scene::getSingleton().getResultsFolder();
@@ -1270,6 +1276,7 @@ bool FSSFRefiner::computeErrorStatistics(const uint32 iteration)
 	mStatistics.saveToFile(fileName);
 	
 	mMesh.computeNormalsWeightedByAngles();
+	outputErrorColoredMesh(mAverageAngles[0].data(), mBestSurfaceErrors.data(), iteration, "absoluteErrorsBest");
 	outputErrorColoredMesh(mAverageAngles[0].data(), mSurfaceErrors.data(), iteration, "absoluteErrors");
 	//outputErrorColoredMesh(temp[0], mRelativeSurfaceErrors.data(), iteration, "RelativeErrors");
 
@@ -1522,14 +1529,14 @@ bool FSSFRefiner::smoothIsleUntilConvergence(const vector<uint32> &isle)
 		const vector<uint32> &edgeIndices = mMesh.getVerticesToEdges()[vertexIdx];
 		const uint32 edgeCount = (uint32) edgeIndices.size();
 
-		Real weight = (REAL_MAX == mSurfaceErrors[vertexIdx] ? EPSILON : 1.0f / (EPSILON + mSurfaceErrors[vertexIdx]));
+		Real weight = (REAL_MAX == mBestSurfaceErrors[vertexIdx] ? EPSILON : 1.0f / (EPSILON + mBestSurfaceErrors[vertexIdx]));
 		Vector3 target = oldPos * weight;
 		Real sumOfWeights = weight;
 
 		for (uint32 localEdgeIdx = 0; localEdgeIdx < edgeCount; ++localEdgeIdx)
 		{
 			const uint32 neighborVertexIdx = edges[edgeIndices[localEdgeIdx]].getOtherVertex(vertexIdx);
-			weight = (REAL_MAX == mSurfaceErrors[vertexIdx] ? EPSILON : 1.0f / (EPSILON + mSurfaceErrors[vertexIdx]));
+			weight = (REAL_MAX == mBestSurfaceErrors[vertexIdx] ? EPSILON : 1.0f / (EPSILON + mBestSurfaceErrors[vertexIdx]));
 			target += mMesh.getPosition(neighborVertexIdx) * weight;
 			sumOfWeights += weight;
 		}
