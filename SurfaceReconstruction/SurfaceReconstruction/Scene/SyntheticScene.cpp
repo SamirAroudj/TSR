@@ -441,7 +441,7 @@ FlexibleMesh *SyntheticScene::triangulate(vector<vector<uint32>> &vertexNeighbor
 			vertexCount = triangulateBlock(indices, hitToVertexLinks, vertexCount,
 				hitsMap, depthMap, pixelToHitMap, x, y, pixelToViewSpace);
 
-	// compute neighbors
+	// clear neighbors
 	vertexNeighbors.resize(vertexCount);
 	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
 		vertexNeighbors[vertexIdx].clear();
