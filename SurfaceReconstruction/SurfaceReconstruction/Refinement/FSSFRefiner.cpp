@@ -10,6 +10,7 @@
 #include <iostream>
 #include <omp.h>
 #include "CollisionDetection/CollisionDetection.h"
+#include "Graphics/ColorMap.h"
 #include "Platform/Platform.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/IslesEraser.h"
@@ -27,6 +28,7 @@
 #include "Utilities/RandomManager.h"
 
 using namespace CollisionDetection;
+using namespace Graphics;
 using namespace Math;
 using namespace Platform;
 using namespace std;
@@ -89,8 +91,8 @@ void FSSFRefiner::refine()
 	}
 
 	// prepare mesh
-	for (uint32 iteration = 0; iteration < mParams.mIterationCountInitialSmoothing; ++iteration)
-		mMesh.smoothByUmbrellaOp(mVectorField.data(), mWeightField.data(), mParams.mUmbrellaSmoothingLambdaHigh);
+	for (uint32 iteration = 0; iteration < mParams.mSmoothingInitialIterCount; ++iteration)
+		mMesh.smoothByUmbrellaOp(mVectorField.data(), mWeightField.data(), mParams.mSmoothingUmbrellaLambdaHigh);
 
 	bool converged = false;
 	for (uint32 iteration = 0; !converged; ++iteration)
@@ -129,7 +131,7 @@ bool FSSFRefiner::doRefinementStep(const uint32 iteration)
 
 	// frequency-based smoothing term
 	// (non-shrinking) smoothing
-	for (uint32 i = 0; i < 10; ++i)
+	for (uint32 i = 0; i < mParams.mSmoothingTaubinIterCount; ++i)
 		mMesh.smoothByTaubinOp(mVectorField.data(), mWeightField.data());
 
 	subdivideMesh();
@@ -161,7 +163,7 @@ void FSSFRefiner::kernelInterpolation()
 		uint32 batchSize = EMBREE_PAIR_BATCH_SIZE;
 		if (batchSize + startPairIdx > pairCount)
 			batchSize = pairCount - startPairIdx;
-		mRayTracer.findIntersectionsForViewSamplePairs(true, startPairIdx, startPairIdx + batchSize,
+		mRayTracer.findIntersectionsForViewSamplePairs(false, startPairIdx, startPairIdx + batchSize,
 			EMBREE_RAY_BATCH_SIZE, mParams.mRaysPerViewSamplePair, mParams.mOrientSamplingPatternLikeView);
 
 		// process ray tracing results
@@ -249,8 +251,8 @@ Real FSSFRefiner::getProjectionConfidence(const Surfel &surfelWS, const uint32 s
 	const Vector3 &sampleNormalWS = samples.getNormalWS(sampleIdx);
 	const Vector3 &samplePosWS = samples.getPositionWS(sampleIdx);
 	const Real &sampleScale = samples.getScale(sampleIdx);
-	const Real angularSupport = mParams.mSupportSampleMaxAngleDifference;
-	const Real distanceSupport = mParams.mSupportSampleDistanceBandwidth * sampleScale;
+	const Real angularSupport = mParams.mProjectionConfidenceMaxAngleDifference;
+	const Real distanceSupport = mParams.mProjectionConfidenceDistanceBandwidth * sampleScale;
 
 	// probability according to angular distance
 	const Real dotProduct = sampleNormalWS.dotProduct(surfelWS.mNormal);
@@ -623,7 +625,7 @@ void FSSFRefiner::enforceRegularGeometry(const uint32 iteration)
 	// deletion of unsupported small parts
 	enforceRegularGeometryForOutliers(iteration);
 	
-	mMesh.smoothByUmbrellaOp(mVectorField.data(), mWeightField.data(), mParams.mUmbrellaSmoothingLambdaLow);
+	mMesh.smoothByUmbrellaOp(mVectorField.data(), mWeightField.data(), mParams.mSmoothingUmbrellaLambdaLow);
 	updateObservers(iteration, "FSSFMoreRegular", IReconstructorObserver::RECONSTRUCTION_VIA_SAMPLES);
 }
 
@@ -1082,7 +1084,7 @@ void FSSFRefiner::fillHoles(const vector<vector<uint32>> &holeBorders)
 	{
 		#pragma omp parallel for
 		for (int64 i = firstHoleFillingVertex; i < newVertexCount; ++i)
-			mVectorField[i] = mMesh.computeUmbrellaSmoothingMovement((uint32) i, mParams.mUmbrellaSmoothingLambdaHigh);
+			mVectorField[i] = mMesh.computeUmbrellaSmoothingMovement((uint32) i, mParams.mSmoothingUmbrellaLambdaHigh);
 
 		#pragma omp parallel for
 		for (int64 i = firstHoleFillingVertex; i < newVertexCount; ++i)
@@ -1864,17 +1866,26 @@ void FSSFRefiner::outputErrorColoredMesh(Real *tempVertexColors, const Real *err
 
 	// compute error colors
 	cout << "Computing error-based colors." << endl;
-	const Real scaleFactor = 1.0f / maximum;
+	const Real scaleFactor = 255.0f / maximum;
+	const Color &badColor = ColorMap::VIRIDIS[255];
+
 	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
 	{
-		const Real error = errors[vertexIdx];
-		const Real colorFactor = clamp<Real>(error * scaleFactor, 1.0f, 0.0f);
+		Vector3 &vertexColor = staticMesh.getColor(vertexIdx);
 
-		Vector3 &color = staticMesh.getColor(vertexIdx);
+		// bad vertex -> worst error color
 		if (isBad(vertexIdx))
-			color.set(1.0f, 0.5f, 0.5f);
-		else
-			color.set(colorFactor, 0.5f, 0.5f);
+		{
+			vertexColor.set(badColor.getRed(), badColor.getGreen(), badColor.getBlue());
+			continue;
+		}
+
+		// error color depending on error value
+		const Real error = errors[vertexIdx];
+		const Real colorIdx = error * scaleFactor;
+		const Color color = ColorMap::getViridisColorLinearly(colorIdx);
+
+		vertexColor.set(color.getRed(), color.getGreen(), color.getBlue());
 	}
 
 	FSSFRefiner::saveMesh(staticMesh, iteration, coreName.data());

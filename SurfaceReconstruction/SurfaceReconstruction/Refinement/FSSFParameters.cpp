@@ -38,8 +38,8 @@ FSSFParameters::FSSFParameters()
 	ok &= m.get(mSubdivisionRelativeScaleMinimum, "FSSF::subdivisionRelativeScaleMinimum");
 
 	// sample support / mismatch confidence
-	ok &= m.get(mSupportSampleDistanceBandwidth, "FSSF::supportSampleDistanceBandwidth");
-	ok &= m.get(mSupportSampleMaxAngleDifference, "FSSF::supportSampleMaxDegreesDifference");
+	ok &= m.get(mProjectionConfidenceDistanceBandwidth, "FSSF::ProjectionConfidence::distanceBandwidth");
+	ok &= m.get(mProjectionConfidenceMaxAngleDifference, "FSSF::ProjectionConfidence::maxDegreesDifference");
 
 	// weak surface support threshold
 	ok &= m.get(mSupportWeakThreshold, "FSSF::supportWeakThreshold");
@@ -48,13 +48,12 @@ FSSFParameters::FSSFParameters()
 	ok &= m.get(mSurfaceErrorRelativeThreshold, "FSSF::surfaceErrorRelativeThreshold");
 
 	// smoothing
-	ok &= m.get(mUmbrellaSmoothingLambdaHigh, "FSSF::smoothByUmbrellaOpLambdaWeaklySupported");
-	ok &= m.get(mUmbrellaSmoothingLambdaLow, "FSSF::smoothByUmbrellaOpLambdaWellSupported");
+	ok &= m.get(mSmoothingUmbrellaLambdaHigh, "FSSF::Smoothing::umbrellaLambdaWeaklySupported");
+	ok &= m.get(mSmoothingUmbrellaLambdaLow, "FSSF::Smoothing::umbrellaLambdaWellSupported");
+	ok &= m.get(mSmoothingInitialIterCount, "FSSF::Smoothing::initialIterCount");
+	ok &= m.get(mSmoothingUmbrellaLambdaLow, "FSSF::Smoothing::taubinIterCount");
 	
-	// iteration counts
-	ok &= m.get(mIterationCountInitialSmoothing, "FSSF::iterationCountInitialSmoothing");
-
-	// rays per view cone
+	// rays per cone
 	ok &= m.get(mRaysPerViewSamplePair[0], "FSSF::raysPerViewSamplePairDim0");
 	ok &= m.get(mRaysPerViewSamplePair[1], "FSSF::raysPerViewSamplePairDim1");
 	ok &= m.get(mOrientSamplingPatternLikeView, "FSSF::orientSamplingPatternLikeView");
@@ -64,7 +63,7 @@ FSSFParameters::FSSFParameters()
 
 	// convert degrees to angles
 	mSpikyGeometryAngleThreshold = convertDegreesToRadians(mSpikyGeometryAngleThreshold);
-	mSupportSampleMaxAngleDifference = convertDegreesToRadians(mSupportSampleMaxAngleDifference);
+	mProjectionConfidenceMaxAngleDifference = convertDegreesToRadians(mProjectionConfidenceMaxAngleDifference);
 
 	// check that all parameters were ok properly
 	if (ok)
