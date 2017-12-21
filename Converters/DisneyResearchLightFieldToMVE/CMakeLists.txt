@@ -19,6 +19,7 @@ set(cmakeFiles
 
 # header files
 set(headerFiles
+	${componentPath}/Mvei.h
 )
 
 # source files

@@ -6,22 +6,31 @@
  * This software may be modified and distributed under the terms
  * of the BSD 3-Clause license. See the License.txt file for details.
  */
+#include <map>
+#include <filesystem>
+
 #include "Math/Vector3.h"
 #include "Platform/Storage/Directory.h"
 #include "Platform/Storage/File.h"
 #include "Utilities/HelperFunctions.h"
+#include "Mvei.h"
 
 using namespace Math;
 using namespace Platform;
 using namespace std;
 using namespace Storage;
 
+#define CCD_WIDTH_MM 36.0f //CCD width of the camera used in mm
+
 bool findSourceData(vector<string> &images, vector<string> &depthMaps, const Path &undistortedDir, const Path &depthMapsDir);
 bool getArguments(float &focalLengthMM, uint32 &focalLengthPixels, float &cameraSeparationMM,
 	Path &undistortedDir, Path &depthMapsDir, Path &targetDir,
 	const char **unformattedArguments, const int32 argumentCount);
 bool handleExistingTargetDirectory(const Path &targetDir);
+void writeMetaData(MetaData metaData, Path dir);
 void outputDescription();
+
+
 
 int32 main(int32 argumentCount, const char **unformattedArguments)
 {
@@ -30,7 +39,6 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 	Path depthMapsDir;
 	Path targetDir;
 	Path viewsDir;
-
 	// camera calibration
 	float focalLengthMM;
 	uint32 focalLengthPixels;
@@ -56,18 +64,102 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 		cerr << "Could not create target directory: " << targetDir << endl;
 		return 3;
 	}
-	viewsDir = targetDir + "views";
+	viewsDir = Path::appendChild(targetDir, Path("views"));
 	if (!Directory::createDirectory(viewsDir))
 	{
 		cerr << "Could not create views directory: " << viewsDir << endl;
 		return 4;
 	}
 
+	cout << "starting images" << endl;
+
 	// for each image:
 	// create folder
 	// output .ini
 	// output undistorted image
 	// output depth map
+
+	for (string img : images)
+	{
+		// create .mve folder
+		string suffix(img.substr(img.rfind("_")+1));
+		int id = stoi(suffix);
+		suffix = suffix.substr(0, suffix.find("."));
+		Path viewDir = Path::appendChild(viewsDir, Path("view_" + suffix + ".mve"));
+		if (!Directory::createDirectory(viewDir))
+		{
+			cerr << "Could not create target directory: " << viewDir << endl;
+			return 3;
+		}
+
+		// create meta.ini
+		// TODO missing params
+		int width = 5616;
+		int height = 3744;
+
+		cout << "translation: " << (id * (width * cameraSeparationMM / CCD_WIDTH_MM)) / max(width, height) << endl;
+
+		MetaData meta;
+		meta.data["view.id"] = to_string(id);
+		meta.data["view.name"] = suffix;
+		meta.data["camera.focal_length"] = to_string((float)focalLengthPixels / max(width, height)); // TODO get dims of image 
+		meta.data["camera.pixel_aspect"] = "1";
+		meta.data["camera.principal_point"] = "0.5 0.5";
+		meta.data["camera.rotation"] = "1 0 0 0 1 0 0 0 1";
+		meta.data["camera.translation"] = to_string((id * (width * cameraSeparationMM / CCD_WIDTH_MM)) / max(width, height)) + " 0 0";
+		writeMetaData(meta, viewDir);
+
+
+		// copy undistorted image into .mve folder
+		ifstream source(Path::appendChild(undistortedDir, Path(img)).getCString(), ios::binary);
+		ofstream dest(Path::appendChild(viewDir, Path("undist-L1.jpg")).getCString(), ios::binary);
+		dest << source.rdbuf();
+		source.close();
+		dest.close();
+
+	}
+
+	cout << "images done" << endl;
+	cout << "starting depth maps" << endl;
+
+	for (string dm_fn : depthMaps) 
+	{
+		// read .dmaps
+		cout << "Reading in depth map " << dm_fn << " ...";
+
+		Encoding enc = ENCODING_BINARY_LITTLE_ENDIAN;
+		Path src = Path::appendChild(depthMapsDir, Path(dm_fn));
+		File dmf(src, File::FileMode::OPEN_READING, true);
+
+		unsigned int width = dmf.readUInt32(enc);
+		unsigned int height = dmf.readUInt32(enc);
+
+		TypedImageBase<float>* dm = new TypedImageBase<float>();
+		
+		while (!dmf.endOfFileReached()) 
+		{
+			float d = dmf.readFloat(enc);
+			dm->get_data().push_back(focalLengthPixels * cameraSeparationMM / d);
+		}
+		dm->resize(width, height, 1);
+		cout << " done." << endl;
+		cout << "Saving as .mvei ...";
+
+		string suffix(dm_fn.substr(dm_fn.rfind("_") + 1));
+		suffix = suffix.substr(0, suffix.find("."));
+		Path viewDir = Path::appendChild(viewsDir, Path("view_" + suffix + ".mve"));
+		save_mvei_file(dm, Path::appendChild(viewDir, Path("depth-L1.mvei")).getString(), IMAGE_TYPE_FLOAT);
+
+		TypedImageBase<int32_t>* vm = new TypedImageBase<int32_t>();
+		vm->resize(width, height, 1);
+		vm->fill(stoi(suffix));
+		save_mvei_file(vm, Path::appendChild(viewDir, Path("view-L1.mvei")).getString(), IMAGE_TYPE_SINT32);
+
+		cout << " done." << endl;
+	}
+
+	cout << "depth maps done" << endl;
+
 
 	return 0;
 }
@@ -82,13 +174,14 @@ bool findSourceData(vector<string> &images, vector<string> &depthMaps, const Pat
 		cerr << "Found zero source images. JPG format is required (.jpg)! Aborting.\n";
 		return false;
 	}
+	
 
-	//if (images.size() != depthMaps.size())
-	//{
-	//	cerr << "Number of undistorted images is not equal to the number of depth maps.\n";
-	//	cerr << "Only depth maps from author C. Kim in original format (.dmap) are supported! Aborting.\n";
-	//	return false;
-	//}
+	if (images.size() != depthMaps.size())
+	{
+		cerr << "Number of undistorted images is not equal to the number of depth maps.\n";
+		cerr << "Only depth maps from author C. Kim in original format (.dmap) are supported! Aborting.\n";
+		return false;
+	}
 
 	return true;
 }
@@ -142,6 +235,7 @@ bool handleExistingTargetDirectory(const Path &targetDir)
 	cout << "Stopping on user request.\n";
 	return false;
 }
+
 
 void outputDescription()
 {
