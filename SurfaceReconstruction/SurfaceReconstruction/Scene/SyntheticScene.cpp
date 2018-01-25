@@ -248,7 +248,7 @@ void SyntheticScene::createAndSaveSamples()
 		const PinholeCamera &camera = view.getCamera();
 		const Vector3 camPosWS = view.getPositionWS();
 
-		// trace scene -> depth, hit & index map
+		// trace scene -> depth, position (in world space) & index map
 		const bool good = fill(depthMap, positionsWSMap, rayTracer, validDepthCount, camera);
 		if (0 == validDepthCount || !good)
 			continue;
@@ -299,11 +299,11 @@ bool SyntheticScene::fill(vector<Real> &depthMap, vector<Vector3> &positionsWSMa
 		positionsWSMap[pixelIdx].set(-REAL_MAX, -REAL_MAX, -REAL_MAX);
 		depthMap[pixelIdx] = -REAL_MAX;
 
-		// valid hit?
+		// valid position / depth?
 		if (!rayTracer.getHitValidity(pixelIdx))
 			continue;
 
-		// compute & store hit position & depth depth
+		// compute & store world space position & depth map depth
 		Vector3 &positionWS = positionsWSMap[pixelIdx];
 		positionWS = rayTracer.getHit(NULL, pixelIdx);
 
@@ -399,9 +399,7 @@ void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vecto
 
 	// create a depth map triangulation to compute samples' properties
 	FlexibleMesh *triangulation = triangulate(vertexNeighbors, indices, pixelToVertexIndices,
-		positionsWSMap, depthMap, pixelToViewSpace);
-	triangulation->computeNormalsWeightedByAngles();
-	FlexibleMesh::computeVertexScales(triangulation->getScales(), vertexNeighbors.data(), triangulation->getPositions(), triangulation->getVertexCount());
+		positionsWSMap, depthMap, pixelToViewSpace, NULL);
 
 	// add triangulation to all other samples
 	//const uint32 pixelCount = mViewResolution.getElementCount();
@@ -425,52 +423,73 @@ void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vecto
 }
 
 FlexibleMesh *SyntheticScene::triangulate(vector<vector<uint32>> &vertexNeighbors, vector<uint32> &indices, vector<uint32> &pixelToVertexIndices,
-	const vector<Vector3> &positionsWSMap, const vector<Real> &depthMap, const Matrix3x3 &pixelToViewSpace) const
+	const vector<Vector3> &positionsWSMap, const vector<Real> &depthMap, const Matrix3x3 &pixelToViewSpace, const ColorImage *image) const
 {
 	// reserve memory & clear buffers
 	const uint32 pixelCount = (uint32) depthMap.size();
 	pixelToVertexIndices.resize(pixelCount);
 	memset(pixelToVertexIndices.data(), -1, sizeof(uint32) * pixelCount);
-
 	indices.clear();
 
-	// index buffer, vertexNeighbors for the depth map
+	// compute vertex & index count & index buffer
 	uint32 vertexCount = 0;
 	for (uint32 y = 0; y < mViewResolution[1] - 1; ++y)
 		for (uint32 x = 0; x < mViewResolution[0] - 1; ++x)
 			vertexCount = triangulateBlock(indices, pixelToVertexIndices, vertexCount, depthMap, x, y, pixelToViewSpace);
+	const uint32 indexCount = (uint32) indices.size();
 
-	// clear neighbors
+	// recompute vertex neighbors
 	vertexNeighbors.resize(vertexCount);
 	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
 		vertexNeighbors[vertexIdx].clear();
-
-	// create triangulation
-	const uint32 indexCount = (uint32) indices.size();
-	FlexibleMesh *triangulation = new FlexibleMesh(vertexCount, indexCount);	
-
 	FlexibleMesh::findVertexNeighbors(vertexNeighbors.data(), indices.data(), indexCount);
-	triangulation->setIndices(indices.data(), (uint32) indices.size());	
 
-	// set triangulation mesh vertices
-	const Vector3 color(0.5f, 0.5f, 0.5f);
+	return createFlexibleMesh(vertexNeighbors, indices, pixelToVertexIndices, positionsWSMap, vertexCount, image);
+}
 
+FlexibleMesh *SyntheticScene::createFlexibleMesh(const vector<vector<uint32>> &vertexNeighbors, const vector<uint32> &indices,
+	const vector<uint32> &pixelToVertexIndices,	const vector<Vector3> &positionsWSMap, const uint32 vertexCount, const ColorImage *image) const
+{
+	const uint32 indexCount = (uint32)indices.size();
+	const uint32 pixelCount = (uint32)positionsWSMap.size();
+
+	// create triangulation & set indices
+	FlexibleMesh *triangulation = new FlexibleMesh(vertexCount, indexCount);
+	triangulation->setIndices(indices.data(), (uint32)indices.size());
+
+	// vertex positions
 	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
 	{
-		// valid depth / valid hit?
-		if (-REAL_MAX == depthMap[pixelIdx])
-			continue;
-
-		// triangulated hit?
+		// triangulated back projected depth value?
 		const uint32 vertexIdx = pixelToVertexIndices[pixelIdx];
-		if (-1 == vertexIdx)
-			continue;
-		
-		const Vector3 &posWS = positionsWSMap[pixelIdx];
-		triangulation->setColor(color, vertexIdx);
-		triangulation->setPosition(posWS, vertexIdx);
+		if (-1 != vertexIdx)
+			triangulation->setPosition(positionsWSMap[pixelIdx], vertexIdx);
 	}
 
+	// vertex normals & scales
+	triangulation->computeNormalsWeightedByAngles();
+	FlexibleMesh::computeVertexScales(triangulation->getScales(), vertexNeighbors.data(), triangulation->getPositions(), triangulation->getVertexCount());
+
+	// vertex colors via default color
+	if (!image)
+	{
+		// no image? -> set vertex colors to some default value
+		const Vector3 defaultColor(0.5f, 0.5f, 0.5f);
+		for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
+			triangulation->setColor(defaultColor, vertexIdx);
+		return triangulation;
+	}
+
+	// set vertex colors via image
+	const uint32 &width = image->getSize()[0];
+	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
+	{
+		// copy color
+		Vector3 color;
+		image->get(color, pixelIdx % width, pixelIdx / width);
+		triangulation->setColor(color, pixelToVertexIndices[pixelIdx]);
+	}
+	
 	return triangulation;
 }
 
@@ -611,7 +630,7 @@ uint32 SyntheticScene::triangulateBlock(vector<uint32> &indices, vector<uint32> 
 			const uint32 dY = triangle[cornerIdx] / 2;
 			const uint32 neighborIdx = pixelIdx + dY * width + dX;
 
-			// get vertex index for hit (only keep triangulated hits)
+			// get vertex index for position (only keep triangulated projected depth values)
 			uint32 &vertexIdx = pixelToVertexIndices[neighborIdx];
 			if (-1 == vertexIdx)
 			{

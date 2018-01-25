@@ -15,6 +15,7 @@
 namespace SurfaceReconstruction
 {
 	// forward declarations
+	class ColorImage;
 	class RayTracer;
 
 	/// Represents a Scene object which is created by means of a known ground truth and sampling of it.
@@ -44,6 +45,10 @@ namespace SurfaceReconstruction
 			const std::vector<Math::Vector3> &positionsWSMap, const std::vector<Real> &depthMap,
 			const uint32 validDepthCount, const uint32 viewIdx);
 
+		FlexibleMesh *createFlexibleMesh(const std::vector<std::vector<uint32>> &vertexNeighbors, const std::vector<uint32> &indices,
+			const std::vector<uint32> &pixelToVertexIndices, const std::vector<Math::Vector3> &positionsWSMap, const uint32 vertexCount,
+			const ColorImage *image = NULL) const;
+
 		/** todo */
 		View *createSyntheticView(const uint32 viewIdx);
 		void createAndSaveSamples();
@@ -64,7 +69,8 @@ namespace SurfaceReconstruction
 
 		/** todo */
 		FlexibleMesh *triangulate(std::vector<std::vector<uint32>> &vertexNeighbors, std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices,
-			const std::vector<Math::Vector3> &positionsWSMap, const std::vector<Real> &depthMap, const Math::Matrix3x3 &pixelToViewSpace) const;
+			const std::vector<Math::Vector3> &positionsWSMap, const std::vector<Real> &depthMap, const Math::Matrix3x3 &pixelToViewSpace,
+			const ColorImage *image = NULL) const;
 		uint32 triangulateBlock(std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices, uint32 vertexCount,
 			const std::vector<Real> &depthMap, const uint32 x, const uint32 y, const Math::Matrix3x3 &pixelToViewSpace) const;		
 
