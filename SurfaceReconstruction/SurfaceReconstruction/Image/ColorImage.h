@@ -11,12 +11,10 @@
 #define _COLOR_IMAGE_H_
 
 #include "Graphics/Texture.h"
-#include "Math/Vector2.h"
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
 #include "Platform/ResourceManagement/VolatileResource.h"
-#include "Platform/Storage/Path.h"
-#include "Utilities/Size2.h"
+#include "SurfaceReconstruction/Image/Image.h"
 
 // todo comments
 
@@ -24,50 +22,17 @@ namespace SurfaceReconstruction
 {
 	class Filter;
 
-	class ColorImage : public ResourceManagement::VolatileResource<ColorImage>
+	class ColorImage : public ResourceManagement::VolatileResource<ColorImage>, public Image
 	{
 	public:
 		friend class ResourceManagement::VolatileResource<ColorImage>;
-
-	public:
-		enum MVEType
-		{
-			MVE_UNKNOWN,
-
-			MVE_UINT8,	/// uint8_t, unsigned char
-			MVE_UINT16,	/// uint16_t
-			MVE_UINT32,	/// uint32_t, unsigned int
-			MVE_UINT64,	/// uint64_t
-
-			MVE_SINT8,	/// int8_t, char, signed char
-			MVE_SINT16,	/// int16_t
-			MVE_SINT32,	/// int32_t, int
-			MVE_SINT64,	/// int64_t
-
-			MVE_FLOAT,	/// float
-			MVE_DOUBLE	/// double
-		};
 
 	public:
 		static void freeMemory();
 		static ColorImage *request(const std::string &resourceName, const Storage::Path &imageFileName);
 		static void setPathToImages(const Storage::Path &path);
 
-		/** todo
-		@param trianglePS Set this to the triangle coordinates which are relative to this image's pixels. (Must be relative to this image's pixel space (PS)).
-		@return Returns true if trianglePS is completely within the image. (Each vertex is within the rectangle [0, width) x [0, height). */
-		static bool contains(const Math::Vector2 trianglePS[3], const Utilities::ImgSize &size);
-		
-		static void saveAsMVEFloatImage(const Storage::Path &fileName, const Utilities::Size2<uint32> &resolution, const Real *data,
-			const bool invertX = false, const bool invertY = true, float *temporaryStorage = NULL);
-		static void saveAsMVEI(const Storage::Path &fileName, const Utilities::Size2<uint32> &resolution, const uint32 channelCount,
-			const uint32 type, const void *data, const uint32 elementSize, const uint64 elementCount);
-
 	public:
-		/** todo
-		@param trianglePS Set this to the triangle coordinates which are relative to this image's pixels. (Must be relative to this image's pixel space (PS)).
-		@return Returns true if trianglePS is completely within the image. (Each vertex is within the rectangle [0, width) x [0, height). */
-		inline bool contains(const Math::Vector2 trianglePS[3]) const;
 
 		/** todo
 		zero / black border padding*/
@@ -93,31 +58,24 @@ namespace SurfaceReconstruction
 
 		inline Graphics::Texture::Format getFormat() const;
 		inline const uint8 *getPixels() const;
-		inline const Utilities::ImgSize &getSize() const;
 
 	protected:
 		ColorImage(uint8 *pixels, const Utilities::ImgSize &size, const Graphics::Texture::Format format, const std::string &resourceName);
 		virtual ~ColorImage();
 
-		void clear();
+		virtual void clear();
 		
 		static ColorImage *request(const std::string &resourceName);
 
 	private:
 		uint8 *mPixels;
 
-		Utilities::ImgSize mSize;
 		Graphics::Texture::Format mFormat;
 	};
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	///   inline function definitions   ////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	bool ColorImage::contains(const Math::Vector2 trianglePS[3]) const
-	{
-		return ColorImage::contains(trianglePS, mSize);
-	}
 
 	inline uint8 ColorImage::get(const uint32 x, const uint32 y, const uint32 channel) const
 	{
@@ -172,11 +130,6 @@ namespace SurfaceReconstruction
 	inline const uint8 *ColorImage::getPixels() const
 	{
 		return mPixels;
-	}
-	
-	inline const Utilities::ImgSize &ColorImage::getSize() const
-	{
-		return mSize;
 	}
 }
 #endif // _COLOR_IMAGE_H_
