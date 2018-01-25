@@ -7,8 +7,8 @@
  * of the BSD 3-Clause license. See the License.txt file for details.
  */
 
-#ifndef _IMAGE_H_
-#define _IMAGE_H_
+#ifndef _COLOR_IMAGE_H_
+#define _COLOR_IMAGE_H_
 
 #include "Graphics/Texture.h"
 #include "Math/Vector2.h"
@@ -24,10 +24,10 @@ namespace SurfaceReconstruction
 {
 	class Filter;
 
-	class Image : public ResourceManagement::VolatileResource<Image>
+	class ColorImage : public ResourceManagement::VolatileResource<ColorImage>
 	{
 	public:
-		friend class ResourceManagement::VolatileResource<Image>;
+		friend class ResourceManagement::VolatileResource<ColorImage>;
 
 	public:
 		enum MVEType
@@ -50,8 +50,7 @@ namespace SurfaceReconstruction
 
 	public:
 		static void freeMemory();
-		//static Image *requestMeanImage(const Image &source, const Filter &gaussian);
-		static Image *request(const std::string &resourceName, const Storage::Path &imageFileName);
+		static ColorImage *request(const std::string &resourceName, const Storage::Path &imageFileName);
 		static void setPathToImages(const Storage::Path &path);
 
 		/** todo
@@ -68,7 +67,7 @@ namespace SurfaceReconstruction
 		/** todo
 		@param trianglePS Set this to the triangle coordinates which are relative to this image's pixels. (Must be relative to this image's pixel space (PS)).
 		@return Returns true if trianglePS is completely within the image. (Each vertex is within the rectangle [0, width) x [0, height). */
-		bool contains(const Math::Vector2 trianglePS[3]) const;
+		inline bool contains(const Math::Vector2 trianglePS[3]) const;
 
 		/** todo
 		zero / black border padding*/
@@ -87,7 +86,7 @@ namespace SurfaceReconstruction
 		inline void get(Math::Vector4 &color,
 			const Math::Vector2 &x, const Graphics::Texture::Wrapping wrapping = Graphics::Texture::WRAPPING_CLAMP) const;
 
-		void Image::get(Real *color, const uint32 channelCount,
+		void get(Real *color, const uint32 channelCount,
 			const Math::Vector2 coords, const Graphics::Texture::Wrapping wrapping = Graphics::Texture::WRAPPING_CLAMP) const;
 
 		inline uint32 getChannelCount() const;
@@ -97,12 +96,12 @@ namespace SurfaceReconstruction
 		inline const Utilities::ImgSize &getSize() const;
 
 	protected:
-		Image(uint8 *pixels, const Utilities::ImgSize &size, const Graphics::Texture::Format format, const std::string &resourceName);
-		virtual ~Image();
+		ColorImage(uint8 *pixels, const Utilities::ImgSize &size, const Graphics::Texture::Format format, const std::string &resourceName);
+		virtual ~ColorImage();
 
 		void clear();
 		
-		static Image *request(const std::string &resourceName);
+		static ColorImage *request(const std::string &resourceName);
 
 	private:
 		uint8 *mPixels;
@@ -114,8 +113,13 @@ namespace SurfaceReconstruction
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	///   inline function definitions   ////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	
-	inline uint8 Image::get(const uint32 x, const uint32 y, const uint32 channel) const
+
+	bool ColorImage::contains(const Math::Vector2 trianglePS[3]) const
+	{
+		return ColorImage::contains(trianglePS, mSize);
+	}
+
+	inline uint8 ColorImage::get(const uint32 x, const uint32 y, const uint32 channel) const
 	{
 		const uint32 channelCount = getChannelCount();
 		const uint32 rowInBytes = mSize[0] * channelCount;
@@ -123,7 +127,7 @@ namespace SurfaceReconstruction
 		return mPixels[y * rowInBytes + x * channelCount + channel];
 	}
 
-	inline void Image::get(Math::Vector3 &color, const uint32 x, const uint32 y) const
+	inline void ColorImage::get(Math::Vector3 &color, const uint32 x, const uint32 y) const
 	{
 		const uint32 channelCount = getChannelCount();
 		const uint32 rowInBytes = mSize[0] * channelCount;
@@ -132,17 +136,17 @@ namespace SurfaceReconstruction
 		color.set(c[0] / 255.0f, c[1] / 255.0f, c[2] / 255.0f);
 	}
 
-	inline void Image::get(Math::Vector3 &c, const Math::Vector2 &coords, const Graphics::Texture::Wrapping wrapping) const
+	inline void ColorImage::get(Math::Vector3 &c, const Math::Vector2 &coords, const Graphics::Texture::Wrapping wrapping) const
 	{
 		get((Real *) &c, 3, coords, wrapping);
 	}
 
-	inline void Image::get(Math::Vector4 &c, const Math::Vector2 &coords, const Graphics::Texture::Wrapping wrapping) const
+	inline void ColorImage::get(Math::Vector4 &c, const Math::Vector2 &coords, const Graphics::Texture::Wrapping wrapping) const
 	{
 		get((Real *) &c, 4, coords, wrapping);
 	}
 
-	inline uint32 Image::getChannelCount() const
+	inline uint32 ColorImage::getChannelCount() const
 	{
 		switch (mFormat)
 		{
@@ -160,19 +164,19 @@ namespace SurfaceReconstruction
 		return 0;
 	}
 
-	inline Graphics::Texture::Format Image::getFormat() const
+	inline Graphics::Texture::Format ColorImage::getFormat() const
 	{
 		return mFormat;
 	}
 
-	inline const uint8 *Image::getPixels() const
+	inline const uint8 *ColorImage::getPixels() const
 	{
 		return mPixels;
 	}
 	
-	inline const Utilities::ImgSize &Image::getSize() const
+	inline const Utilities::ImgSize &ColorImage::getSize() const
 	{
 		return mSize;
 	}
 }
-#endif // _IMAGE_H_
+#endif // _COLOR_IMAGE_H_

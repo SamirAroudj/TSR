@@ -20,7 +20,7 @@
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/RayTracer.h"
 #include "SurfaceReconstruction/Geometry/StaticMesh.h"
-#include "SurfaceReconstruction/Image/Image.h"
+#include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Refinement/MeshRefiner.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/SyntheticScene.h"
@@ -270,7 +270,7 @@ void SyntheticScene::createAndSaveSamples()
 		localName += ".mvei";
 		
 		const Path fileName = Path::appendChild(imagesFolder, localName);
-		Image::saveAsMVEFloatImage(fileName, mViewResolution, depthMap.data(), false, false);
+		ColorImage::saveAsMVEFloatImage(fileName, mViewResolution, depthMap.data(), false, false);
 
 		++viewIdx;
 	}

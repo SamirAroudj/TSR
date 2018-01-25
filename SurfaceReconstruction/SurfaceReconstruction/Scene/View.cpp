@@ -12,7 +12,7 @@
 #include "Graphics/Camera3D.h"
 #include "Platform/FailureHandling/FileException.h"
 #include "Platform/Platform.h"
-#include "SurfaceReconstruction/Image/Image.h"
+#include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Scene/CapturedScene.h"
 #include "SurfaceReconstruction/Scene/View.h"
 #include "Utilities/RandomManager.h"
@@ -63,7 +63,7 @@ View::View(const uint32 ID, File &file, const Path &fileName) :
 void View::computeHWSToNNPS(Math::Matrix4x4 &WSToPS, const bool considerPixelCenterOffset) const
 {
 	// valid image?
-	const Image *image = getImage();
+	const ColorImage *image = getColorImage();
 	if (!image)
 	{
 		WSToPS.setToZero();
@@ -84,19 +84,19 @@ string View::getIDString(const uint32 viewID)
 	return string(buffer);
 }
 
-const Image *View::getImage() const
+const ColorImage *View::getColorImage() const
 {
-	return View::getImage(mID);
+	return View::getColorImage(mID);
 }
 
-const Image *View::getImage(const uint32 viewID)
+const ColorImage *View::getColorImage(const uint32 viewID)
 {
 	// return the image taken by this this view
 	const Scene &scene = Scene::getSingleton();
 	const string resourceName = View::getIDString(viewID);
 	const Path relativeFileName = scene.getRelativeImageFileName(resourceName);
 	
-	const Image *image = Image::request(resourceName, relativeFileName);
+	const ColorImage *image = ColorImage::request(resourceName, relativeFileName);
 	return image;
 }
 
@@ -128,7 +128,7 @@ void View::loadFromFile(File &file, const Path &fileName)
 	const Real focalLength = temp[2];
 
 	// compute aspect ratio
-	const Image *image = getImage();
+	const ColorImage *image = getColorImage();
 	//if (!image) todo
 	//{
 	//	string message = "Could not load the image for a view to determine its aspect ratio.";

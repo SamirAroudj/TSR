@@ -13,7 +13,7 @@
 #include "Platform/ParametersManager.h"
 #include "Platform/Platform.h"
 #include "Platform/Storage/Directory.h"
-#include "SurfaceReconstruction/Image/Image.h"
+#include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Geometry/StaticMesh.h"
 #include "SurfaceReconstruction/Refinement/FSSFRefiner.h"
 #ifdef PCS_REFINEMENT
@@ -89,7 +89,7 @@ Scene::~Scene()
 
 	// free volatile resources
 	// free cached images
-	Image::freeMemory();
+	ColorImage::freeMemory();
 }
 
 bool Scene::reconstruct()
@@ -581,7 +581,7 @@ bool Scene::getParameters(const Path &fileName)
 void Scene::setRootFolder(const Path &rootFolder)
 {
 	mFolder = rootFolder;
-	Image::setPathToImages(mFolder);
+	ColorImage::setPathToImages(mFolder);
 }
 
 void Scene::saveReconstructionToFiles(const ReconstructionType type, const string &localName, const bool saveAsPly, const bool saveAsMesh) const

@@ -50,7 +50,7 @@ set(geometryHeaderFiles
 # image sub namespace header files
 set(imageHeaderFiles
 	${imagePath}/Filter.h
-	${imagePath}/Image.h
+	${imagePath}/ColorImage.h
 )
 
 # refinement sub namespace header files
@@ -131,7 +131,7 @@ set(geometrySourceFiles
 # image sub namespace source files
 set(imageSourceFiles
 	${imagePath}/Filter.cpp
-	${imagePath}/Image.cpp
+	${imagePath}/ColorImage.cpp
 )
 
 # refinement sub namespace source files

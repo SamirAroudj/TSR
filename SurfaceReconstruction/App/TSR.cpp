@@ -16,7 +16,6 @@
 #include "Platform/ApplicationTimer.h"
 #include "Platform/Input/InputManager.h"
 #include "Platform/ParametersManager.h"
-#include "SurfaceReconstruction/Image/Image.h"
 #include "SurfaceReconstruction/Refinement/FSSFRefiner.h"
 #ifdef PCS_REFINEMENT
 	#include "SurfaceReconstruction/Refinement/PCSRefiner.h"
@@ -114,9 +113,6 @@ TSR::~TSR()
 	// free visualization stuff
 	delete mCamera;
 	delete mRenderer;
-
-	// free resources
-	Image::freeMemory();
 	
 	// free managers
 	if (ImageManager::exists())

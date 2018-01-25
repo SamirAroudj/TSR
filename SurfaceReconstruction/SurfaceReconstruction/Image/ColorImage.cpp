@@ -10,7 +10,7 @@
 #include "Math/MathHelper.h"
 #include "Platform/FailureHandling/FileAccessException.h"
 #include "SurfaceReconstruction/Image/Filter.h"
-#include "SurfaceReconstruction/Image/Image.h"
+#include "SurfaceReconstruction/Image/ColorImage.h"
 
 using namespace FailureHandling;
 using namespace Graphics;
@@ -24,23 +24,23 @@ using namespace Utilities;
 
 // constants
 template <>
-const char *Image::Resource<Image>::msResourcePath = NULL;
+const char *ColorImage::Resource<ColorImage>::msResourcePath = NULL;
 
 template <>
-vector<Image *> Image::Resource<Image>::msResources(0);
+vector<ColorImage *> ColorImage::Resource<ColorImage>::msResources(0);
 
 template <>
-uint32 VolatileResource<Image>::msMaximumNumber = 0x1 << 10;
+uint32 VolatileResource<ColorImage>::msMaximumNumber = 0x1 << 10;
 
-void Image::freeMemory()
+void ColorImage::freeMemory()
 {
 	delete [] msResourcePath;
 	msResourcePath = NULL;
 
-	VolatileResource<Image>::freeMemory();
+	VolatileResource<ColorImage>::freeMemory();
 }
 
-void Image::saveAsMVEFloatImage(const Path &fileName, const Utilities::Size2<uint32> &resolution, const Real *realData,
+void ColorImage::saveAsMVEFloatImage(const Path &fileName, const Utilities::Size2<uint32> &resolution, const Real *realData,
 	const bool invertX, const bool invertY, float *temporaryStorage)
 {
 	const MVEType type = MVE_FLOAT;
@@ -51,7 +51,7 @@ void Image::saveAsMVEFloatImage(const Path &fileName, const Utilities::Size2<uin
 	// is the data already in the right format?
 	if (sizeof(Real) == eleSize && !invertY)
 	{
-		Image::saveAsMVEI(fileName, resolution, channelCount, type, realData, eleSize, eleCount);
+		ColorImage::saveAsMVEI(fileName, resolution, channelCount, type, realData, eleSize, eleCount);
 		return;
 	}
 
@@ -78,7 +78,7 @@ void Image::saveAsMVEFloatImage(const Path &fileName, const Utilities::Size2<uin
 	}
 
 	// save it
-	Image::saveAsMVEI(fileName, resolution, channelCount, type, floatData, eleSize, eleCount);
+	ColorImage::saveAsMVEI(fileName, resolution, channelCount, type, floatData, eleSize, eleCount);
 
 	// free resources
 	if (ownAllocation)
@@ -86,7 +86,7 @@ void Image::saveAsMVEFloatImage(const Path &fileName, const Utilities::Size2<uin
 	floatData = NULL;
 }
 
-void Image::saveAsMVEI(const Path &fileName, const Size2<uint32> &resolution, const uint32 channelCount, const uint32 type,
+void ColorImage::saveAsMVEI(const Path &fileName, const Size2<uint32> &resolution, const uint32 channelCount, const uint32 type,
 	const void *data, const uint32 elementSize, const uint64 elementCount)
 {
 	if (!data)
@@ -109,33 +109,7 @@ void Image::saveAsMVEI(const Path &fileName, const Size2<uint32> &resolution, co
 	file.write(data, elementSize, elementCount);
 }
 
-//Image *Image::requestMeanImage(const Image &source, const Filter &gaussian)
-//{
-//	// is the image alread in main memory?
-//	const string resourceName = source.getName() + "Mean";
-//	Image *image = request(resourceName);
-//	if (image)
-//		return image;
-//
-//	// get image meta data
-//	const uint32 channelCount = source.getChannelCount();
-//	const uint32 width = source.getWidth();
-//	const uint32 height = source.getHeight();
-//	const Texture::Format format = source.getFormat();
-//
-//	// request memory and compute filtered image
-//	uint8 *pixels = new uint8[width * height * channelCount];
-//	source.filter(pixels, gaussian);
-//
-//	return new Image(pixels, width, height, format, resourceName);
-//}
-
-bool Image::contains(const Vector2 trianglePS[3]) const
-{
-	return Image::contains(trianglePS, mSize);
-}
-
-bool Image::contains(const Vector2 trianglePS[3], const ImgSize &size)
+bool ColorImage::contains(const Vector2 trianglePS[3], const ImgSize &size)
 {
 	// check each vertex against this image's pixel rectangle
 	for (uint32 i = 0; i < 3; ++i)
@@ -150,7 +124,7 @@ bool Image::contains(const Vector2 trianglePS[3], const ImgSize &size)
 	return true;
 }
 
-void Image::filter(uint8 *targetPixels, const Filter &filter) const
+void ColorImage::filter(uint8 *targetPixels, const Filter &filter) const
 {
 	uint8 *target = targetPixels;
 
@@ -161,7 +135,7 @@ void Image::filter(uint8 *targetPixels, const Filter &filter) const
 				*target = filter.getConvolution(x, y, channel, *this);
 }
 
-void Image::get(Real *color, const uint32 channelCount, const Vector2 coords, const Texture::Wrapping wrapping) const
+void ColorImage::get(Real *color, const uint32 channelCount, const Vector2 coords, const Texture::Wrapping wrapping) const
 {
 	// get coordinates of the 4 pixels around x & corresponding interpolation factors
 	const uint32 PIXEL_COUNT = 4;
@@ -191,15 +165,15 @@ void Image::get(Real *color, const uint32 channelCount, const Vector2 coords, co
 		color[(Axis)channelIdx] = Math::interpolateBilinearly<Real>(values[channelIdx], factors);
 }
 
-Image *Image::request(const string &resourceName, const Path &imageFileName)
+ColorImage *ColorImage::request(const string &resourceName, const Path &imageFileName)
 {
 	// is the image alread in main memory?
-	Image *image = request(resourceName);
+	ColorImage *image = request(resourceName);
 	if (image)
 		return image;
 
 	// get complete file name
-	const char *path = VolatileResource<Image>::getPathToResources();
+	const char *path = VolatileResource<ColorImage>::getPathToResources();
 	const Path folder(path);
 	const Path fileName = Path::appendChild(folder, imageFileName);
 
@@ -222,11 +196,11 @@ Image *Image::request(const string &resourceName, const Path &imageFileName)
 	}
 
 	// create the image & return it
-	image = new Image(pixels, size, format, resourceName);
+	image = new ColorImage(pixels, size, format, resourceName);
 	return image;
 }
 
-Image *Image::request(const string &resourceName)
+ColorImage *ColorImage::request(const string &resourceName)
 {
 	// resource path and memory for loading available?
 	assert(msResourcePath);
@@ -234,11 +208,11 @@ Image *Image::request(const string &resourceName)
 		throw FileAccessException("Cannot load resource since resource path is not set.", resourceName, -1);
 
 	// is the image available in main memory?
-	Image *image = VolatileResource<Image>::request(resourceName);
+	ColorImage *image = VolatileResource<ColorImage>::request(resourceName);
 	return image;
 }
 
-void Image::setPathToImages(const Path &path)
+void ColorImage::setPathToImages(const Path &path)
 {
 	// copy path to memory
 	const uint32 length = (uint32) path.getString().length();
@@ -249,18 +223,19 @@ void Image::setPathToImages(const Path &path)
 	msResourcePath = pathMemory;
 }
 
-Image::Image(uint8 *pixels, const ImgSize &size, const Graphics::Texture::Format format, const string &resourceName) :
-	VolatileResource<Image>(resourceName), mPixels(pixels), mSize(size), mFormat(format)
+ColorImage::ColorImage(uint8 *pixels, const ImgSize &size, const Graphics::Texture::Format format, const string &resourceName) :
+	VolatileResource<ColorImage>(resourceName), mPixels(pixels), mSize(size), mFormat(format)
 {
 
 }
 
-Image::~Image()
+ColorImage::~ColorImage()
 {
 	clear();
 }
 
-void Image::clear()
+void ColorImage::clear()
 {
 	delete [] mPixels;
+	mPixels = NULL;
 }

@@ -10,8 +10,8 @@
 #include "Math/MathCore.h"
 #include "Math/MathHelper.h"
 #include "Platform/FailureHandling/Exception.h"
+#include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Image/Filter.h"
-#include "SurfaceReconstruction/Image/Image.h"
 
 using namespace FailureHandling;
 using namespace Math;
@@ -111,7 +111,7 @@ Filter::~Filter()
 	mFactors = NULL;
 }
 
-uint8 Filter::getConvolution(const uint32 imageCenterX, const uint32 imageCenterY, const uint32 channel, const Image &image) const
+uint8 Filter::getConvolution(const uint32 imageCenterX, const uint32 imageCenterY, const uint32 channel, const ColorImage &image) const
 {
 	// get meta data
 	const ImgSize &size = image.getSize();
