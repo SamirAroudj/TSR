@@ -7,9 +7,7 @@
  * of the BSD 3-Clause license. See the License.txt file for details.
  */
 
-#include "Graphics/ImageManager.h"
 #include "Math/MathHelper.h"
-#include "SurfaceReconstruction/Image/Image.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/Triangle.h"
 #include "SurfaceReconstruction/Refinement/MeshRefiner.h"
