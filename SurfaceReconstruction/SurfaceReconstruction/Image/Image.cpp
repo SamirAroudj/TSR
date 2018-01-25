@@ -161,26 +161,34 @@ void Image::filter(uint8 *targetPixels, const Filter &filter) const
 				*target = filter.getConvolution(x, y, channel, *this);
 }
 
-void Image::get(Vector3 &c, const Vector2 &coords, const Texture::Wrapping wrapping) const
+void Image::get(Real *color, const uint32 channelCount, const Vector2 coords, const Texture::Wrapping wrapping) const
 {
 	// get coordinates of the 4 pixels around x & corresponding interpolation factors
-	int32 pixels[4];
-	Real factors[2];
-	Texture::getSurroundingPixelCoords(pixels[0], pixels[1], pixels[2], pixels[3], factors[0], factors[1],
+	const uint32 PIXEL_COUNT = 4;
+	const uint32 MAX_CHANNEL_COUNT = 4;
+	int32 pixelBB[PIXEL_COUNT];					// minX, minY, maxX, maxY
+	Real factors[2];							// relative interpolation factors \in [0, 1]^2
+	Real values[MAX_CHANNEL_COUNT][PIXEL_COUNT];	// (up to) 4 channels for 4 source pixels
+
+													// get pixel bounding box around coords and corresponding interpolation factors
+	Texture::getSurroundingPixelCoords(pixelBB[0], pixelBB[1], pixelBB[2], pixelBB[3], factors[0], factors[1],
 		coords, mSize, wrapping);
 
-	// interpolate bilinearly for each channel
-	Real values[3][4];	// 3 channels x 4 source values
-
-	for (uint32 channel = 0; channel < 3; ++channel)
+	// get values for each pixel and channel
+	for (uint32 pixelIdx = 0; pixelIdx < PIXEL_COUNT; ++pixelIdx)
 	{
-		values[channel][0] = get(pixels[0], pixels[1], channel) / 255.0f; // left, bottom
-		values[channel][1] = get(pixels[2], pixels[1], channel) / 255.0f; // right, bottom
-		values[channel][2] = get(pixels[0], pixels[3], channel) / 255.0f; // left, top
-		values[channel][3] = get(pixels[2], pixels[3], channel) / 255.0f; // right, top
-
-		c[(Axis) channel] = Math::interpolateBilinearly<Real>(values[channel], factors);
+		// coords order: left, bottom -> right, bottom -> left, top, -> right, top
+		for (uint32 channelIdx = 0; channelIdx < channelCount; ++channelIdx)
+		{
+			const uint32 x = pixelBB[2 * (pixelIdx & 0x1)];
+			const uint32 y = pixelBB[1 + (pixelIdx & 0x2)];
+			values[channelIdx][pixelIdx] = get(x, y, channelIdx) / 255.0f;
+		}
 	}
+
+	// interpolate values bilinearly per channel
+	for (uint32 channelIdx = 0; channelIdx < channelCount; ++channelIdx)
+		color[(Axis)channelIdx] = Math::interpolateBilinearly<Real>(values[channelIdx], factors);
 }
 
 Image *Image::request(const string &resourceName, const Path &imageFileName)

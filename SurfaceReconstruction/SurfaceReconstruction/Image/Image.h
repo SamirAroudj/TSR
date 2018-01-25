@@ -81,11 +81,14 @@ namespace SurfaceReconstruction
 		/** todo - For real value access to RGB color values.
 		so far bilinear interpolation
 		@param color Is filled with interpolated red, green and blue values. */
-		void get(Math::Vector3 &color,
+		inline void get(Math::Vector3 &color,
 			const Math::Vector2 &x, const Graphics::Texture::Wrapping wrapping = Graphics::Texture::WRAPPING_CLAMP) const;
 
-		void get(Math::Vector4 &color,
+		inline void get(Math::Vector4 &color,
 			const Math::Vector2 &x, const Graphics::Texture::Wrapping wrapping = Graphics::Texture::WRAPPING_CLAMP) const;
+
+		void Image::get(Real *color, const uint32 channelCount,
+			const Math::Vector2 coords, const Graphics::Texture::Wrapping wrapping = Graphics::Texture::WRAPPING_CLAMP) const;
 
 		inline uint32 getChannelCount() const;
 
@@ -128,7 +131,17 @@ namespace SurfaceReconstruction
 
 		color.set(c[0] / 255.0f, c[1] / 255.0f, c[2] / 255.0f);
 	}
-	
+
+	inline void Image::get(Math::Vector3 &c, const Math::Vector2 &coords, const Graphics::Texture::Wrapping wrapping) const
+	{
+		get((Real *) &c, 3, coords, wrapping);
+	}
+
+	inline void Image::get(Math::Vector4 &c, const Math::Vector2 &coords, const Graphics::Texture::Wrapping wrapping) const
+	{
+		get((Real *) &c, 4, coords, wrapping);
+	}
+
 	inline uint32 Image::getChannelCount() const
 	{
 		switch (mFormat)
