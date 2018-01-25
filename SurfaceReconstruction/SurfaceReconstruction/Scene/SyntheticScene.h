@@ -38,25 +38,19 @@ namespace SurfaceReconstruction
 		inline SyntheticScene &operator =(const SyntheticScene &rhs);
 		
 		/** todo */
-		void addNoise(std::vector<Math::Vector3> &hitsWS, std::vector<Real> &depthMap, const Math::Vector3 &camPosWS);
+		void addNoise(std::vector<Math::Vector3> &positionsWSMap, std::vector<Real> &depthMap, const Math::Vector3 &camPosWS);
 		
-		void addToSamples(std::vector<std::vector<uint32>> &vertexNeighbors, std::vector<uint32> &indices, std::vector<uint32> &hitToVertexLinks,
-			const std::vector<Math::Vector3> &hitsWS, const std::vector<Real> &depthMap, const std::vector<uint32> &pixelToHitMap,
-			const uint32 hitCount, const uint32 viewIdx);
+		void addToSamples(std::vector<std::vector<uint32>> &vertexNeighbors, std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices,
+			const std::vector<Math::Vector3> &positionsWSMap, const std::vector<Real> &depthMap,
+			const uint32 validDepthCount, const uint32 viewIdx);
 
 		/** todo */
 		View *createSyntheticView(const uint32 viewIdx);
 		void createAndSaveSamples();
 
-		/** Samples the surfaces of input objects by means of rays orginating from entered view.
-		@param view Set this to the view you want to create samples for.
-		@param viewID Set this to the global index / identifier which is used to find the entered view. This is forwareded to the samples of the view.
-		@return Returns the number of created samples. */
-		uint32 createSamples(View &view, const uint32 viewID);
-
 		/** todo */
-		bool fill(std::vector<Real> &depthMap, std::vector<Math::Vector3> &hitsMap, std::vector<uint32> &pixelToHitMap,
-			RayTracer &rayTracer, uint32 &hitCount, const Graphics::PinholeCamera &camera);
+		bool fill(std::vector<Real> &depthMap, std::vector<Math::Vector3> &positionsMap, RayTracer &rayTracer, uint32 &validDepthCount,
+			const Graphics::PinholeCamera &camera);
 		
 		/** Gets synthetic scene description from a parameters file.
 		@param fileName Describes where to create the scene, what data to load, how to create the scene, etc.*/
@@ -69,12 +63,10 @@ namespace SurfaceReconstruction
 		void saveCamerasToFile(const Storage::Path &fileName) const;
 
 		/** todo */
-		FlexibleMesh *triangulate(std::vector<std::vector<uint32>> &vertexNeighbors, std::vector<uint32> &indices, std::vector<uint32> &hitToVertexLinks,
-			const std::vector<Math::Vector3> &hits, const std::vector<Real> &depthMap, const std::vector<uint32> &pixelToHitMap, const uint32 hitCount,
-			const Math::Matrix3x3 &pixelToViewSpace) const;
-		uint32 triangulateBlock(std::vector<uint32> &indices, std::vector<uint32> &hitToVertexLinks, uint32 vertexCount,
-			const std::vector<Math::Vector3> &hits, const std::vector<Real> &depthMap, const std::vector<uint32> &pixelToHitMap,
-			const uint32 x, const uint32 y,	const Math::Matrix3x3 &pixelToViewSpace) const;		
+		FlexibleMesh *triangulate(std::vector<std::vector<uint32>> &vertexNeighbors, std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices,
+			const std::vector<Math::Vector3> &positionsWSMap, const std::vector<Real> &depthMap, const Math::Matrix3x3 &pixelToViewSpace) const;
+		uint32 triangulateBlock(std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices, uint32 vertexCount,
+			const std::vector<Real> &depthMap, const uint32 x, const uint32 y, const Math::Matrix3x3 &pixelToViewSpace) const;		
 
 	public:
 		static const Real DEPTH_DIFFERENCE_FACTOR;

@@ -224,13 +224,12 @@ void SyntheticScene::createAndSaveSamples()
 
 	// create the scene and target depth map for the ray tracer
 	RayTracer rayTracer;
-	vector<Vector3> hitsMap(pixelCount);
+	vector<Vector3> positionsWSMap(pixelCount);
 	vector<Real> depthMap(pixelCount);
-	vector<uint32> pixelToHitMap(pixelCount);
 	vector<vector<uint32>> vertexNeighbors;
-	vector<uint32> hitToVertexLinks;
+	vector<uint32> pixelToVertexIndices;
 	vector<uint32> indices;
-	uint32 hitCount;
+	uint32 validDepthCount;
 
 	rayTracer.createStaticScene(*mGroundTruth, true);
 
@@ -250,20 +249,20 @@ void SyntheticScene::createAndSaveSamples()
 		const Vector3 camPosWS = view.getPositionWS();
 
 		// trace scene -> depth, hit & index map
-		const bool good = fill(depthMap, hitsMap, pixelToHitMap, rayTracer, hitCount, camera);
-		if (0 == hitCount || !good)
+		const bool good = fill(depthMap, positionsWSMap, rayTracer, validDepthCount, camera);
+		if (0 == validDepthCount || !good)
 			continue;
 
 		// noise on surface samples
 		//saveToFile(depthMap, viewIdx, false);
-		addNoise(hitsMap, depthMap, camPosWS);
+		addNoise(positionsWSMap, depthMap, camPosWS);
 
 		//if (Math::EPSILON < mDepthMapNoise[0] || Math::EPSILON < mDepthMapNoise[1])
 		//	saveToFile(depthMap, viewIdx, true);
 
 		// triangulate surface samples & create proper input samples
-		addToSamples(vertexNeighbors, indices, hitToVertexLinks,
-			hitsMap, depthMap, pixelToHitMap, hitCount, viewIdx);
+		addToSamples(vertexNeighbors, indices, pixelToVertexIndices,
+			positionsWSMap, depthMap, validDepthCount, viewIdx);
 		
 		// view<number>.mvei
 		string localName = "view";
@@ -281,8 +280,8 @@ void SyntheticScene::createAndSaveSamples()
 	checkSamples();
 }
 
-bool SyntheticScene::fill(vector<Real> &depthMap, vector<Vector3> &hitsMap, vector<uint32> &pixelToHitMap,
-	RayTracer &rayTracer, uint32 &hitCount, const PinholeCamera &camera)
+bool SyntheticScene::fill(vector<Real> &depthMap, vector<Vector3> &positionsWSMap,
+	RayTracer &rayTracer, uint32 &validDepthCount, const PinholeCamera &camera)
 {
 	const Matrix3x3 HPSToNNRayDirWS = camera.computeHPSToNNRayDirWS(mViewResolution, true);
 	const Vector3 camPosWS(camera.getPosition().x, camera.getPosition().y, camera.getPosition().z);
@@ -290,13 +289,14 @@ bool SyntheticScene::fill(vector<Real> &depthMap, vector<Vector3> &hitsMap, vect
 	const uint32 pixelCount = mViewResolution.getElementCount();
 
 	// find surface points
-	hitCount = 0;
+	validDepthCount = 0;
 	rayTracer.renderFromView(NULL, mViewResolution, camera, HPSToNNRayDirWS, true);
 
 	// fill depth & index map
 	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
 	{
 		// initial invalid value
+		positionsWSMap[pixelIdx].set(-REAL_MAX, -REAL_MAX, -REAL_MAX);
 		depthMap[pixelIdx] = -REAL_MAX;
 
 		// valid hit?
@@ -304,23 +304,22 @@ bool SyntheticScene::fill(vector<Real> &depthMap, vector<Vector3> &hitsMap, vect
 			continue;
 
 		// compute & store hit position & depth depth
-		Vector3 &hitPosWS = hitsMap[pixelIdx];
-		hitPosWS = rayTracer.getHit(NULL, pixelIdx);
+		Vector3 &positionWS = positionsWSMap[pixelIdx];
+		positionWS = rayTracer.getHit(NULL, pixelIdx);
 
-		const Real lengthSq = (hitPosWS - camPosWS).getLengthSquared();
+		const Real lengthSq = (positionWS - camPosWS).getLengthSquared();
 		if (lengthSq < minDepthSq)
 			return false;
 
 		const Real depth = sqrtr(lengthSq);
 		depthMap[pixelIdx] = depth;
-		pixelToHitMap[pixelIdx] = hitCount;
-		++hitCount;
+		++validDepthCount;
 	}
 
 	return true;
 }
 
-void SyntheticScene::addNoise(vector<Vector3> &hitsMap, vector<Real> &depthMap, const Vector3 &camPosWS)
+void SyntheticScene::addNoise(vector<Vector3> &positionsWSMap, vector<Real> &depthMap, const Vector3 &camPosWS)
 {	
 	// no noise?
 	if (Math::EPSILON >= mDepthMapNoise[0] && Math::EPSILON >= mDepthMapNoise[1])
@@ -337,7 +336,7 @@ void SyntheticScene::addNoise(vector<Vector3> &hitsMap, vector<Real> &depthMap, 
 		const Real noiseFactor = manager.getNormal(depthMapNoise);
 
 		// valid depth?
-		Vector3 &hitPosWS = hitsMap[pixelIdx];
+		Vector3 &positionWS = positionsWSMap[pixelIdx];
 		Real &depth = depthMap[pixelIdx];
 		if (-REAL_MAX == depth)
 			continue;
@@ -346,10 +345,10 @@ void SyntheticScene::addNoise(vector<Vector3> &hitsMap, vector<Real> &depthMap, 
 		const Real noise = (sqrtr(depth) * noiseFactor);
 		depth += noise;  
 
-		// add noise to hitPosWS
-		Vector3 direction = hitPosWS - camPosWS;
+		// add noise to positionWS
+		Vector3 direction = positionWS - camPosWS;
 		direction.normalize();
-		hitPosWS = camPosWS + direction * depth;
+		positionWS = camPosWS + direction * depth;
 	}
 }
 
@@ -384,12 +383,12 @@ void SyntheticScene::saveToFile(const vector<Real> &depthMap, const uint32 viewI
 	pixels = NULL;
 }
 
-void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vector<uint32> &indices, vector<uint32> &hitToVertexLinks,
-	const vector<Vector3> &hitsMap, const vector<Real> &depthMap, const vector<uint32> &pixelToHitMap, const uint32 hitCount, const uint32 viewIdx)
+void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vector<uint32> &indices, vector<uint32> &pixelToVertexIndices,
+	const vector<Vector3> &positionsWSMap, const vector<Real> &depthMap, const uint32 validDepthCount, const uint32 viewIdx)
 {
 	// reserve memory for the new samples
 	const uint32 oldSampleCount = mSamples->getCount();
-	const uint32 newSampleCount = hitCount + oldSampleCount;
+	const uint32 newSampleCount = validDepthCount + oldSampleCount;
 	mSamples->reserve(newSampleCount);
 
 	// K^1 matrix (inverse kamera calibration)
@@ -399,8 +398,8 @@ void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vecto
 	const Matrix3x3 pixelToViewSpace = invViewPort * invProj;
 
 	// create a depth map triangulation to compute samples' properties
-	FlexibleMesh *triangulation = triangulate(vertexNeighbors, indices, hitToVertexLinks,
-		hitsMap, depthMap, pixelToHitMap, hitCount, pixelToViewSpace);
+	FlexibleMesh *triangulation = triangulate(vertexNeighbors, indices, pixelToVertexIndices,
+		positionsWSMap, depthMap, pixelToViewSpace);
 	triangulation->computeNormalsWeightedByAngles();
 	FlexibleMesh::computeVertexScales(triangulation->getScales(), vertexNeighbors.data(), triangulation->getPositions(), triangulation->getVertexCount());
 
@@ -425,21 +424,21 @@ void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vecto
 	triangulation = NULL;
 }
 
-FlexibleMesh *SyntheticScene::triangulate(vector<vector<uint32>> &vertexNeighbors, vector<uint32> &indices, vector<uint32> &hitToVertexLinks,
-	const vector<Vector3> &hitsMap, const vector<Real> &depthMap, const vector<uint32> &pixelToHitMap, const uint32 hitCount,
-	const Matrix3x3 &pixelToViewSpace) const
+FlexibleMesh *SyntheticScene::triangulate(vector<vector<uint32>> &vertexNeighbors, vector<uint32> &indices, vector<uint32> &pixelToVertexIndices,
+	const vector<Vector3> &positionsWSMap, const vector<Real> &depthMap, const Matrix3x3 &pixelToViewSpace) const
 {
 	// reserve memory & clear buffers
+	const uint32 pixelCount = (uint32) depthMap.size();
+	pixelToVertexIndices.resize(pixelCount);
+	memset(pixelToVertexIndices.data(), -1, sizeof(uint32) * pixelCount);
+
 	indices.clear();
-	hitToVertexLinks.resize(hitCount);
-	memset(hitToVertexLinks.data(), -1, sizeof(uint32) * hitCount);
 
 	// index buffer, vertexNeighbors for the depth map
 	uint32 vertexCount = 0;
 	for (uint32 y = 0; y < mViewResolution[1] - 1; ++y)
 		for (uint32 x = 0; x < mViewResolution[0] - 1; ++x)
-			vertexCount = triangulateBlock(indices, hitToVertexLinks, vertexCount,
-				hitsMap, depthMap, pixelToHitMap, x, y, pixelToViewSpace);
+			vertexCount = triangulateBlock(indices, pixelToVertexIndices, vertexCount, depthMap, x, y, pixelToViewSpace);
 
 	// clear neighbors
 	vertexNeighbors.resize(vertexCount);
@@ -455,7 +454,6 @@ FlexibleMesh *SyntheticScene::triangulate(vector<vector<uint32>> &vertexNeighbor
 
 	// set triangulation mesh vertices
 	const Vector3 color(0.5f, 0.5f, 0.5f);
-	const uint32 pixelCount = mViewResolution.getElementCount();
 
 	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
 	{
@@ -464,12 +462,11 @@ FlexibleMesh *SyntheticScene::triangulate(vector<vector<uint32>> &vertexNeighbor
 			continue;
 
 		// triangulated hit?
-		const uint32 hitIdx = pixelToHitMap[pixelIdx];
-		const uint32 vertexIdx = hitToVertexLinks[hitIdx];
+		const uint32 vertexIdx = pixelToVertexIndices[pixelIdx];
 		if (-1 == vertexIdx)
 			continue;
 		
-		const Vector3 &posWS = hitsMap[pixelIdx];
+		const Vector3 &posWS = positionsWSMap[pixelIdx];
 		triangulation->setColor(color, vertexIdx);
 		triangulation->setPosition(posWS, vertexIdx);
 	}
@@ -477,9 +474,8 @@ FlexibleMesh *SyntheticScene::triangulate(vector<vector<uint32>> &vertexNeighbor
 	return triangulation;
 }
 
-uint32 SyntheticScene::triangulateBlock(vector<uint32> &indices, vector<uint32> &hitToVertexLinks, uint32 vertexCount,
-	const vector<Vector3> &hitsMap, const vector<Real> &depthMap, const vector<uint32> &pixelToHitMap,
-	const uint32 x, const uint32 y, const Matrix3x3 &pixelToViewSpace) const
+uint32 SyntheticScene::triangulateBlock(vector<uint32> &indices, vector<uint32> &pixelToVertexIndices, uint32 vertexCount,
+	const vector<Real> &depthMap, const uint32 x, const uint32 y, const Matrix3x3 &pixelToViewSpace) const
 {
 	// indices of 4 different, reasonable triangles within 2x2 rectangle of vertices
 	const uint32 blockTriangles[4][3] =
@@ -580,7 +576,7 @@ uint32 SyntheticScene::triangulateBlock(vector<uint32> &indices, vector<uint32> 
 		footprints[localDepthIdx] = pixelToViewSpace.m00 * depth / vVS.getLength();
 	}
 
-	// try to avoid to triangulate depth discontinuities
+	// try to avoid triangulating depth discontinuities
 	for (uint32 triangleIdxIdx = 0; triangleIdxIdx < 2; ++triangleIdxIdx)
 	{
 		// valid triangle?
@@ -613,10 +609,10 @@ uint32 SyntheticScene::triangulateBlock(vector<uint32> &indices, vector<uint32> 
 		{
 			const uint32 dX = triangle[cornerIdx] % 2;
 			const uint32 dY = triangle[cornerIdx] / 2;
-			const uint32 hitIdx = pixelToHitMap[pixelIdx + dY * width + dX];
+			const uint32 neighborIdx = pixelIdx + dY * width + dX;
 
 			// get vertex index for hit (only keep triangulated hits)
-			uint32 &vertexIdx = hitToVertexLinks[hitIdx];
+			uint32 &vertexIdx = pixelToVertexIndices[neighborIdx];
 			if (-1 == vertexIdx)
 			{
 				vertexIdx = vertexCount;
