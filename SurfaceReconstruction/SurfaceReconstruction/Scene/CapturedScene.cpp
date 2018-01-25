@@ -17,7 +17,6 @@
 #include "Platform/FailureHandling/FileCorruptionException.h"
 #include "Platform/MagicConstants.h"
 #include "Platform/ParametersManager.h"
-#include "SurfaceReconstruction/Image/Image.h"
 #include "SurfaceReconstruction/Scene/CapturedScene.h"
 #include "SurfaceReconstruction/Scene/View.h"
 #include "Utilities/HelperFunctions.h"
