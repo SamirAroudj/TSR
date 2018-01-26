@@ -6,9 +6,9 @@
  * This software may be modified and distributed under the terms
  * of the BSD 3-Clause license. See the License.txt file for details.
  */
-#include "Platform/FailureHandling/FileAccessException.h"
 #include "Graphics/ImageManager.h"
 #include "Math/MathHelper.h"
+#include "Platform/FailureHandling/FileCorruptionException.h"
 #include "Platform/Storage/Path.h"
 #include "SurfaceReconstruction/Image/Filter.h"
 #include "SurfaceReconstruction/Image/ColorImage.h"
@@ -21,24 +21,6 @@ using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;
 using namespace Utilities;
-
-// constants
-template <>
-const char *ColorImage::Resource<ColorImage>::msResourcePath = NULL;
-
-template <>
-vector<ColorImage *> ColorImage::Resource<ColorImage>::msResources(0);
-
-template <>
-uint32 VolatileResource<ColorImage>::msMaximumNumber = 0x1 << 10;
-
-void ColorImage::freeMemory()
-{
-	delete [] msResourcePath;
-	msResourcePath = NULL;
-
-	VolatileResource<ColorImage>::freeMemory();
-}
 
 void ColorImage::filter(uint8 *targetPixels, const Filter &filter) const
 {
@@ -84,65 +66,50 @@ void ColorImage::get(Real *color, const uint32 channelCount, const Vector2 coord
 ColorImage *ColorImage::request(const string &resourceName, const Path &imageFileName)
 {
 	// is the image alread in main memory?
-	ColorImage *image = request(resourceName);
+	Image *image = Image::request(resourceName);
 	if (image)
-		return image;
-
-	// get complete file name
-	const char *path = VolatileResource<ColorImage>::getPathToResources();
-	const Path folder(path);
-	const Path fileName = Path::appendChild(folder, imageFileName);
-
-	// load the image
-	uint8 *pixels = NULL;
-	ImgSize size;
-	Texture::Format format = Texture::FORMAT_NUM_OF;
-	
-	// load data?
-	pixels = ImageManager::getSingleton().loadPNG(size, format, fileName);
-	if (!pixels)
-		return NULL;
-
-	// suported format?
-	if (format != Texture::FORMAT_RGB)
 	{
-		delete [] pixels;
-		pixels = NULL;
-		throw Exception("Unsupported image format. Only RGB images are supported.");
+		ColorImage *colorImage = dynamic_cast<ColorImage *>(image);
+		if (colorImage)
+			return colorImage;
+		throw FileException("An image of another type than ColorImage but with the same resource name already exists!", imageFileName);
 	}
 
-	// create the image & return it
-	image = new ColorImage(pixels, size, format, resourceName);
-	return image;
+	return new ColorImage(resourceName, imageFileName);
 }
 
-ColorImage *ColorImage::request(const string &resourceName)
+ColorImage::ColorImage(const string &resourceName, const Path &imageFileName) :
+	Image(ImgSize(0, 0), resourceName), mPixels(NULL), mFormat(Texture::FORMAT_NUM_OF)
 {
-	// resource path and memory for loading available?
-	assert(msResourcePath);
-	if (!msResourcePath)
-		throw FileAccessException("Cannot load resource since resource path is not set.", resourceName, -1);
+	// get complete file name
+	const char *path = VolatileResource<Image>::getPathToResources();
+	const Path folder(path);
+	const Path fileName = Path::appendChild(folder, imageFileName);
+	
+	// load data
+	mPixels = ImageManager::getSingleton().loadPNG(mSize, mFormat, fileName);
+	if (!mPixels)
+		throw FileCorruptionException("Could not load pixel RGB values from PNG file!", imageFileName);
 
-	// is the image available in main memory?
-	ColorImage *image = VolatileResource<ColorImage>::request(resourceName);
-	return image;
-}
-
-void ColorImage::setPathToImages(const Path &path)
-{
-	// copy path to memory
-	const uint32 length = (uint32) path.getString().length();
-	char *pathMemory = new char[length + 1];
-	memcpy(pathMemory, path.getCString(), length);
-	pathMemory[length] = '\0';
-
-	msResourcePath = pathMemory;
+	checkFormat();
 }
 
 ColorImage::ColorImage(uint8 *pixels, const ImgSize &size, const Graphics::Texture::Format format, const string &resourceName) :
-	VolatileResource<ColorImage>(resourceName), Image(size), mPixels(pixels), mFormat(format)
+	Image(size, resourceName), mPixels(pixels), mFormat(format)
 {
+	checkFormat();
+}
 
+void ColorImage::checkFormat()
+{
+	// suported format?
+	if (mFormat == Texture::FORMAT_RGB)
+		return;
+
+	// unsupported format -> throw exception
+	delete [] mPixels;
+	mPixels = NULL;
+	throw Exception("Unsupported image format. Only RGB images are supported.");
 }
 
 ColorImage::~ColorImage()

@@ -21,6 +21,7 @@
 #include "SurfaceReconstruction/Geometry/RayTracer.h"
 #include "SurfaceReconstruction/Geometry/StaticMesh.h"
 #include "SurfaceReconstruction/Image/ColorImage.h"
+#include "SurfaceReconstruction/Image/DepthImage.h"
 #include "SurfaceReconstruction/Refinement/MeshRefiner.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/SyntheticScene.h"
@@ -42,7 +43,6 @@ using namespace tinyxml2;
 using namespace Utilities;
 
 // constants
-const Real SyntheticScene::DEPTH_DIFFERENCE_FACTOR = 5.0f;
 const uint32 SyntheticScene::RANDOM_SEED = 0;
 
 SyntheticScene::SyntheticScene(const Path &fileName, const std::vector<IReconstructorObserver *> &observers) :
@@ -254,23 +254,24 @@ void SyntheticScene::createAndSaveSamples()
 			continue;
 
 		// noise on surface samples
-		//saveToFile(depthMap, viewIdx, false);
+		//saveToFile(ImagesFolder, depthMap, viewIdx, false);
 		addNoise(positionsWSMap, depthMap, camPosWS);
 
 		//if (Math::EPSILON < mDepthMapNoise[0] || Math::EPSILON < mDepthMapNoise[1])
-		//	saveToFile(depthMap, viewIdx, true);
+		//	saveToFile(imagesFolder, depthMap, viewIdx, true);
+
+		// create view directory
+		const Path viewFolder = getViewFolder(view.getIDString(viewIdx));
+		if (!Directory::createDirectory(viewFolder))
+			throw FileException("Could not create view directory!", viewFolder);
+
+		// save depth map to file
+		Path fileName = Path::appendChild(viewFolder, "depth-L0.mvei");
+		Image::saveAsMVEFloatImage(fileName, false, mViewResolution, depthMap.data(), false, false);
 
 		// triangulate surface samples & create proper input samples
 		addToSamples(vertexNeighbors, indices, pixelToVertexIndices,
 			positionsWSMap, depthMap, validDepthCount, viewIdx);
-		
-		// view<number>.mvei
-		string localName = "view";
-		localName += view.getIDString(viewIdx);
-		localName += ".mvei";
-		
-		const Path fileName = Path::appendChild(imagesFolder, localName);
-		ColorImage::saveAsMVEFloatImage(fileName, mViewResolution, depthMap.data(), false, false);
 
 		++viewIdx;
 	}
@@ -352,7 +353,7 @@ void SyntheticScene::addNoise(vector<Vector3> &positionsWSMap, vector<Real> &dep
 	}
 }
 
-void SyntheticScene::saveToFile(const vector<Real> &depthMap, const uint32 viewIdx, const bool withNoise) const
+void SyntheticScene::saveToFile(const Path &folder, const vector<Real> &depthMap, const uint32 viewIdx, const bool withNoise) const
 {
 	// add view index
 	char buffer[File::READING_BUFFER_SIZE];
@@ -374,7 +375,6 @@ void SyntheticScene::saveToFile(const vector<Real> &depthMap, const uint32 viewI
 	ImageManager::convertDepthMap(pixels, depthMap.data(), pixelCount, channelCount, minDepth, maxDepth);
 
 	// save the converted pixels to file
-	const Path folder = Path::appendChild(getResultsFolder(), "Images");
 	const Path fileName = Path::appendChild(folder, buffer);
 	File file(fileName, File::CREATE_WRITING, true);
 	ImageManager::getSingleton().savePNG(file, pixels, channelCount, mViewResolution);
@@ -398,7 +398,13 @@ void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vecto
 	const Matrix3x3 pixelToViewSpace = invViewPort * invProj;
 
 	// create a depth map triangulation to compute samples' properties
-	FlexibleMesh *triangulation = triangulate(vertexNeighbors, indices, pixelToVertexIndices,
+	string resourceName = "view";
+	resourceName += View::getIDString(viewIdx);
+	resourceName += "depth";
+	string fileName = getName(viewIdx, "depth", "-L0");
+
+	DepthImage *depthMap = DepthImage::request(resourceName, fileName);
+	FlexibleMesh *triangulation = depthMap->triangulate(vertexNeighbors, indices, pixelToVertexIndices,
 		positionsWSMap, depthMap, pixelToViewSpace, NULL);
 
 	// add triangulation to all other samples
@@ -420,246 +426,6 @@ void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vecto
 
 	delete triangulation;
 	triangulation = NULL;
-}
-
-FlexibleMesh *SyntheticScene::triangulate(vector<vector<uint32>> &vertexNeighbors, vector<uint32> &indices, vector<uint32> &pixelToVertexIndices,
-	const vector<Vector3> &positionsWSMap, const vector<Real> &depthMap, const Matrix3x3 &pixelToViewSpace, const ColorImage *image) const
-{
-	// reserve memory & clear buffers
-	const uint32 pixelCount = (uint32) depthMap.size();
-	pixelToVertexIndices.resize(pixelCount);
-	memset(pixelToVertexIndices.data(), -1, sizeof(uint32) * pixelCount);
-	indices.clear();
-
-	// compute vertex & index count & index buffer
-	uint32 vertexCount = 0;
-	for (uint32 y = 0; y < mViewResolution[1] - 1; ++y)
-		for (uint32 x = 0; x < mViewResolution[0] - 1; ++x)
-			vertexCount = triangulateBlock(indices, pixelToVertexIndices, vertexCount, depthMap, x, y, pixelToViewSpace);
-	const uint32 indexCount = (uint32) indices.size();
-
-	// recompute vertex neighbors
-	vertexNeighbors.resize(vertexCount);
-	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
-		vertexNeighbors[vertexIdx].clear();
-	FlexibleMesh::findVertexNeighbors(vertexNeighbors.data(), indices.data(), indexCount);
-
-	return createFlexibleMesh(vertexNeighbors, indices, pixelToVertexIndices, positionsWSMap, vertexCount, image);
-}
-
-FlexibleMesh *SyntheticScene::createFlexibleMesh(const vector<vector<uint32>> &vertexNeighbors, const vector<uint32> &indices,
-	const vector<uint32> &pixelToVertexIndices,	const vector<Vector3> &positionsWSMap, const uint32 vertexCount, const ColorImage *image) const
-{
-	const uint32 indexCount = (uint32)indices.size();
-	const uint32 pixelCount = (uint32)positionsWSMap.size();
-
-	// create triangulation & set indices
-	FlexibleMesh *triangulation = new FlexibleMesh(vertexCount, indexCount);
-	triangulation->setIndices(indices.data(), (uint32)indices.size());
-
-	// vertex positions
-	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
-	{
-		// triangulated back projected depth value?
-		const uint32 vertexIdx = pixelToVertexIndices[pixelIdx];
-		if (-1 != vertexIdx)
-			triangulation->setPosition(positionsWSMap[pixelIdx], vertexIdx);
-	}
-
-	// vertex normals & scales
-	triangulation->computeNormalsWeightedByAngles();
-	FlexibleMesh::computeVertexScales(triangulation->getScales(), vertexNeighbors.data(), triangulation->getPositions(), triangulation->getVertexCount());
-
-	// vertex colors via default color
-	if (!image)
-	{
-		// no image? -> set vertex colors to some default value
-		const Vector3 defaultColor(0.5f, 0.5f, 0.5f);
-		for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
-			triangulation->setColor(defaultColor, vertexIdx);
-		return triangulation;
-	}
-
-	// set vertex colors via image
-	const uint32 &width = image->getSize()[0];
-	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
-	{
-		// copy color
-		Vector3 color;
-		image->get(color, pixelIdx % width, pixelIdx / width);
-		triangulation->setColor(color, pixelToVertexIndices[pixelIdx]);
-	}
-	
-	return triangulation;
-}
-
-uint32 SyntheticScene::triangulateBlock(vector<uint32> &indices, vector<uint32> &pixelToVertexIndices, uint32 vertexCount,
-	const vector<Real> &depthMap, const uint32 x, const uint32 y, const Matrix3x3 &pixelToViewSpace) const
-{
-	// indices of 4 different, reasonable triangles within 2x2 rectangle of vertices
-	const uint32 blockTriangles[4][3] =
-	{
-		{ 0, 2, 1 },
-		{ 0, 3, 1 },
-		{ 0, 2, 3 },
-		{ 1, 2, 3 }
-	};
-
-	//const uint32 blockCoords[4][2] = 
-	//{
-	//	{ x, y },
-	//	{ x + 1, y},
-	//	{ x, y + 1},
-	//	{ x + 1, y + 1}
-	//};
-
-	const uint32 width = mViewResolution[0];
-	const uint32 height = mViewResolution[1];
-	const uint32 pixelIdx = width * y + x;
-	const bool inImage[4] =
-	{
-		(x < width && y < height),
-		(x + 1 < width && y < height),
-		(x < width && y + 1 < height),
-		(x + 1 < width && y + 1 < height)
-	};
-
-	// get depths
-	const Real blockDepths[4] =
-	{
-		(inImage[0] ? depthMap[pixelIdx] : -REAL_MAX),
-		(inImage[1] ? depthMap[pixelIdx + 1] : -REAL_MAX),
-		(inImage[2] ? depthMap[pixelIdx + width] : -REAL_MAX),
-		(inImage[3] ? depthMap[pixelIdx + width + 1] : -REAL_MAX)
-	};
-
-	// mask-based encoding of available depths
-	uint32 mask = 0;
-	uint32 availablePixels = 0;
-	for (uint32 localDepthIdx = 0; localDepthIdx < 4; ++localDepthIdx)
-	{
-		if (-REAL_MAX == blockDepths[localDepthIdx])
-			continue;
-
-		mask |= 1 << localDepthIdx;
-		++availablePixels;
-	}
-
-	// 3 or more vertices / at least 1 triangle?
-	if (availablePixels < 3)
-		return vertexCount;
-
-	// find proper triangles to be created within the block
-	uint32 triangleIndices[2] = { Triangle::INVALID_IDX, Triangle::INVALID_IDX };
-	switch (mask)
-	{
-		case 7:  triangleIndices[0] = 0; break;
-		case 11: triangleIndices[0] = 1; break;
-		case 13: triangleIndices[0] = 2; break;
-		case 14: triangleIndices[0] = 3; break;
-		case 15:
-		{
-			// triangle with smaller depth
-			const Real diagonalLength0 = fabsr(blockDepths[0] - blockDepths[3]);
-			const Real diagonalLength1 = fabsr(blockDepths[1] - blockDepths[2]);
-
-			if (diagonalLength0 < diagonalLength1)
-			{
-				triangleIndices[0] = 1;
-				triangleIndices[1] = 2;
-			}
-			else
-			{
-				triangleIndices[0] = 0;
-				triangleIndices[1] = 3;
-			}
-			break;
-		}
-
-		default:
-			return vertexCount;
-	}
-
-	// compute 3D (world space) pixel footprints
-	Real footprints[4];
-	for (uint32 localDepthIdx = 0; localDepthIdx < 4; ++localDepthIdx)
-	{
-		if (-REAL_MAX == blockDepths[localDepthIdx])
-			continue;
-
-		const uint32 neighborX = x + (localDepthIdx % 2);
-		const uint32 neighborY = y + (localDepthIdx / 2);
-		const Real &depth = blockDepths[localDepthIdx];
-		const Vector3 vVS = Vector3((Real) neighborX, (Real) neighborY, 1.0f) * pixelToViewSpace;
-
-		footprints[localDepthIdx] = pixelToViewSpace.m00 * depth / vVS.getLength();
-	}
-
-	// try to avoid triangulating depth discontinuities
-	for (uint32 triangleIdxIdx = 0; triangleIdxIdx < 2; ++triangleIdxIdx)
-	{
-		// valid triangle?
-		const uint32 triangleIdx = triangleIndices[triangleIdxIdx];
-		if (Triangle::isInvalidIndex(triangleIdx))
-			continue;
-
-		// invalidate triangle if it looks like going over a depth discontinuity
-		const uint32 *triangle = blockTriangles[triangleIdx];
-		for (uint32 edgeIdx = 0; edgeIdx < 3 && !Triangle::isInvalidIndex(triangleIndices[triangleIdxIdx]); ++edgeIdx)
-		{
-			const uint32 edgeEnd0 = edgeIdx;
-			const uint32 edgeEnd1 = (edgeIdx + 1) % 3;
-			if (isDepthDiscontinuity(footprints, blockDepths, triangle[edgeEnd0], triangle[edgeEnd1]))
-				triangleIndices[triangleIdxIdx] = Triangle::INVALID_IDX;
-		}
-	}
-
-	// finally, create the triangles!
-	for (uint32 triangleIdxIdx = 0; triangleIdxIdx < 2; ++triangleIdxIdx)
-	{
-		// valid triangle?
-		const uint32 triangleIdx = triangleIndices[triangleIdxIdx];
-		if (Triangle::isInvalidIndex(triangleIdx))// || /*0 == triangleIdx ||*/ 1 == triangleIdx || 2 == triangleIdx || 3 == triangleIdx)
-			continue;
-
-		// add indices for the triangle
-		const uint32 *triangle = blockTriangles[triangleIdx];
-		for (uint32 cornerIdx = 0; cornerIdx < 3; ++cornerIdx)
-		{
-			const uint32 dX = triangle[cornerIdx] % 2;
-			const uint32 dY = triangle[cornerIdx] / 2;
-			const uint32 neighborIdx = pixelIdx + dY * width + dX;
-
-			// get vertex index for position (only keep triangulated projected depth values)
-			uint32 &vertexIdx = pixelToVertexIndices[neighborIdx];
-			if (-1 == vertexIdx)
-			{
-				vertexIdx = vertexCount;
-				++vertexCount;
-			}
-
-			indices.push_back(vertexIdx);
-		}
-	}
-
-	return vertexCount;
-}
-
-bool SyntheticScene::isDepthDiscontinuity(const Real footprints[4], const Real blockDepths[4], const uint32 v0, const uint32 v1)
-{
-	// index of vertex closer (min) and further away from camera (max)
-	const uint32 closerVertex = (blockDepths[v0] < blockDepths[v1] ? v0 : v1);
-	const uint32 furtherVertex = (blockDepths[v0] < blockDepths[v1] ? v1 : v0);
-
-	// allow larger depth difference for diagonal edge
-	Real ddFactor = DEPTH_DIFFERENCE_FACTOR;
-	if (3 == v0 + v1)
-		ddFactor *= Math::SQRT_TWO;
-
-	// discontinuity depending on whether the edge reaches far away from the camera (relative to the footprint size of the closer pixel / vertex)
-	const Real depthDifference = blockDepths[furtherVertex] - blockDepths[closerVertex];
-	const bool discontinuity = (depthDifference > footprints[closerVertex] * ddFactor);
-	return discontinuity;
 }
 
 void SyntheticScene::saveCamerasToFile(const Path &fileName) const

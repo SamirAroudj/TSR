@@ -33,6 +33,22 @@ namespace SurfaceReconstruction
 	public:
 		/** todo */
 		inline static const Tree *getTree();
+		
+		/** todo
+		@return Returned file name starts with views folder.
+		(For example: "views/view_0000.mve/chosenImageTag.jpg") */
+		static Storage::Path getRelativeImageFileName(const uint32 viewID, const std::string &imageTag);
+		
+		/** todo
+		@return Returned file name starts with views folder.
+		(For example: "views/view_0000.mve/chosenImageTag.jpg") */
+		static Storage::Path getRelativeImageFileName(const std::string &viewID, const std::string &imageTag);
+
+		/** Returns the name of the folder in the getViewsFolder for the view viewID.
+		@param viewID Identifies the view for which the relative folder is returned.
+		@return Returns a relative path pointing to the folder for the view viewID.
+		@see View::getIDString(); */
+		inline static Storage::Path getRelativeViewFolder(const std::string &viewId); 
 
 	public:
 		/** Loads a scene from file from already processed and created data, such as views, reordered samples and Tree object.
@@ -73,16 +89,6 @@ namespace SurfaceReconstruction
 		/** todo */
 		inline const FlexibleMesh *getReconstruction(ReconstructionType type) const;
 
-		/** todo
-		@return Returned file name starts with views folder.
-		(For example: "views/view_0000.mve/chosenImageTag.jpg") */
-		Storage::Path getRelativeImageFileName(const uint32 viewID) const;
-		
-		/** todo
-		@return Returned file name starts with views folder.
-		(For example: "views/view_0000.mve/chosenImageTag.jpg") */
-		Storage::Path getRelativeImageFileName(const std::string &viewID) const;
-
 		/** Returns the complete path to the folder in which results are saved.
 		@return Returns the absolute path to the folder in which results are saved. */
 		Storage::Path getResultsFolder() const;
@@ -94,9 +100,15 @@ namespace SurfaceReconstruction
 		@return Returns the number of exisitng View objects belonging to this Scene instance. */
 		inline uint32 getViewCount() const;
 
+		inline Storage::Path getViewFolder(const std::string &viewIDString) const;
+
 		/** Provides access to existing View objects.
 		@return Returns all exisiting View objects of this Scene object.*/
 		inline std::vector<View *> &getViews();
+
+		/** Returns the path pointing to the directory containing all views folders of this scene. 
+		@return Returns the folder which contains all view folders view0000, view0001, ... etc.*/
+		inline Storage::Path getViewsFolder() const;
 
 		/** Provides access to existing View objects.
 		@return Returns all exisiting View objects of this Scene object.*/
@@ -252,9 +264,19 @@ namespace SurfaceReconstruction
 		return (uint32) mViews.size();
 	}
 
+	inline Storage::Path Scene::getViewFolder(const std::string &viewIDString) const
+	{
+		return Storage::Path::appendChild(getViewsFolder(), getRelativeViewFolder(viewIDString));
+	}
+
 	inline std::vector<View *> &Scene::getViews()
 	{
 		return mViews;
+	}
+
+	inline Storage::Path Scene::getViewsFolder() const
+	{
+		return Storage::Path::appendChild(mFolder, "views");
 	}
 
 	inline const std::vector<View *> &Scene::getViews() const

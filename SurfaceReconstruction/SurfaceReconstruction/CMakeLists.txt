@@ -50,6 +50,7 @@ set(geometryHeaderFiles
 # image sub namespace header files
 set(imageHeaderFiles
 	${imagePath}/ColorImage.h
+	${imagePath}/DepthImage.h
 	${imagePath}/Filter.h
 	${imagePath}/Image.h
 )
@@ -132,6 +133,7 @@ set(geometrySourceFiles
 # image sub namespace source files
 set(imageSourceFiles
 	${imagePath}/ColorImage.cpp
+	${imagePath}/DepthImage.cpp
 	${imagePath}/Filter.cpp
 	${imagePath}/Image.cpp
 )

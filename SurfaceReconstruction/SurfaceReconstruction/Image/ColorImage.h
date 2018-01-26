@@ -13,7 +13,6 @@
 #include "Graphics/Texture.h"
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
-#include "Platform/ResourceManagement/VolatileResource.h"
 #include "SurfaceReconstruction/Image/Image.h"
 
 // todo comments
@@ -22,18 +21,12 @@ namespace SurfaceReconstruction
 {
 	class Filter;
 
-	class ColorImage : public ResourceManagement::VolatileResource<ColorImage>, public Image
+	class ColorImage : public Image
 	{
 	public:
-		friend class ResourceManagement::VolatileResource<ColorImage>;
-
-	public:
-		static void freeMemory();
 		static ColorImage *request(const std::string &resourceName, const Storage::Path &imageFileName);
-		static void setPathToImages(const Storage::Path &path);
 
 	public:
-
 		/** todo
 		zero / black border padding*/
 		void filter(uint8 *targetPixels, const Filter &filter) const;
@@ -60,12 +53,12 @@ namespace SurfaceReconstruction
 		inline const uint8 *getPixels() const;
 
 	protected:
+		ColorImage(const std::string &resourceName, const Storage::Path &imageFileName);
 		ColorImage(uint8 *pixels, const Utilities::ImgSize &size, const Graphics::Texture::Format format, const std::string &resourceName);
 		virtual ~ColorImage();
 
+		void checkFormat();
 		virtual void clear();
-		
-		static ColorImage *request(const std::string &resourceName);
 
 	private:
 		uint8 *mPixels;

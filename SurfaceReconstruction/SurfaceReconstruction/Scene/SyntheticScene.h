@@ -22,9 +22,6 @@ namespace SurfaceReconstruction
 	class SyntheticScene : public Scene
 	{
 	public:
-		static bool isDepthDiscontinuity(const Real footprints[4], const Real blockDepths[4], const uint32 i1, const uint32 i2);
-
-	public:
 		/** todo */
 		SyntheticScene(const Storage::Path &syntheticSceneMetaFileName, const std::vector<IReconstructorObserver *> &observers);
 
@@ -45,10 +42,6 @@ namespace SurfaceReconstruction
 			const std::vector<Math::Vector3> &positionsWSMap, const std::vector<Real> &depthMap,
 			const uint32 validDepthCount, const uint32 viewIdx);
 
-		FlexibleMesh *createFlexibleMesh(const std::vector<std::vector<uint32>> &vertexNeighbors, const std::vector<uint32> &indices,
-			const std::vector<uint32> &pixelToVertexIndices, const std::vector<Math::Vector3> &positionsWSMap, const uint32 vertexCount,
-			const ColorImage *image = NULL) const;
-
 		/** todo */
 		View *createSyntheticView(const uint32 viewIdx);
 		void createAndSaveSamples();
@@ -62,20 +55,12 @@ namespace SurfaceReconstruction
 		virtual bool getParameters(const Storage::Path &fileName);
 
 		/** todo */
-		void saveToFile(const std::vector<Real> &depthMap, const uint32 viewIdx, const bool withNoise) const;
+		void saveToFile(const Storage::Path &folder, const std::vector<Real> &depthMap, const uint32 viewIdx, const bool withNoise) const;
 
 		/** todo */
 		void saveCamerasToFile(const Storage::Path &fileName) const;
 
-		/** todo */
-		FlexibleMesh *triangulate(std::vector<std::vector<uint32>> &vertexNeighbors, std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices,
-			const std::vector<Math::Vector3> &positionsWSMap, const std::vector<Real> &depthMap, const Math::Matrix3x3 &pixelToViewSpace,
-			const ColorImage *image = NULL) const;
-		uint32 triangulateBlock(std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices, uint32 vertexCount,
-			const std::vector<Real> &depthMap, const uint32 x, const uint32 y, const Math::Matrix3x3 &pixelToViewSpace) const;		
-
 	public:
-		static const Real DEPTH_DIFFERENCE_FACTOR;
 		static const uint32 RANDOM_SEED;
 
 	private:

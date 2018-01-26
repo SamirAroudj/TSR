@@ -37,6 +37,29 @@ using namespace Utilities;
 const uint32 Scene::REFINEMENT_VIA_PHOTOS_MESH_OUTPUT_FREQUENCY = 25;
 const uint32 Scene::VIEWS_FILE_VERSION = 0;
 
+Path Scene::getRelativeImageFileName(const uint32 viewID, const string &imageTag)
+{
+	const string viewIDString = View::getIDString(viewID);
+	return Scene::getRelativeImageFileName(viewIDString, imageTag);
+}
+
+Path Scene::getRelativeImageFileName(const string &viewID, const string &imageTag)
+{
+	// complete image file name
+	const Path viewFolder = Scene::getRelativeViewFolder(viewID);
+	const string fileName = imageTag + ".png";
+
+	return Path::appendChild(viewFolder, fileName);
+}
+
+Path Scene::getRelativeViewFolder(const string &viewID)
+{
+	string temp("view");
+	temp += viewID;
+	temp += ".mve";
+	return Path(temp);
+}
+
 Scene::Scene(const Path &rootFolder, const Path &FSSFReconstruction,
 	const vector<IReconstructorObserver *> &observers) :
 	Scene(observers)
@@ -89,7 +112,7 @@ Scene::~Scene()
 
 	// free volatile resources
 	// free cached images
-	ColorImage::freeMemory();
+	Image::freeMemory();
 }
 
 bool Scene::reconstruct()
@@ -381,21 +404,6 @@ Path Scene::getResultsFolder() const
 	return Path::appendChild(mFolder, resultsFolder);
 }
 
-Path Scene::getRelativeImageFileName(const uint32 viewID) const
-{
-	const string viewIDString = View::getIDString(viewID);
-	return getRelativeImageFileName(viewIDString);
-}
-
-Path Scene::getRelativeImageFileName(const string &viewID) const
-{
-	// complete image file name
-	const string relativPath = (("Views/view_" + viewID) + ".mve/");
-	const string relativeFileName = relativPath + mImageTag;
-
-	return relativeFileName;
-}
-
 void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 {
 	clear();
@@ -580,8 +588,14 @@ bool Scene::getParameters(const Path &fileName)
 
 void Scene::setRootFolder(const Path &rootFolder)
 {
+	// scene root
 	mFolder = rootFolder;
-	ColorImage::setPathToImages(mFolder);
+
+	// set & create views folder
+	const Path viewsFolder = getViewsFolder();
+	if (!Directory::createDirectory(viewsFolder, false))
+		throw FileException("Could not create directory!", viewsFolder);
+	Image::setPathToImages(viewsFolder);
 }
 
 void Scene::saveReconstructionToFiles(const ReconstructionType type, const string &localName, const bool saveAsPly, const bool saveAsMesh) const
