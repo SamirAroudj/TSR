@@ -404,7 +404,7 @@ void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vecto
 	const ColorImage *colorImage = ColorImage::request(colorImageName.getString(), colorImageName);
 	DepthImage *depthMap = DepthImage::request(depthMapName.getString(), depthMapName);
 	FlexibleMesh *triangulation = depthMap->triangulate(vertexNeighbors, indices, pixelToVertexIndices,
-		positionsWSMap, pixelToViewSpace, NULL);
+		positionsWSMap, pixelToViewSpace, colorImage);
 
 	// add triangulation to all other samples
 	//const uint32 pixelCount = mViewResolution.getElementCount();

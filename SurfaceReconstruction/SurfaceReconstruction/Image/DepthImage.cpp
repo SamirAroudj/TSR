@@ -285,19 +285,18 @@ bool DepthImage::isDepthDiscontinuity(const Real footprints[4], const Real block
 FlexibleMesh *DepthImage::createFlexibleMesh(const vector<vector<uint32>> &vertexNeighbors, const vector<uint32> &indices,
 	const vector<uint32> &pixelToVertexIndices,	const vector<Vector3> &positionsWSMap, const uint32 vertexCount, const ColorImage *image) const
 {
-	const uint32 indexCount = (uint32)indices.size();
-	const uint32 pixelCount = (uint32)positionsWSMap.size();
-
 	// create triangulation & set indices
+	const uint32 indexCount = (uint32) indices.size();
 	FlexibleMesh *triangulation = new FlexibleMesh(vertexCount, indexCount);
-	triangulation->setIndices(indices.data(), (uint32)indices.size());
+	triangulation->setIndices(indices.data(), indexCount);
 
 	// vertex positions
+	const uint32 pixelCount = mSize.getElementCount();
 	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
 	{
 		// triangulated back projected depth value?
 		const uint32 vertexIdx = pixelToVertexIndices[pixelIdx];
-		if (-1 != vertexIdx)
+		if (Vertex::INVALID_IDX != vertexIdx)
 			triangulation->setPosition(positionsWSMap[pixelIdx], vertexIdx);
 	}
 
@@ -305,7 +304,7 @@ FlexibleMesh *DepthImage::createFlexibleMesh(const vector<vector<uint32>> &verte
 	triangulation->computeNormalsWeightedByAngles();
 	FlexibleMesh::computeVertexScales(triangulation->getScales(), vertexNeighbors.data(), triangulation->getPositions(), triangulation->getVertexCount());
 
-	// vertex colors via default color
+	// vertex colors via default color?
 	if (!image)
 	{
 		// no image? -> set vertex colors to some default value
@@ -316,13 +315,18 @@ FlexibleMesh *DepthImage::createFlexibleMesh(const vector<vector<uint32>> &verte
 	}
 
 	// set vertex colors via image
-	const uint32 &width = image->getSize()[0];
 	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
 	{
+		const uint32 vertexIdx = pixelToVertexIndices[pixelIdx];
+		if (Vertex::INVALID_IDX == vertexIdx)
+			continue;
+
 		// copy color
+		const uint32 &width = image->getSize()[0];
 		Vector3 color;
+
 		image->get(color, pixelIdx % width, pixelIdx / width);
-		triangulation->setColor(color, pixelToVertexIndices[pixelIdx]);
+		triangulation->setColor(color, vertexIdx);
 	}
 	
 	return triangulation;
