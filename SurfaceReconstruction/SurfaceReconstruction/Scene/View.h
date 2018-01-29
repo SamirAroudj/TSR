@@ -23,13 +23,10 @@ namespace SurfaceReconstruction
 	class View
 	{
 	public:
-		/** todo */
-		static std::string getIDString(const uint32 viewID);
-		
 		/** Returns the color image which is associated to the entered view viewID or NULL if there is none.
 		@param viewID Identifies the view for which its color image is returned.
 		@return returns the image which is associated to the entered view viewID or NULL if there is none.*/
-		static const ColorImage *getColorImage(const uint32 viewID);
+		static const ColorImage *getColorImage(const uint32 viewID, const std::string &tag, const uint32 scale);
 
 		/** todo
 		@param x
@@ -63,10 +60,11 @@ namespace SurfaceReconstruction
 
 		/** Computes and returns the matrix which transforms coordinates relative to the world space coordinate system into the pixel coordinate system of this view and its current image. 
 		The pixel coordinates are not normalized! You must perform the perspective division after the matrix has been applied.
-		@param WSToPS Is set to a matrix which transforms world space coordiantes into non normalized pixel coordinates relative to the color image this->getColorImage().
+		@param WSToPS Is set to a matrix which transforms world space coordiantes into non normalized pixel coordinates relative to the entered resolution.
+		@param resolution Defines the width and height of the target pixel space (image size) in pixels.
 		@param considerPixelCenterOffset Set this to true if you want to get coordinates refering to pixel centers instead of lower left corners.
 			E.g., a point at the lower left camera frustum edge is mapped to the pixel coordinates (0.5, 0.5) if this is set to true (instead of (0, 0)). */
-		void computeHWSToNNPS(Math::Matrix4x4 &WSToPS, const bool considerPixelCenterOffset) const;
+		void computeHWSToNNPS(Math::Matrix4x4 &WSToPS, const Utilities::ImgSize &resolution, const bool considerPixelCenterOffset) const;
 
 		/** todo */
 		inline const Graphics::PinholeCamera &getCamera() const;
@@ -74,13 +72,13 @@ namespace SurfaceReconstruction
 		/** todo */
 		inline Graphics::PinholeCamera &getCamera();
 
+		/** Returns the color image which is associated to this view or NULL if there is none.
+		@return Returns the color image which was taken from this view or NULL if there is none.*/
+		inline const ColorImage *getColorImage( const std::string &tag, const uint32 scale) const;
+		
 		/** Returns this view's hopefully unique identifier. 
 		@return Returns this view's hopefully unique identifier. */
 		inline uint32 getID() const;
-
-		/** Returns the color image which is associated to this view or NULL if there is none.
-		@return Returns the color image which was taken from this view or NULL if there is none.*/
-		const ColorImage *getColorImage() const;
 
 		Math::Vector3 getPositionWS() const;
 
@@ -126,6 +124,11 @@ namespace SurfaceReconstruction
 	inline Graphics::PinholeCamera &View::getCamera()
 	{
 		return mCamera;
+	}
+
+	inline const ColorImage *View::getColorImage(const std::string &tag, const uint32 scale) const
+	{
+		return getColorImage(mID, tag, scale);
 	}
 
 	inline uint32 View::getID() const

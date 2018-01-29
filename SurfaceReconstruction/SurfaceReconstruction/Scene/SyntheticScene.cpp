@@ -233,10 +233,8 @@ void SyntheticScene::createAndSaveSamples()
 
 	rayTracer.createStaticScene(*mGroundTruth, true);
 
-	// create folder for image if necessary
-	const Path &resultsFolder = getResultsFolder();
-	const Path imagesFolder = Path::appendChild(resultsFolder, "/Images");
-	if (!Directory::createDirectory(imagesFolder))
+	// create folder for images if necessary
+	if (!Directory::createDirectory(Scene::getSingleton().getViewsFolder()))
 		return;
 
 	// create a depth map for each view
@@ -254,24 +252,26 @@ void SyntheticScene::createAndSaveSamples()
 			continue;
 
 		// noise on surface samples
-		//saveToFile(ImagesFolder, depthMap, viewIdx, false);
 		addNoise(positionsWSMap, depthMap, camPosWS);
-
-		//if (Math::EPSILON < mDepthMapNoise[0] || Math::EPSILON < mDepthMapNoise[1])
-		//	saveToFile(imagesFolder, depthMap, viewIdx, true);
-
+		
 		// create view directory
-		const Path viewFolder = getViewFolder(view.getIDString(viewIdx));
+		const string viewIDString = getIDString(viewIdx);
+		const Path viewFolder = getViewFolder(viewIDString);
 		if (!Directory::createDirectory(viewFolder))
 			throw FileException("Could not create view directory!", viewFolder);
+		
+		//if (Math::EPSILON < mDepthMapNoise[0] || Math::EPSILON < mDepthMapNoise[1])
+		//	saveColorImage(depthMap, viewIdx, true);
 
-		// save depth map to file
-		Path fileName = Path::appendChild(viewFolder, "depth-L0.mvei");
-		Image::saveAsMVEFloatImage(fileName, false, mViewResolution, depthMap.data(), false, false);
+		// save depth map as undistorted color image and MVEI depth map
+		saveColorImage(depthMap, viewIdx, false);
+		const Path depthMapName = getRelativeImageFileName(viewIDString, "depth", 0, false);
+		Image::saveAsMVEFloatImage(depthMapName, true, mViewResolution, depthMap.data(), false, false);
+
 
 		// triangulate surface samples & create proper input samples
 		addToSamples(vertexNeighbors, indices, pixelToVertexIndices,
-			positionsWSMap, depthMap, validDepthCount, viewIdx);
+			depthMapName, positionsWSMap, validDepthCount, viewIdx);
 
 		++viewIdx;
 	}
@@ -353,16 +353,19 @@ void SyntheticScene::addNoise(vector<Vector3> &positionsWSMap, vector<Real> &dep
 	}
 }
 
-void SyntheticScene::saveToFile(const Path &folder, const vector<Real> &depthMap, const uint32 viewIdx, const bool withNoise) const
+void SyntheticScene::saveColorImage(const vector<Real> &depthMap, const uint32 viewIdx, const bool withNoise) const
 {
-	// add view index
-	char buffer[File::READING_BUFFER_SIZE];
-	uint32 length = snprintf(buffer, File::READING_BUFFER_SIZE, "View%.4u", viewIdx);
-
-	// file name with noise appendix?
+	// create file name
+	// file name with noise data inside?
+	char tagBuffer[File::READING_BUFFER_SIZE];
+	snprintf(tagBuffer, File::READING_BUFFER_SIZE, "undistorted");
 	if (withNoise)
-		length += snprintf(buffer + length, File::READING_BUFFER_SIZE - length, "Mean" REAL_IT "StdDev" REAL_IT, mDepthMapNoise[0], mDepthMapNoise[1]);
-	snprintf(buffer + length, File::READING_BUFFER_SIZE - length, ".png");
+		snprintf(tagBuffer + 5, File::READING_BUFFER_SIZE - 5, "Mean" REAL_IT "StdDev" REAL_IT, mDepthMapNoise[0], mDepthMapNoise[1]);
+
+	// absolute file name via tag, view index and views folder
+	const Path relativeFileName = getRelativeImageFileName(viewIdx, tagBuffer, 0, true);
+	const Path viewsFolder = Scene::getSingleton().getViewsFolder();
+	const Path absoluteName = Path::appendChild(viewsFolder, relativeFileName);
 
 	// find depth extrema
 	const uint32 pixelCount = mViewResolution.getElementCount();
@@ -375,8 +378,7 @@ void SyntheticScene::saveToFile(const Path &folder, const vector<Real> &depthMap
 	ImageManager::convertDepthMap(pixels, depthMap.data(), pixelCount, channelCount, minDepth, maxDepth);
 
 	// save the converted pixels to file
-	const Path fileName = Path::appendChild(folder, buffer);
-	File file(fileName, File::CREATE_WRITING, true);
+	File file(absoluteName, File::CREATE_WRITING, true);
 	ImageManager::getSingleton().savePNG(file, pixels, channelCount, mViewResolution);
 
 	delete [] pixels;
@@ -384,28 +386,25 @@ void SyntheticScene::saveToFile(const Path &folder, const vector<Real> &depthMap
 }
 
 void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vector<uint32> &indices, vector<uint32> &pixelToVertexIndices,
-	const vector<Vector3> &positionsWSMap, const vector<Real> &depthMap, const uint32 validDepthCount, const uint32 viewIdx)
+	const Path &depthMapName, const vector<Vector3> &positionsWSMap, const uint32 validDepthCount, const uint32 viewIdx)
 {
 	// reserve memory for the new samples
 	const uint32 oldSampleCount = mSamples->getCount();
 	const uint32 newSampleCount = validDepthCount + oldSampleCount;
 	mSamples->reserve(newSampleCount);
 
-	// K^1 matrix (inverse kamera calibration)
+	// K^(-1) matrix (inverse kamera calibration)
 	const PinholeCamera &camera = mViews[viewIdx]->getCamera();
 	const Matrix3x3 invProj = camera.computeInverseProjectionMatrix();
 	const Matrix3x3 invViewPort = camera.computeInverseViewportMatrix(mViewResolution, true);
 	const Matrix3x3 pixelToViewSpace = invViewPort * invProj;
 
-	// create a depth map triangulation to compute samples' properties
-	string resourceName = "view";
-	resourceName += View::getIDString(viewIdx);
-	resourceName += "depth";
-	string fileName = getName(viewIdx, "depth", "-L0");
-
-	DepthImage *depthMap = DepthImage::request(resourceName, fileName);
+	// load depth map & triangulate it
+	const Path colorImageName = getRelativeImageFileName(viewIdx, "undistorted", 0, true);
+	const ColorImage *colorImage = ColorImage::request(colorImageName.getString(), colorImageName);
+	DepthImage *depthMap = DepthImage::request(depthMapName.getString(), depthMapName);
 	FlexibleMesh *triangulation = depthMap->triangulate(vertexNeighbors, indices, pixelToVertexIndices,
-		positionsWSMap, depthMap, pixelToViewSpace, NULL);
+		positionsWSMap, pixelToViewSpace, NULL);
 
 	// add triangulation to all other samples
 	//const uint32 pixelCount = mViewResolution.getElementCount();

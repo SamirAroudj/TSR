@@ -39,7 +39,7 @@ namespace SurfaceReconstruction
 		void addNoise(std::vector<Math::Vector3> &positionsWSMap, std::vector<Real> &depthMap, const Math::Vector3 &camPosWS);
 		
 		void addToSamples(std::vector<std::vector<uint32>> &vertexNeighbors, std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices,
-			const std::vector<Math::Vector3> &positionsWSMap, const std::vector<Real> &depthMap,
+			const Storage::Path &depthMapName, const std::vector<Math::Vector3> &positionsWSMap,
 			const uint32 validDepthCount, const uint32 viewIdx);
 
 		/** todo */
@@ -55,10 +55,10 @@ namespace SurfaceReconstruction
 		virtual bool getParameters(const Storage::Path &fileName);
 
 		/** todo */
-		void saveToFile(const Storage::Path &folder, const std::vector<Real> &depthMap, const uint32 viewIdx, const bool withNoise) const;
+		void saveCamerasToFile(const Storage::Path &fileName) const;
 
 		/** todo */
-		void saveCamerasToFile(const Storage::Path &fileName) const;
+		void saveColorImage(const std::vector<Real> &depthMap, const uint32 viewIdx, const bool withNoise) const;
 
 	public:
 		static const uint32 RANDOM_SEED;

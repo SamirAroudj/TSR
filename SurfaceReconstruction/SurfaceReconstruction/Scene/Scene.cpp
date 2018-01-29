@@ -37,17 +37,20 @@ using namespace Utilities;
 const uint32 Scene::REFINEMENT_VIA_PHOTOS_MESH_OUTPUT_FREQUENCY = 25;
 const uint32 Scene::VIEWS_FILE_VERSION = 0;
 
-Path Scene::getRelativeImageFileName(const uint32 viewID, const string &imageTag)
+string Scene::getIDString(const uint32 viewID)
 {
-	const string viewIDString = View::getIDString(viewID);
-	return Scene::getRelativeImageFileName(viewIDString, imageTag);
+	// viewID to at least 4 digits string
+	char buffer[File::READING_BUFFER_SIZE];
+	snprintf(buffer, File::READING_BUFFER_SIZE, "%.4u", viewID);
+
+	return string(buffer);
 }
 
-Path Scene::getRelativeImageFileName(const string &viewID, const string &imageTag)
+Path Scene::getRelativeImageFileName(const string &viewID, const string &tag, const uint32 scale, const bool colorImage)
 {
 	// complete image file name
 	const Path viewFolder = Scene::getRelativeViewFolder(viewID);
-	const string fileName = imageTag + ".png";
+	const string fileName = getLocalImageName(tag, scale, colorImage);
 
 	return Path::appendChild(viewFolder, fileName);
 }
@@ -58,6 +61,25 @@ Path Scene::getRelativeViewFolder(const string &viewID)
 	temp += viewID;
 	temp += ".mve";
 	return Path(temp);
+}
+
+const string Scene::getLocalImageName(const string &tag, const uint32 scale, const bool colorImage)
+{
+	// supported types
+	const char *colorImageEnding = ".png";
+	const char *MVEImageEnding = ".mvei";
+
+	// special case
+	if (colorImage && 0 == scale)
+		return (tag + colorImageEnding);
+
+	// name = <tag>-L<scale><ending>, e.g., undist-L1.png
+	const char *ending = (colorImage ? colorImageEnding : MVEImageEnding);
+	char scaleString[4];
+	snprintf(scaleString, 4, "-L%u", scale);
+	string name = ((tag + scaleString) + ending);
+
+	return name;
 }
 
 Scene::Scene(const Path &rootFolder, const Path &FSSFReconstruction,

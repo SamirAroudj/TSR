@@ -47,7 +47,7 @@ DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
 
 	// load image
 	MVEIHeader header;
-	void *data = Image::loadMVEI(header, imageFileName, relativePath);
+	void *data = Image::loadMVEI(header, imageFileName, true);
 
 	// check header
 	if (header.mChannelCount != 1)
@@ -85,16 +85,14 @@ DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
 
 void DepthImage::saveAsMVEFloatImage(const Path &fileName, const bool invertX, const bool invertY, float *temporaryStorage)
 {
-	bool relativePath = ?;
-	Image::saveAsMVEFloatImage(fileName, relativePath, mSize, mDepths, invertX, invertY, temporaryStorage);
+	Image::saveAsMVEFloatImage(fileName, true, mSize, mDepths, invertX, invertY, temporaryStorage);
 }
 
-
 FlexibleMesh *DepthImage::triangulate(vector<vector<uint32>> &vertexNeighbors, vector<uint32> &indices, vector<uint32> &pixelToVertexIndices,
-	const vector<Vector3> &positionsWSMap, const vector<Real> &depthMap, const Matrix3x3 &pixelToViewSpace, const ColorImage *image) const
+	const vector<Vector3> &positionsWSMap, const Matrix3x3 &pixelToViewSpace, const ColorImage *image) const
 {
 	// reserve memory & clear buffers
-	const uint32 pixelCount = (uint32) depthMap.size();
+	const uint32 pixelCount = mSize.getElementCount();
 	pixelToVertexIndices.resize(pixelCount);
 	memset(pixelToVertexIndices.data(), -1, sizeof(uint32) * pixelCount);
 	indices.clear();
@@ -103,7 +101,7 @@ FlexibleMesh *DepthImage::triangulate(vector<vector<uint32>> &vertexNeighbors, v
 	uint32 vertexCount = 0;
 	for (uint32 y = 0; y < mSize[1] - 1; ++y)
 		for (uint32 x = 0; x < mSize[0] - 1; ++x)
-			vertexCount = triangulateBlock(indices, pixelToVertexIndices, vertexCount, depthMap, x, y, pixelToViewSpace);
+			vertexCount = triangulateBlock(indices, pixelToVertexIndices, vertexCount, x, y, pixelToViewSpace);
 	const uint32 indexCount = (uint32) indices.size();
 
 	// recompute vertex neighbors
@@ -115,54 +113,8 @@ FlexibleMesh *DepthImage::triangulate(vector<vector<uint32>> &vertexNeighbors, v
 	return createFlexibleMesh(vertexNeighbors, indices, pixelToVertexIndices, positionsWSMap, vertexCount, image);
 }
 
-FlexibleMesh *DepthImage::createFlexibleMesh(const vector<vector<uint32>> &vertexNeighbors, const vector<uint32> &indices,
-	const vector<uint32> &pixelToVertexIndices,	const vector<Vector3> &positionsWSMap, const uint32 vertexCount, const ColorImage *image) const
-{
-	const uint32 indexCount = (uint32)indices.size();
-	const uint32 pixelCount = (uint32)positionsWSMap.size();
-
-	// create triangulation & set indices
-	FlexibleMesh *triangulation = new FlexibleMesh(vertexCount, indexCount);
-	triangulation->setIndices(indices.data(), (uint32)indices.size());
-
-	// vertex positions
-	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
-	{
-		// triangulated back projected depth value?
-		const uint32 vertexIdx = pixelToVertexIndices[pixelIdx];
-		if (-1 != vertexIdx)
-			triangulation->setPosition(positionsWSMap[pixelIdx], vertexIdx);
-	}
-
-	// vertex normals & scales
-	triangulation->computeNormalsWeightedByAngles();
-	FlexibleMesh::computeVertexScales(triangulation->getScales(), vertexNeighbors.data(), triangulation->getPositions(), triangulation->getVertexCount());
-
-	// vertex colors via default color
-	if (!image)
-	{
-		// no image? -> set vertex colors to some default value
-		const Vector3 defaultColor(0.5f, 0.5f, 0.5f);
-		for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
-			triangulation->setColor(defaultColor, vertexIdx);
-		return triangulation;
-	}
-
-	// set vertex colors via image
-	const uint32 &width = image->getSize()[0];
-	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
-	{
-		// copy color
-		Vector3 color;
-		image->get(color, pixelIdx % width, pixelIdx / width);
-		triangulation->setColor(color, pixelToVertexIndices[pixelIdx]);
-	}
-	
-	return triangulation;
-}
-
 uint32 DepthImage::triangulateBlock(vector<uint32> &indices, vector<uint32> &pixelToVertexIndices, uint32 vertexCount,
-	const vector<Real> &depthMap, const uint32 x, const uint32 y, const Matrix3x3 &pixelToViewSpace) const
+	const uint32 x, const uint32 y, const Matrix3x3 &pixelToViewSpace) const
 {
 	// indices of 4 different, reasonable triangles within 2x2 rectangle of vertices
 	const uint32 blockTriangles[4][3] =
@@ -195,10 +147,10 @@ uint32 DepthImage::triangulateBlock(vector<uint32> &indices, vector<uint32> &pix
 	// get depths
 	const Real blockDepths[4] =
 	{
-		(inImage[0] ? depthMap[pixelIdx] : -REAL_MAX),
-		(inImage[1] ? depthMap[pixelIdx + 1] : -REAL_MAX),
-		(inImage[2] ? depthMap[pixelIdx + width] : -REAL_MAX),
-		(inImage[3] ? depthMap[pixelIdx + width + 1] : -REAL_MAX)
+		(inImage[0] ? mDepths[pixelIdx] : -REAL_MAX),
+		(inImage[1] ? mDepths[pixelIdx + 1] : -REAL_MAX),
+		(inImage[2] ? mDepths[pixelIdx + width] : -REAL_MAX),
+		(inImage[3] ? mDepths[pixelIdx + width + 1] : -REAL_MAX)
 	};
 
 	// mask-based encoding of available depths
@@ -328,6 +280,52 @@ bool DepthImage::isDepthDiscontinuity(const Real footprints[4], const Real block
 	const Real depthDifference = blockDepths[furtherVertex] - blockDepths[closerVertex];
 	const bool discontinuity = (depthDifference > footprints[closerVertex] * ddFactor);
 	return discontinuity;
+}
+
+FlexibleMesh *DepthImage::createFlexibleMesh(const vector<vector<uint32>> &vertexNeighbors, const vector<uint32> &indices,
+	const vector<uint32> &pixelToVertexIndices,	const vector<Vector3> &positionsWSMap, const uint32 vertexCount, const ColorImage *image) const
+{
+	const uint32 indexCount = (uint32)indices.size();
+	const uint32 pixelCount = (uint32)positionsWSMap.size();
+
+	// create triangulation & set indices
+	FlexibleMesh *triangulation = new FlexibleMesh(vertexCount, indexCount);
+	triangulation->setIndices(indices.data(), (uint32)indices.size());
+
+	// vertex positions
+	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
+	{
+		// triangulated back projected depth value?
+		const uint32 vertexIdx = pixelToVertexIndices[pixelIdx];
+		if (-1 != vertexIdx)
+			triangulation->setPosition(positionsWSMap[pixelIdx], vertexIdx);
+	}
+
+	// vertex normals & scales
+	triangulation->computeNormalsWeightedByAngles();
+	FlexibleMesh::computeVertexScales(triangulation->getScales(), vertexNeighbors.data(), triangulation->getPositions(), triangulation->getVertexCount());
+
+	// vertex colors via default color
+	if (!image)
+	{
+		// no image? -> set vertex colors to some default value
+		const Vector3 defaultColor(0.5f, 0.5f, 0.5f);
+		for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
+			triangulation->setColor(defaultColor, vertexIdx);
+		return triangulation;
+	}
+
+	// set vertex colors via image
+	const uint32 &width = image->getSize()[0];
+	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
+	{
+		// copy color
+		Vector3 color;
+		image->get(color, pixelIdx % width, pixelIdx / width);
+		triangulation->setColor(color, pixelToVertexIndices[pixelIdx]);
+	}
+	
+	return triangulation;
 }
 
 DepthImage::DepthImage(Real *depths, const ImgSize &size, const string &resourceName) :

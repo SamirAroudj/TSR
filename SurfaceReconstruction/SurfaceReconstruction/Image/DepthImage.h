@@ -31,7 +31,7 @@ namespace SurfaceReconstruction
 	public:
 		/** todo */
 		FlexibleMesh *triangulate(std::vector<std::vector<uint32>> &vertexNeighbors, std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices,
-			const std::vector<Math::Vector3> &positionsWSMap, const std::vector<Real> &depthMap, const Math::Matrix3x3 &pixelToViewSpace,
+			const std::vector<Math::Vector3> &positionsWSMap, const Math::Matrix3x3 &pixelToViewSpace,
 			const ColorImage *image = NULL) const;	
 		void saveAsMVEFloatImage(const Storage::Path &fileName, 
 			const bool invertX = false, const bool invertY = true, float *temporaryStorage = NULL);
@@ -48,7 +48,7 @@ namespace SurfaceReconstruction
 			const ColorImage *image = NULL) const;
 
 		uint32 triangulateBlock(std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices, uint32 vertexCount,
-			const std::vector<Real> &depthMap, const uint32 x, const uint32 y, const Math::Matrix3x3 &pixelToViewSpace) const;	
+			const uint32 x, const uint32 y, const Math::Matrix3x3 &pixelToViewSpace) const;	
 	
 	public:
 		static const Real DEPTH_DIFFERENCE_FACTOR;

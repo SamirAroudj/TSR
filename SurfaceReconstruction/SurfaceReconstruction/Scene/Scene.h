@@ -32,23 +32,33 @@ namespace SurfaceReconstruction
 	{
 	public:
 		/** todo */
+		static std::string getIDString(const uint32 identifier);
+
+		/** Returns the name of the image without any parent folders, e.g., depth-L2.mvei. */
+		static const std::string getLocalImageName(const std::string &tag, const uint32 scale, const bool colorImage);
+
+		/** todo */
 		inline static const Tree *getTree();
 		
 		/** todo
 		@return Returned file name starts with views folder.
-		(For example: "views/view_0000.mve/chosenImageTag.jpg") */
-		static Storage::Path getRelativeImageFileName(const uint32 viewID, const std::string &imageTag);
+		(For example: "view_0000.mve/undist-L2.png") */
+		inline static Storage::Path getRelativeImageFileName(const uint32 viewID, 
+			const std::string &tag, const uint32 scale, const bool colorImage);
 		
 		/** todo
 		@return Returned file name starts with views folder.
-		(For example: "views/view_0000.mve/chosenImageTag.jpg") */
-		static Storage::Path getRelativeImageFileName(const std::string &viewID, const std::string &imageTag);
+		(For example: "view_0000.mve/depth-L1.mvei") */
+		static Storage::Path getRelativeImageFileName(const std::string &viewID, 
+			const std::string &tag, const uint32 scale, const bool colorImage);
+
+		inline static Storage::Path getRelativeViewFolder(const uint32 viewIdx); 
 
 		/** Returns the name of the folder in the getViewsFolder for the view viewID.
 		@param viewID Identifies the view for which the relative folder is returned.
 		@return Returns a relative path pointing to the folder for the view viewID.
-		@see View::getIDString(); */
-		inline static Storage::Path getRelativeViewFolder(const std::string &viewId); 
+		@see getIDString(); */
+		static Storage::Path getRelativeViewFolder(const std::string &viewId); 
 
 	public:
 		/** Loads a scene from file from already processed and created data, such as views, reordered samples and Tree object.
@@ -247,6 +257,17 @@ namespace SurfaceReconstruction
 			return NULL;
 
 		return mReconstructions[type];
+	}
+
+	inline Storage::Path Scene::getRelativeImageFileName(const uint32 viewID,
+		const std::string &tag, const uint32 scale, const bool colorImage)
+	{
+		return getRelativeImageFileName(getIDString(viewID), tag, scale, colorImage);
+	}
+
+	inline Storage::Path Scene::getRelativeViewFolder(const uint32 viewIdx)
+	{
+		return Scene::getRelativeViewFolder(getIDString(viewIdx));
 	}
 
 	inline const Samples &Scene::getSamples() const

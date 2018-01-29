@@ -60,44 +60,17 @@ View::View(const uint32 ID, File &file, const Path &fileName) :
 	loadFromFile(file, fileName);
 }
 
-void View::computeHWSToNNPS(Math::Matrix4x4 &WSToPS, const bool considerPixelCenterOffset) const
+void View::computeHWSToNNPS(Math::Matrix4x4 &WSToPS, const ImgSize &resolution, const bool considerPixelCenterOffset) const
 {
-	// valid image?
-	const ColorImage *image = getColorImage();
-	if (!image)
-	{
-		WSToPS.setToZero();
-		return;
-	}
-
 	// compute viewport transformation: device coordinates to pixel coordinates
-	const ImgSize &resolution = image->getSize();
 	WSToPS = mCamera.computeWorldSpaceToPixelSpaceMatrix(resolution, considerPixelCenterOffset);
 }
 
-string View::getIDString(const uint32 viewID)
-{
-	// viewID to at least 4 digits string
-	char buffer[File::READING_BUFFER_SIZE];
-	snprintf(buffer, File::READING_BUFFER_SIZE, "%.4u", viewID);
-
-	return string(buffer);
-}
-
-const ColorImage *View::getColorImage() const
-{
-	return View::getColorImage(mID);
-}
-
-const ColorImage *View::getColorImage(const uint32 viewID)
+const ColorImage *View::getColorImage(const uint32 viewID, const string &tag, const uint32 scale)
 {
 	// return the image taken by this this view
-	const Scene &scene = Scene::getSingleton();
-	const string resourceName = View::getIDString(viewID);
-	const Path relativeFileName = scene.getRelativeImageFileName(resourceName);
-	
-	const ColorImage *image = ColorImage::request(resourceName, relativeFileName);
-	return image;
+	const Path relativeFileName = Scene::getRelativeImageFileName(viewID, tag, scale, true);
+	return ColorImage::request(relativeFileName.getString(), relativeFileName);
 }
 
 Vector3 View::getRay(const uint32 x, const uint32 y, const Matrix3x3 &pixelToRay)
@@ -128,7 +101,7 @@ void View::loadFromFile(File &file, const Path &fileName)
 	const Real focalLength = temp[2];
 
 	// compute aspect ratio
-	const ColorImage *image = getColorImage();
+	const ColorImage *image = getColorImage("undistorted", 0);
 	//if (!image) todo
 	//{
 	//	string message = "Could not load the image for a view to determine its aspect ratio.";
