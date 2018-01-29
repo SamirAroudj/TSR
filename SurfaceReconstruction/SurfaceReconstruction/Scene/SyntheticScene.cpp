@@ -378,7 +378,18 @@ void SyntheticScene::saveColorImage(const vector<Real> &depthMap, const uint32 v
 
 	// save the converted pixels to file
 	File file(absoluteName, File::CREATE_WRITING, true);
-	ImageManager::getSingleton().savePNG(file, pixels, channelCount, mViewResolution);
+	try
+	{
+		ImageManager::getSingleton().savePNG(file, pixels, channelCount, mViewResolution);
+	}
+	catch (Exception &exception)
+	{
+		Path test(absoluteName);
+		test.extendLeafName("error.txt");
+		File file(test, File::CREATE_WRITING, false);
+		file.write("Error\n", sizeof(char), strlen("Error\n"));
+		file.write(exception.getMessage().c_str(), sizeof(char), exception.getMessage().length());
+	}
 
 	delete [] pixels;
 	pixels = NULL;
