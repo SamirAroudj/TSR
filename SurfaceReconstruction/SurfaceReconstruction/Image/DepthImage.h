@@ -25,6 +25,7 @@ namespace SurfaceReconstruction
 	class DepthImage : public Image
 	{
 	public:
+		static void findExtrema(Real &minimum, Real &maximum, const Real *depths, const uint32 elementCount);
 		static bool isDepthDiscontinuity(const Real footprints[4], const Real blockDepths[4], const uint32 i1, const uint32 i2);
 		static DepthImage *request(const std::string &resourceName, const Storage::Path &imageFileName);
 

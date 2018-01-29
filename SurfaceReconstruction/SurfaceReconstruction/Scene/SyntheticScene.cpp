@@ -264,10 +264,9 @@ void SyntheticScene::createAndSaveSamples()
 		//	saveColorImage(depthMap, viewIdx, true);
 
 		// save depth map as undistorted color image and MVEI depth map
-		saveColorImage(depthMap, viewIdx, false);
 		const Path depthMapName = getRelativeImageFileName(viewIDString, "depth", 0, false);
 		Image::saveAsMVEFloatImage(depthMapName, true, mViewResolution, depthMap.data(), false, false);
-
+		saveColorImage(depthMap, viewIdx, false);
 
 		// triangulate surface samples & create proper input samples
 		addToSamples(vertexNeighbors, indices, pixelToVertexIndices,
@@ -370,7 +369,7 @@ void SyntheticScene::saveColorImage(const vector<Real> &depthMap, const uint32 v
 	// find depth extrema
 	const uint32 pixelCount = mViewResolution.getElementCount();
 	Real minDepth, maxDepth;
-	MeshRefiner::findDepthExtrema(minDepth, maxDepth, depthMap.data(), pixelCount);
+	DepthImage::findExtrema(minDepth, maxDepth, depthMap.data(), pixelCount);
 
 	// convert depth to gray values
 	const uint32 channelCount = 3;

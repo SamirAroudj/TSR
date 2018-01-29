@@ -70,26 +70,6 @@ void MeshRefiner::applyMovementField()
 	doSelfCheck();
 }
 
-void MeshRefiner::findDepthExtrema(Real &minDepth, Real &maxDepth, const Real *depthMap, const uint32 pixelCount)
-{
-	minDepth = REAL_MAX;
-	maxDepth = -REAL_MAX;
-
-	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
-	{
-		// valid depth?
-		const Real depth = depthMap[pixelIdx];
-		if (-REAL_MAX == depth || REAL_MAX == depth)
-			continue;
-
-		// update min & max
-		if (depth > maxDepth)
-			maxDepth = depth;
-		if (depth < minDepth)
-			minDepth = depth;
-	}
-}
-
 void MeshRefiner::onEdgeMerging(const uint32 targetVertex, const uint32 edgeVertex0, const uint32 edgeVertex1)
 {
 	mVectorField[targetVertex] = (mVectorField[edgeVertex0] + mVectorField[edgeVertex1]) * 0.5f;

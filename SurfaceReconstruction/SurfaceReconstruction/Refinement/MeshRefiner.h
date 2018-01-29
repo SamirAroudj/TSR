@@ -28,8 +28,6 @@ namespace SurfaceReconstruction
 	class MeshRefiner : public Patterns::Subject<IReconstructorObserver>, public IFlexibleMeshObserver
 	{
 	public:
-		static void findDepthExtrema(Real &minDepth, Real &maxDepth, const Real *depthMap, const uint32 pixelCount);
-
 		template <class T>
 		static void normalize(T *weightedSums, const Real *weights, const int64 arraySize,
 			const Real minimumWeight, const T &invalidWeightResult);

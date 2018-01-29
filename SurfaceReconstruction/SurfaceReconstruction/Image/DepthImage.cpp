@@ -22,6 +22,26 @@ using namespace Utilities;
 
 const Real DepthImage::DEPTH_DIFFERENCE_FACTOR = 5.0f;
 
+void DepthImage::findExtrema(Real &minimum, Real &maximum, const Real *depths, const uint32 elementCount)
+{
+	minimum = REAL_MAX;
+	maximum = -REAL_MAX;
+
+	for (uint32 eleIdx = 0; eleIdx < elementCount; ++eleIdx)
+	{
+		// valid depth?
+		const Real depth = depths[eleIdx];
+		if (0 >= depth || REAL_MAX == depth)
+			continue;
+
+		// update min & max
+		if (depth > maximum)
+			maximum = depth;
+		if (depth < minimum)
+			minimum = depth;
+	}
+}
+
 DepthImage *DepthImage::request(const string &resourceName, const Path &imageFileName)
 {
 	Image *image = Image::request(resourceName);
