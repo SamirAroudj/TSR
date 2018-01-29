@@ -9,7 +9,9 @@
 
 #include "Platform/FailureHandling/FileCorruptionException.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
+#include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Image/DepthImage.h"
+#include "SurfaceReconstruction/Image/MVEIHeader.h"
 
 using namespace FailureHandling;
 using namespace Math;
@@ -43,22 +45,48 @@ DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
 	const Path folder(path);
 	const Path fileName = Path::appendChild(folder, imageFileName);
 
-	// access file
-	File imageFile(imageFileName,)
+	// load image
+	MVEIHeader header;
+	void *data = Image::loadMVEI(header, imageFileName, relativePath);
 
-	mSize = ;
-	
-	// allocate memory
-	const uint32 elementCount = mSize.getElementCount();
-	mDepths = new Real[elementCount];
+	// check header
+	if (header.mChannelCount != 1)
+		throw FileException("Unsupported channel count for a depth map!", imageFileName);
+	if (MVEIHeader::MVE_FLOAT != header.mType && MVEIHeader::MVE_DOUBLE != header.mType)
+		throw FileException("Unsupported depth type. Only real numbers are supported!", imageFileName);
 
-	// fill depths
-	mDepths[pixelIdx] = ;
+	// convert or simply keep the loaded data?
+	if (sizeof(Real) != header.getTypeSize())
+	{
+		const uint32 pixelCount = header.mSize.getElementCount();
+		mDepths = new Real[pixelCount];
+
+		if (MVEIHeader::MVE_FLOAT == header.mType)
+		{
+			const float *floatData = (float *) data;
+			for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
+				mDepths[pixelIdx] = floatData[pixelIdx];
+		}
+		else
+		{
+			const double *doubleData = (double *) data;
+			for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
+				mDepths[pixelIdx] = doubleData[pixelIdx];
+		}
+
+		delete [] data;
+		data = NULL;
+	}
+	else
+	{
+		mDepths = (Real *) data;
+	}
 }
 
 void DepthImage::saveAsMVEFloatImage(const Path &fileName, const bool invertX, const bool invertY, float *temporaryStorage)
 {
-	Image::saveAsMVEFloatImage(fileName, mSize, mDepths, invertX, invertY, temporaryStorage);
+	bool relativePath = ?;
+	Image::saveAsMVEFloatImage(fileName, relativePath, mSize, mDepths, invertX, invertY, temporaryStorage);
 }
 
 
@@ -73,8 +101,8 @@ FlexibleMesh *DepthImage::triangulate(vector<vector<uint32>> &vertexNeighbors, v
 
 	// compute vertex & index count & index buffer
 	uint32 vertexCount = 0;
-	for (uint32 y = 0; y < mViewResolution[1] - 1; ++y)
-		for (uint32 x = 0; x < mViewResolution[0] - 1; ++x)
+	for (uint32 y = 0; y < mSize[1] - 1; ++y)
+		for (uint32 x = 0; x < mSize[0] - 1; ++x)
 			vertexCount = triangulateBlock(indices, pixelToVertexIndices, vertexCount, depthMap, x, y, pixelToViewSpace);
 	const uint32 indexCount = (uint32) indices.size();
 
@@ -153,8 +181,8 @@ uint32 DepthImage::triangulateBlock(vector<uint32> &indices, vector<uint32> &pix
 	//	{ x + 1, y + 1}
 	//};
 
-	const uint32 width = mViewResolution[0];
-	const uint32 height = mViewResolution[1];
+	const uint32 &width = mSize[0];
+	const uint32 &height = mSize[1];
 	const uint32 pixelIdx = width * y + x;
 	const bool inImage[4] =
 	{

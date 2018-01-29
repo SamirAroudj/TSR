@@ -20,34 +20,7 @@
 namespace SurfaceReconstruction
 {
 	class Filter;
-
-	struct MVEIHeader
-	{
-	public:
-		enum MVEType
-		{
-			MVE_UNKNOWN,
-
-			MVE_UINT8,	/// uint8_t, unsigned char
-			MVE_UINT16,	/// uint16_t
-			MVE_UINT32,	/// uint32_t, unsigned int
-			MVE_UINT64,	/// uint64_t
-
-			MVE_SINT8,	/// int8_t, char, signed char
-			MVE_SINT16,	/// int16_t
-			MVE_SINT32,	/// int32_t, int
-			MVE_SINT64,	/// int64_t
-
-			MVE_FLOAT,	/// float
-			MVE_DOUBLE	/// double
-		};
-
-	public:
-		char mSignature[Image::MVEI_FILE_SIGNATURE_LENGTH];
-		Utilities::ImgSize mSize;
-		uint32 mChannelCount;
-		uint32 mType;
-	};
+	struct MVEIHeader;
 
 	class Image : public ResourceManagement::VolatileResource<Image>
 	{
@@ -62,14 +35,13 @@ namespace SurfaceReconstruction
 
 		static void freeMemory();
 		
-		static void loadMVEI(void *&data, Utilities::ImgSize &size, uint32 &channelCount, uint32 &type,
-			const Storage::Path &fileName, const bool relativePath);
+		static void *loadMVEI(MVEIHeader &header, const Storage::Path &fileName, const bool relativePath);
 
 		static void saveAsMVEFloatImage(const Storage::Path &fileName, const bool relativePath,
 			const Utilities::ImgSize &size, const Real *data,
 			const bool invertX = false, const bool invertY = true, float *temporaryStorage = NULL);
 		static void saveAsMVEI(const Storage::Path &fileName, const bool relativePath,
-			const Utilities::ImgSize &size, const uint32 channelCount, const uint32 type, const void *data, const uint32 elementSize);
+			const MVEIHeader &header, const void *data);
 
 		static void setPathToImages(const Storage::Path &path);
 
@@ -93,9 +65,6 @@ namespace SurfaceReconstruction
 		Image(const Image &copy);
 		Image &operator =(const Image &rhs);
 
-	public:
-		static const char *MVEI_FILE_SIGNATURE;
-		static const uint32 MVEI_FILE_SIGNATURE_LENGTH;
 
 	protected:
 		Utilities::ImgSize mSize;

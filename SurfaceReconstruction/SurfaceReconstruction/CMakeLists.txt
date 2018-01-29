@@ -53,6 +53,7 @@ set(imageHeaderFiles
 	${imagePath}/DepthImage.h
 	${imagePath}/Filter.h
 	${imagePath}/Image.h
+	${imagePath}/MVEIHeader.h
 )
 
 # refinement sub namespace header files
@@ -136,6 +137,7 @@ set(imageSourceFiles
 	${imagePath}/DepthImage.cpp
 	${imagePath}/Filter.cpp
 	${imagePath}/Image.cpp
+	${imagePath}/MVEIHeader.cpp
 )
 
 # refinement sub namespace source files

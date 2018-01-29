@@ -6,10 +6,12 @@
 * This software may be modified and distributed under the terms
 * of the BSD 3-Clause license. See the License.txt file for details.
 */
+
 #include "Platform/FailureHandling/FileAccessException.h"
 #include "Platform/FailureHandling/FileCorruptionException.h"
 #include "Platform/Storage/File.h"
 #include "SurfaceReconstruction/Image/Image.h"
+#include "SurfaceReconstruction/Image/MVEIHeader.h"
 
 using namespace FailureHandling;
 using namespace Math;
@@ -18,10 +20,6 @@ using namespace Storage;
 using namespace ResourceManagement;
 using namespace SurfaceReconstruction;
 using namespace Utilities;
-
-// constants for MVE
-const char *Image::MVEI_FILE_SIGNATURE = "\211MVE_IMAGE\n";
-const uint32 Image::MVEI_FILE_SIGNATURE_LENGTH = 11;
 
 // constants for resource management
 template <>
@@ -68,15 +66,13 @@ void Image::saveAsMVEFloatImage(const Path &fileName, const bool relativePath,
 	const Utilities::ImgSize &size, const Real *realData,
 	const bool invertX, const bool invertY, float *temporaryStorage)
 {
-	const MVEType type = MVE_FLOAT;
-	const uint32 channelCount = 1;
+	const MVEIHeader header(size, 1, MVEIHeader::MVE_FLOAT);
 	const uint32 eleCount = size.getElementCount();
-	const uint32 eleSize = sizeof(float);
 
 	// is the data already in the right format?
-	if (sizeof(Real) == eleSize && !invertY)
+	if (sizeof(Real) == header.getTypeSize() && !invertY && !invertX)
 	{
-		Image::saveAsMVEI(fileName, relativePath, size, channelCount, type, realData, eleSize);
+		Image::saveAsMVEI(fileName, relativePath, header, realData);
 		return;
 	}
 
@@ -98,12 +94,12 @@ void Image::saveAsMVEFloatImage(const Path &fileName, const bool relativePath,
 			const uint32 targetY = (invertY ? size[1] - (y + 1) : y);
 			const uint32 targetIdx = size[0] * targetY + targetX;
 			const uint32 sourceIdx = size[0] * y + x;
-			floatData[targetIdx] = (float)realData[sourceIdx];
+			floatData[targetIdx] = (float) realData[sourceIdx];
 		}
 	}
 
 	// save it
-	Image::saveAsMVEI(fileName, relativePath, size, channelCount, type, floatData, eleSize);
+	Image::saveAsMVEI(fileName, relativePath, header, floatData);
 
 	// free resources
 	if (ownAllocation)
@@ -112,22 +108,29 @@ void Image::saveAsMVEFloatImage(const Path &fileName, const bool relativePath,
 }
 
 
-void Image::loadMVEI(void *&data, ImgSize &size, uint32 &channelCount, uint32 &type,
-	const Path &fileName, const bool relativePath)
+ void *Image::loadMVEI(MVEIHeader &header, const Path &fileName, const bool relativePath)
 {
+	// load MVE image
 	const Path targetFileName = (relativePath ? Path::appendChild(msResourcePath, fileName) : fileName);
 	File file(targetFileName, File::OPEN_READING, true);
 
-	load and save header via struct;
-	// load & check signature
-	char buffer[MVEI_FILE_SIGNATURE_LENGTH];
-	file.read(buffer, MVEI_FILE_SIGNATURE_LENGTH, sizeof(char), MVEI_FILE_SIGNATURE_LENGTH);
-	if (strncmp(buffer, MVEI_FILE_SIGNATURE, MVEI_FILE_SIGNATURE_LENGTH))
-		throw FileCorruptionException("Could not load MVEI file! The MVE header is broken!", targetFileName);
+	// load header
+	header.loadFromFile(file);
+
+	// allocate memory for the actual image data
+	const uint32 pixelCount = header.mSize.getElementCount();
+	const uint64 contentSize = header.getBodySize();
+	uint8 *data = new uint8[contentSize];
+	
+	// load content
+	const uint32 readCount = file.read(data, contentSize, header.getPixelSize(), pixelCount);
+	if (pixelCount != readCount)
+		throw FileCorruptionException("Could not load all pixels of an MVE image!", file.getName());
+	return data;
 }
 
 void Image::saveAsMVEI(const Path &fileName, const bool relativePath,
-	const ImgSize &size, const uint32 channelCount, const uint32 type, const void *data, const uint32 elementSize)
+	const MVEIHeader &header, const void *data)
 {
 	if (!data)
 		return;
@@ -136,15 +139,14 @@ void Image::saveAsMVEI(const Path &fileName, const bool relativePath,
 	const Path targetFileName = (relativePath ? Path::appendChild(msResourcePath, fileName) : fileName);
 	File file(targetFileName, File::CREATE_WRITING, true);
 
-	// write MVE image header
-	file.write(MVEI_FILE_SIGNATURE, sizeof(char), MVEI_FILE_SIGNATURE_LENGTH);
-	file.write(&size[0], sizeof(uint32), 1);
-	file.write(&size[1], sizeof(uint32), 1);
-	file.write(&channelCount, sizeof(uint32), 1);
-	file.write(&type, sizeof(uint32), 1);
+	// save image header
+	header.saveToFile(file);
 
-	// write MVE image body
-	file.write(data, elementSize, size.getElementCount());
+	// save image body
+	const uint32 pixelCount = header.mSize.getElementCount();
+	const uint32 writtenCount = file.write(data, header.getPixelSize(), pixelCount);
+	if (writtenCount != pixelCount)
+		throw FileException("Could not write MVE image content to file.", targetFileName);
 }
 
 void Image::setPathToImages(const Path &path)
