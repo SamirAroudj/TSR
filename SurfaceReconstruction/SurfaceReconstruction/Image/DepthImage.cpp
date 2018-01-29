@@ -41,13 +41,13 @@ DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
 	Image(ImgSize(0, 0), resourceName), mDepths(NULL)
 {
 	// get complete file name
-	const char *path = VolatileResource<Image>::getPathToResources();
-	const Path folder(path);
-	const Path fileName = Path::appendChild(folder, imageFileName);
+	const Path viewsFolder(VolatileResource<Image>::getPathToResources());
+	const Path fileName = Path::appendChild(viewsFolder, imageFileName);
 
-	// load image
+	// load image header and body
 	MVEIHeader header;
 	void *data = Image::loadMVEI(header, imageFileName, true);
+	mSize = header.mSize;
 
 	// check header
 	if (header.mChannelCount != 1)
@@ -55,32 +55,32 @@ DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
 	if (MVEIHeader::MVE_FLOAT != header.mType && MVEIHeader::MVE_DOUBLE != header.mType)
 		throw FileException("Unsupported depth type. Only real numbers are supported!", imageFileName);
 
-	// convert or simply keep the loaded data?
-	if (sizeof(Real) != header.getTypeSize())
+	// simply keep or convert the loaded data?
+	if (sizeof(Real) == header.getTypeSize())
 	{
-		const uint32 pixelCount = header.mSize.getElementCount();
-		mDepths = new Real[pixelCount];
+		mDepths = (Real *) data;
+		return;
+	}
 
-		if (MVEIHeader::MVE_FLOAT == header.mType)
-		{
-			const float *floatData = (float *) data;
-			for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
-				mDepths[pixelIdx] = floatData[pixelIdx];
-		}
-		else
-		{
-			const double *doubleData = (double *) data;
-			for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
-				mDepths[pixelIdx] = doubleData[pixelIdx];
-		}
+	// convert the data
+	const uint32 pixelCount = header.mSize.getElementCount();
+	mDepths = new Real[pixelCount];
 
-		delete [] data;
-		data = NULL;
+	if (MVEIHeader::MVE_FLOAT == header.mType)
+	{
+		const float *floatData = (float *) data;
+		for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
+			mDepths[pixelIdx] = floatData[pixelIdx];
 	}
 	else
 	{
-		mDepths = (Real *) data;
+		const double *doubleData = (double *) data;
+		for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
+			mDepths[pixelIdx] = doubleData[pixelIdx];
 	}
+
+	delete [] data;
+	data = NULL;
 }
 
 void DepthImage::saveAsMVEFloatImage(const Path &fileName, const bool invertX, const bool invertY, float *temporaryStorage)
@@ -132,7 +132,7 @@ uint32 DepthImage::triangulateBlock(vector<uint32> &indices, vector<uint32> &pix
 	//	{ x, y + 1},
 	//	{ x + 1, y + 1}
 	//};
-
+	
 	const uint32 &width = mSize[0];
 	const uint32 &height = mSize[1];
 	const uint32 pixelIdx = width * y + x;
@@ -158,7 +158,7 @@ uint32 DepthImage::triangulateBlock(vector<uint32> &indices, vector<uint32> &pix
 	uint32 availablePixels = 0;
 	for (uint32 localDepthIdx = 0; localDepthIdx < 4; ++localDepthIdx)
 	{
-		if (-REAL_MAX == blockDepths[localDepthIdx])
+		if (0.0f >= blockDepths[localDepthIdx])
 			continue;
 
 		mask |= 1 << localDepthIdx;
@@ -204,7 +204,7 @@ uint32 DepthImage::triangulateBlock(vector<uint32> &indices, vector<uint32> &pix
 	Real footprints[4];
 	for (uint32 localDepthIdx = 0; localDepthIdx < 4; ++localDepthIdx)
 	{
-		if (-REAL_MAX == blockDepths[localDepthIdx])
+		if (0.0f >= blockDepths[localDepthIdx])
 			continue;
 
 		const uint32 neighborX = x + (localDepthIdx % 2);

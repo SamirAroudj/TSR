@@ -57,7 +57,7 @@ Path Scene::getRelativeImageFileName(const string &viewID, const string &tag, co
 
 Path Scene::getRelativeViewFolder(const string &viewID)
 {
-	string temp("view");
+	string temp("view_");
 	temp += viewID;
 	temp += ".mve";
 	return Path(temp);
