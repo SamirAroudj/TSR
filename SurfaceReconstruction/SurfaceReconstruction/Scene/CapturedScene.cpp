@@ -125,31 +125,30 @@ void CapturedScene::loadViews(map<uint32, uint32> &oldToNewViewIDs, const Path &
 	const char *rotationFormat		= "rotation = " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT "\n";
 
 	// variables to store read data
-	string		line;
-	Matrix3x3	rotation;
-	Quaternion	orientation;
-	Vector3		camPosition;
-	Vector2		principlePoint;
-	Vector2		distortion;
-	Real		aspectRatio;
-	Real		focalLength;
-	uint32		viewID;
-	uint32		cameraCount;
-	char		nameBuffer[File::READING_BUFFER_SIZE];
+	string line;
+	Matrix3x3 rotation;
+	Quaternion orientation;
+	Vector3 camPosition;
+	Vector2 principlePoint;
+	Vector2 distortion;
+	Real aspectRatio;
+	Real focalLength;
+	uint32 viewID;
+	uint32 cameraCount;
+	char nameBuffer[File::READING_BUFFER_SIZE];
 
 	oldToNewViewIDs.clear();
 
 	// open the file
-	const Path fileName = camerasFileName;
-	File file(fileName, File::OPEN_READING, false);
+	File file(camerasFileName, File::OPEN_READING, false);
 
 	// read header
 	file.readTextLine(line);
 	if (string::npos == line.find(header))
-		throw FileCorruptionException("First line of MVE cameras file is not in correct format.", fileName);
+		throw FileCorruptionException("First line of MVE cameras file is not in correct format.", camerasFileName);
 
 	if (1 != file.scanf(cameraCountFormat, &cameraCount))
-		throw FileCorruptionException("Camera count isn't provided in correct MVE cameras file format.", fileName);
+		throw FileCorruptionException("Camera count isn't provided in correct MVE cameras file format.", camerasFileName);
 	mViews.reserve(cameraCount);
 
 	// read each camera
@@ -158,32 +157,32 @@ void CapturedScene::loadViews(map<uint32, uint32> &oldToNewViewIDs, const Path &
 	{
 		
 		if (1 != file.scanf(viewIDFormat, &viewID))
-			throw FileCorruptionException("View ID isn't provided in correct MVE cameras file format.", fileName);
+			throw FileCorruptionException("View ID isn't provided in correct MVE cameras file format.", camerasFileName);
 		if (oldToNewViewIDs.end() != oldToNewViewIDs.find(viewID))
-			throw FileCorruptionException("Duplicate view ID. All view IDs in MVE cameras file must be unique!", fileName);
+			throw FileCorruptionException("Duplicate view ID. All view IDs in MVE cameras file must be unique!", camerasFileName);
 		oldToNewViewIDs[viewID] = newViewID;	
 
 		if (1 != file.scanfString(cameraNameFormat0, cameraNameFormat1, nameBuffer, File::READING_BUFFER_SIZE))
-			throw FileCorruptionException("Camera name isn't provided in correct MVE cameras file format.", fileName);
+			throw FileCorruptionException("Camera name isn't provided in correct MVE cameras file format.", camerasFileName);
 
 		if (1 != file.scanf(focalLengthFormat, &focalLength))
-			throw FileCorruptionException("Camera focal length isn't provided in correct MVE cameras file format.", fileName);
+			throw FileCorruptionException("Camera focal length isn't provided in correct MVE cameras file format.", camerasFileName);
 
 		if (2 != file.scanf(ppFormat, &principlePoint.x, &principlePoint.y))
-			throw FileCorruptionException("Principle point isn't provided in correct MVE cameras file format.", fileName);
+			throw FileCorruptionException("Principle point isn't provided in correct MVE cameras file format.", camerasFileName);
 
 		if (1 != file.scanf(aspectRatioFormat, &aspectRatio))
-			throw FileCorruptionException("Camera focal length isn't provided in correct MVE cameras file format.", fileName);
+			throw FileCorruptionException("Camera focal length isn't provided in correct MVE cameras file format.", camerasFileName);
 
 		if (2 != file.scanf(distortionFormat, &distortion.x, &distortion.y))
-			throw FileCorruptionException("Camera distortion parameters aren't provided in correct MVE cameras file format.", fileName);
+			throw FileCorruptionException("Camera distortion parameters aren't provided in correct MVE cameras file format.", camerasFileName);
 
 		if (3 != file.scanf(translationFormat, &camPosition.x, &camPosition.y, &camPosition.z))
-			throw FileCorruptionException("Camera translation vector isn't provided in correct MVE cameras file format.", fileName);
+			throw FileCorruptionException("Camera translation vector isn't provided in correct MVE cameras file format.", camerasFileName);
 
 		Real *p = (Real *) rotation.values;
 		if (9 != file.scanf(rotationFormat, p, p + 1, p + 2, p + 3, p + 4, p + 5, p + 6, p + 7, p + 8, p + 9))
-			throw FileCorruptionException("Camera rotation matrix isn't provided in correct MVE cameras file format.", fileName);
+			throw FileCorruptionException("Camera rotation matrix isn't provided in correct MVE cameras file format.", camerasFileName);
 
 		// adapt camera data to this project's conventions
 		{
@@ -251,8 +250,7 @@ void CapturedScene::loadSampleCloud(const Path &plyCloudFileName)
 		cout << "\nStarting loading of ply sample cloud: " << plyCloudFileName << endl;
 	#endif // _DEBUG
 
-	const Path fileName = plyCloudFileName;
-	PlyFile file(fileName, File::OPEN_READING, true);
+	PlyFile file(plyCloudFileName, File::OPEN_READING, true);
 
 	// process ply header
 	VerticesDescription verticesFormat;
@@ -305,7 +303,7 @@ uint32 CapturedScene::loadSamples(PlyFile &file, const Path &fileName, const Ver
 
 		// load data for current sample
 		for (uint32 propertyIdx = 0; propertyIdx < propertyCount; ++propertyIdx)
-			readSampleProperty(file, sampleIdx, fileName, types[propertyIdx], (VerticesDescription::SEMANTICS) semantics[propertyIdx]);
+			readSampleProperty(file, sampleIdx, types[propertyIdx], (VerticesDescription::SEMANTICS) semantics[propertyIdx]);
 		
 		// ignore zero confidence samples
 		if (Math::EPSILON >= mSamples->getConfidence(sampleIdx))
@@ -331,7 +329,7 @@ uint32 CapturedScene::loadSamples(PlyFile &file, const Path &fileName, const Ver
 }
 
 void CapturedScene::readSampleProperty(PlyFile &file, const uint32 sampleIdx,
-	const Path &fileName, const ElementsDescription::TYPES type, const VerticesDescription::SEMANTICS semantic)
+	const ElementsDescription::TYPES type, const VerticesDescription::SEMANTICS semantic)
 {
 	// get sample data destinations
 	Vector3 *color = mSamples->mColors.data() + sampleIdx;

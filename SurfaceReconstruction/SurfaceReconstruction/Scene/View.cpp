@@ -88,9 +88,9 @@ const Vector3 View::getViewDirection() const
 void View::loadFromFile(File &file, const Path &fileName)
 {
 	// load camera data
-	Real		temp[3];
-	Quaternion	ori;
-	Vector3		pos;
+	Real temp[3];
+	Quaternion ori;
+	Vector3 pos;
 
 	file.read(temp, sizeof(Real) * 3, sizeof(Real), 3);
 	file.read(&ori, sizeof(Quaternion), sizeof(Quaternion), 1);

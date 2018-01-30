@@ -59,7 +59,7 @@ namespace SurfaceReconstruction
 
 		/** todo */
 		void readSampleProperty(Utilities::PlyFile &file, const uint32 sampleIdx,
-			const Storage::Path &fileName, const Graphics::ElementsDescription::TYPES type, const Graphics::VerticesDescription::SEMANTICS semantic);
+			const Graphics::ElementsDescription::TYPES type, const Graphics::VerticesDescription::SEMANTICS semantic);
 
 	protected:
 		Math::Matrix3x3 mInvInputRotation;
