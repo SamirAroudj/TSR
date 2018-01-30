@@ -21,6 +21,30 @@ using namespace SurfaceReconstruction;
 using namespace Utilities;
 
 const Real DepthImage::DEPTH_DIFFERENCE_FACTOR = 5.0f;
+const uint8 DepthImage::SPECIAL_PINK_COLOR[4] = { 255, 51, 255, 0 };
+
+void DepthImage::convertDepthsToColor(uint8 *pixels, const Real *depths, const uint32 elementCount, const uint32 channelCount, const Real minDepth, const Real maxDepth)
+{
+	// convert depths into color values
+	const Real depthRange = maxDepth - minDepth;
+	const Real colorScaleFactor = 255 / depthRange;
+
+	for (int64 eleIdx = 0; eleIdx < elementCount; ++eleIdx)
+	{
+		uint8 *target = pixels + eleIdx * channelCount;
+
+		// invalid value?
+		for (uint32 channelIdx = 0; channelIdx < channelCount; ++channelIdx)
+			target[channelIdx] = (3 == channelCount ? DepthImage::SPECIAL_PINK_COLOR[channelIdx] : 0);
+		if (0 > depths[eleIdx])
+			continue;
+
+		// gray according to depth
+		const uint8 value = static_cast<uint8>(colorScaleFactor * (depths[eleIdx] - minDepth));
+		for (uint32 channelIdx = 0; channelIdx < channelCount; ++channelIdx)
+			target[channelIdx] = value;
+	}
+}
 
 void DepthImage::findExtrema(Real &minimum, Real &maximum, const Real *depths, const uint32 elementCount)
 {

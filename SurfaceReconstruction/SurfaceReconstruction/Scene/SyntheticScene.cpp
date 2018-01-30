@@ -366,33 +366,22 @@ void SyntheticScene::saveColorImage(const vector<Real> &depthMap, const uint32 v
 	const Path viewsFolder = Scene::getSingleton().getViewsFolder();
 	const Path absoluteName = Path::appendChild(viewsFolder, relativeFileName);
 
-	// find depth extrema
+	// convert depth to gray values
 	const uint32 pixelCount = mViewResolution.getElementCount();
+	const uint32 channelCount = 3;
+	uint8 *grayValues = new uint8[pixelCount * channelCount];
+
+	// find depth extrema and correspondingly scale depths to gray values
 	Real minDepth, maxDepth;
 	DepthImage::findExtrema(minDepth, maxDepth, depthMap.data(), pixelCount);
+	DepthImage::convertDepthsToColor(grayValues, depthMap.data(), pixelCount, channelCount, minDepth, maxDepth);
 
-	// convert depth to gray values
-	const uint32 channelCount = 3;
-	uint8 *pixels = new uint8[pixelCount * channelCount];
-	ImageManager::convertDepthMap(pixels, depthMap.data(), pixelCount, channelCount, minDepth, maxDepth);
-
-	// save the converted pixels to file
+	// save the gray values to file
 	File file(absoluteName, File::CREATE_WRITING, true);
-	try
-	{
-		ImageManager::getSingleton().savePNG(file, pixels, channelCount, mViewResolution);
-	}
-	catch (Exception &exception)
-	{
-		Path test(absoluteName);
-		test.extendLeafName("error.txt");
-		File file(test, File::CREATE_WRITING, false);
-		file.write("Error\n", sizeof(char), strlen("Error\n"));
-		file.write(exception.getMessage().c_str(), sizeof(char), exception.getMessage().length());
-	}
+	ImageManager::getSingleton().savePNG(file, grayValues, channelCount, mViewResolution);
 
-	delete [] pixels;
-	pixels = NULL;
+	delete [] grayValues;
+	grayValues = NULL;
 }
 
 void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vector<uint32> &indices, vector<uint32> &pixelToVertexIndices,

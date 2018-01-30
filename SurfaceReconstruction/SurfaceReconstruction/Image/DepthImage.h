@@ -25,6 +25,8 @@ namespace SurfaceReconstruction
 	class DepthImage : public Image
 	{
 	public:
+		static void convertDepthsToColor(uint8 *pixels, const Real *depths,
+			const uint32 elementCount, const uint32 channelCount, const Real minDepth, const Real maxDepth);
 		static void findExtrema(Real &minimum, Real &maximum, const Real *depths, const uint32 elementCount);
 		static bool isDepthDiscontinuity(const Real footprints[4], const Real blockDepths[4], const uint32 i1, const uint32 i2);
 		static DepthImage *request(const std::string &resourceName, const Storage::Path &imageFileName);
@@ -53,6 +55,7 @@ namespace SurfaceReconstruction
 	
 	public:
 		static const Real DEPTH_DIFFERENCE_FACTOR;
+		static const uint8 SPECIAL_PINK_COLOR[4]; /// Special color value which can be used to for example identify actually unset/invalid pixels.
 
 	private:
 		Real *mDepths;

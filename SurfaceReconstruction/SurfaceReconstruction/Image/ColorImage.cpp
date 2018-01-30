@@ -85,7 +85,7 @@ ColorImage::ColorImage(const string &resourceName, const Path &imageFileName) :
 	const char *path = VolatileResource<Image>::getPathToResources();
 	const Path folder(path);
 	const Path fileName = Path::appendChild(folder, imageFileName);
-	
+
 	// load data
 	mPixels = ImageManager::getSingleton().loadPNG(mSize, mFormat, fileName);
 	if (!mPixels)
