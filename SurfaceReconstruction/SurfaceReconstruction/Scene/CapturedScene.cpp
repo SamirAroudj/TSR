@@ -32,15 +32,12 @@ CapturedScene::CapturedScene(const Path &metaFileName, const vector<IReconstruct
 	Scene(observers)
 {
 	// load what scene / what data to be loaded
-	map<uint32, uint32> oldToNewViewIDs;
 	vector<Path> plyCloudFileNames;	
 	loadMetaData(plyCloudFileNames, metaFileName);
 
-
-	// load views from some cameras file containing all cameras
-	const Path camFile = Path::appendChild(mFolder, mRelativeCamerasFile);
-	MVECameraIO loader(camFile);
-	loader.loadFromCamerasFile(mViews, oldToNewViewIDs, mInvInputRotation, mInvInputTranslation);
+	// load cameras & create views
+	map<uint32, uint32> oldToNewViewIDs;
+	loadCameras(oldToNewViewIDs);
 
 	// load samples
 	loadSampleClouds(plyCloudFileNames, oldToNewViewIDs);
@@ -107,6 +104,31 @@ bool CapturedScene::getParameters(const Path &fileName)
 	manager.get(mInvInputTranslation.z, "translationZ");
 
 	return true;
+}
+
+void CapturedScene::loadCameras(map<uint32, uint32> &oldToNewViewIDs)
+{
+	try
+	{
+		// load cameras from single MVE cameras file?
+		if (!mRelativeCamerasFile.getString().empty())
+		{
+			// load views from some cameras file containing all cameras
+			const Path camFile = Path::appendChild(mFolder, mRelativeCamerasFile);
+			MVECameraIO loader(camFile);
+			loader.loadFromCamerasFile(mViews, oldToNewViewIDs, mInvInputRotation, mInvInputTranslation);
+			return;
+		}
+	}
+	catch (Exception &exception)
+	{
+		cerr << "Could not open cameras file!" << endl;
+		exception;
+	}
+
+	// load views from folders within MVE views folder?
+	MVECameraIO loader(getViewsFolder());
+	loader.loadFromMetaIniFiles(mViews, oldToNewViewIDs, mInvInputRotation, mInvInputTranslation);
 }
 
 void CapturedScene::loadSampleClouds(const vector<Path> &plyCloudFileNames, const map<uint32, uint32> &oldToNewViewIDs)

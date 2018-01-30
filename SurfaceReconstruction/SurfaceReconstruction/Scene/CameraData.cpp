@@ -16,7 +16,7 @@ CameraData::CameraData() :
 	mName(""),
 	mOrientation(), mPosition(),
 	mDistortion(),
-	mPrinciplePoint(0.5f, 0.5f),
+	mPrincipalPoint(0.5f, 0.5f),
 	mFocalLength(-REAL_MAX),
 	mPixelAspectRatio(1.0f),
 	mViewID(-1)

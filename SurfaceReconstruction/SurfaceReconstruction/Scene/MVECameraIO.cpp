@@ -6,6 +6,8 @@
 * This software may be modified and distributed under the terms
 * of the BSD 3-Clause license. See the License.txt File for details.
 */
+#include <fstream>
+#include "Graphics/PinholeCamera.h"
 #include "Math/MathHelper.h"
 #include "Math/Matrix3x3.h"
 #include "Math/Vector2.h"
@@ -17,19 +19,20 @@
 #include "SurfaceReconstruction/Scene/View.h"
 
 using namespace FailureHandling;
+using namespace Graphics;
 using namespace Math;
 using namespace SurfaceReconstruction;
 using namespace std;
 using namespace Storage;
 
-const char *MVECameraIO::ASPECT_RATIO_FORMAT = "pixel_aspect_ratio = " REAL_IT "\n";
 const char *MVECameraIO::CAMERA_COUNT_FORMAT = "camera_count = %d\n";
 const char *MVECameraIO::CAMERA_NAME_FORMAT_0 = "name = ";
 const char *MVECameraIO::CAMERA_NAME_FORMAT_1 = "\n";
 const char *MVECameraIO::DISTORTION_FORMAT = "camera_distortion = " REAL_IT " " REAL_IT "\n";
 const char *MVECameraIO::FOCAL_LENGTH_FORMAT = "focal_length = " REAL_IT "\n";
-const char *MVECameraIO::HEADER_SIGNATURE = "MVE camera infos 1.0\n";
-const char *MVECameraIO::PRINCIPLE_POINT_FORMAT = "principle_point = " REAL_IT " " REAL_IT "\n";
+const char *MVECameraIO::HEADER_SIGNATURE = "MVE camera infos 1.1\n";
+const char *MVECameraIO::PIXEL_ASPECT_RATIO_FORMAT = "pixel_aspect = " REAL_IT "\n";
+const char *MVECameraIO::PRINCIPAL_POINT_FORMAT = "principal_point = " REAL_IT " " REAL_IT "\n";
 const char *MVECameraIO::ROTATION_FORMAT = "rotation = " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT "\n";
 const char *MVECameraIO::TRANSLATION_FORMAT = "translation = " REAL_IT " " REAL_IT " " REAL_IT "\n";
 const char *MVECameraIO::VIEW_ID_FORMAT = "id = %d\n";
@@ -52,15 +55,17 @@ void MVECameraIO::loadFromCamerasFile(vector<View *> &views, map<uint32, uint32>
 
 	// read each camera
 	uint32 newViewID = 0;
+	CameraData cameraData;
+	string line;
+
 	while (file.hasLeftData())
 	{
-		CameraData cameraData;
-		readViewData(oldToNewViewIDs, cameraData, file, newViewID);
 		readFocalLength(cameraData, file);
-		readPrinciplePoint(cameraData, file);
 		readPixelAspectRatio(cameraData, file);
+		readPrincipalPoint(cameraData, file);
 		readDistortion(cameraData, file);
 		readExtrinsics(cameraData, file, inverseInputRotation, inverseInputTranslation);
+		readViewData(oldToNewViewIDs, cameraData, file, newViewID);
 
 		// check parameters
 		if (EPSILON >= cameraData.mFocalLength)
@@ -84,12 +89,15 @@ void MVECameraIO::loadFromCamerasFile(vector<View *> &views, map<uint32, uint32>
 void MVECameraIO::readCamerasFileHeader(File &file)
 {
 	string line;
+
+	// signature with version
 	file.readTextLine(line);
 	if (string::npos == line.find(HEADER_SIGNATURE))
 		throw FileCorruptionException("First line of MVE cameras File is not in correct format.", file.getName());
 
+	// camera count
 	if (1 != file.scanf(CAMERA_COUNT_FORMAT, &mCameraCount))
-		throw FileCorruptionException("Camera count isn't provided in correct MVE cameras File format.", file.getName());
+		throw FileCorruptionException("Camera count isn't provided in correct camera file format.", file.getName());
 }
 
 void MVECameraIO::loadFromMetaIniFiles(vector<View *> &views, map<uint32, uint32> &oldToNewViewIDs,
@@ -107,15 +115,19 @@ void MVECameraIO::loadFromMetaIniFiles(vector<View *> &views, map<uint32, uint32
 	Directory::findChildren(children, mPath);
 	
 	// process each camera file
-	const uint32 fileCount = 0;
+	const uint32 fileCount = (uint32) children.size();
 	for (uint32 fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 	{
 		// is it a directory?
-		const string &fileName = children[fileIdx];
-		if (!Directory::exists(fileName))
+		const string &child = children[fileIdx];
+		if (string::npos == child.find("view"))
+			continue;
+
+		const Path absFolder = Path::appendChild(mPath, child);
+		if (!Directory::exists(absFolder))
 			continue;
 	
-		const Path metaFileName = Path::appendChild(fileName, "meta.ini");
+		const Path metaFileName = Path::appendChild(absFolder, "meta.ini");
 		try
 		{
 			File cameraFile(metaFileName, File::OPEN_READING, false);
@@ -124,6 +136,7 @@ void MVECameraIO::loadFromMetaIniFiles(vector<View *> &views, map<uint32, uint32
 		catch (Exception &exception)
 		{
 			// todo log this: "Could not open file: " + metaFileName
+			exception;
 		}
 	}
 }
@@ -141,7 +154,7 @@ void MVECameraIO::loadFromMetaIniFile(vector<View *> &views, map<uint32, uint32>
 		file.readTextLine(line);
 
 		// empty line?
-		if (line.empty())
+		if (line.empty() || line[0] == '\n')
 			continue;
 
 		// comment?
@@ -153,7 +166,7 @@ void MVECameraIO::loadFromMetaIniFile(vector<View *> &views, map<uint32, uint32>
 		{
 			readFocalLength(cameraData, file);
 			readPixelAspectRatio(cameraData, file);
-			readPrinciplePoint(cameraData, file);
+			readPrincipalPoint(cameraData, file);
 			readExtrinsics(cameraData, file, inverseInputRotation, inverseInputTranslation);
 			continue;
 		}
@@ -173,29 +186,29 @@ void MVECameraIO::loadFromMetaIniFile(vector<View *> &views, map<uint32, uint32>
 void MVECameraIO::readDistortion(CameraData &data, File &file)
 {
 	if (2 != file.scanf(DISTORTION_FORMAT, &data.mDistortion.x, &data.mDistortion.y))
-		throw FileCorruptionException("Camera distortion parameters aren't provided in correct MVE cameras File format.", file.getName());
+		throw FileCorruptionException("Camera distortion parameters aren't provided in correct camera file format.", file.getName());
 }
 
 void MVECameraIO::readExtrinsics(CameraData &data, File &file,
 	const Matrix3x3 &inverseInputRotation, const Vector3 &inverseInputTranslation)
 {
+	// read rotation matrix & translation vector
 	Matrix3x3 rotation;
-	Real *p = (Real *)rotation.values;
+	Real *p = (Real *) rotation.values;
 	Vector3 &pos = data.mPosition;
-
-	// load translation vector (MVE conventions t = -R^t * cameraPos with R as row major matrix for rhs column vectors)
-	if (3 != file.scanf(TRANSLATION_FORMAT, &pos.x, &pos.y, &pos.z))
-		throw FileCorruptionException("Camera translation vector isn't provided in correct MVE cameras File format.", file.getName());
 
 	// load rotation in matrix format
 	if (9 != file.scanf(ROTATION_FORMAT, p, p + 1, p + 2, p + 3, p + 4, p + 5, p + 6, p + 7, p + 8, p + 9))
-		throw FileCorruptionException("Camera rotation matrix isn't provided in correct MVE cameras File format.", file.getName());
+		throw FileCorruptionException("Camera rotation matrix isn't provided in correct camera file format.", file.getName());
+
+	// load translation vector (MVE conventions t = -R^t * cameraPos with R as row major matrix for rhs column vectors)
+	if (3 != file.scanf(TRANSLATION_FORMAT, &pos.x, &pos.y, &pos.z))
+		throw FileCorruptionException("Camera translation vector isn't provided in correct camera file format.", file.getName());
 
 	// adapt camera data to this project's conventions
 	{
 		// translation = -R^-1 * cam position -> position = -R * translation (loaded rotation is R as it is (R^-1)^t = R)
-		const Vector3 temp = -pos * rotation;
-		pos = temp;
+		pos = -pos * rotation;
 
 		// here a camera looks along negative z-direction in order to have a local camera frame which is right handed and
 		// the camera has x pointing right and y up
@@ -215,19 +228,22 @@ void MVECameraIO::readExtrinsics(CameraData &data, File &file,
 void MVECameraIO::readFocalLength(CameraData &data, File &file)
 {
 	if (1 != file.scanf(FOCAL_LENGTH_FORMAT, &data.mFocalLength))
-		throw FileCorruptionException("Camera focal length isn't provided in correct MVE cameras File format.", file.getName());
+		throw FileCorruptionException("Camera focal length isn't provided in correct camera file format.", file.getName());
 }
 
 void MVECameraIO::readPixelAspectRatio(CameraData &data, File &file)
 {
-	if (1 != file.scanf(ASPECT_RATIO_FORMAT, &data.mPixelAspectRatio))
-		throw FileCorruptionException("Camera focal length isn't provided in correct MVE cameras File format.", file.getName());
+	string line;
+	file.readTextLine(line);
+
+	if (1 != sscanf(line.c_str(), PIXEL_ASPECT_RATIO_FORMAT, &data.mPixelAspectRatio))
+			throw FileCorruptionException("Camera focal length isn't provided in correct camera file format.", file.getName());
 }
 
-void MVECameraIO::readPrinciplePoint(CameraData &data, File &file)
+void MVECameraIO::readPrincipalPoint(CameraData &data, File &file)
 {
-	if (2 != file.scanf(PRINCIPLE_POINT_FORMAT, &data.mPrinciplePoint.x, &data.mPrinciplePoint.y))
-		throw FileCorruptionException("Principle point isn't provided in correct MVE cameras File format.", file.getName());
+	if (2 != file.scanf(PRINCIPAL_POINT_FORMAT, &data.mPrincipalPoint.x, &data.mPrincipalPoint.y))
+		throw FileCorruptionException("Principal point isn't provided in correct camera file format.", file.getName());
 }
 
 void MVECameraIO::readViewData(map<uint32, uint32> &oldToNewViewIDs, CameraData &data, File &file, const uint32 newViewID)
@@ -237,7 +253,7 @@ void MVECameraIO::readViewData(map<uint32, uint32> &oldToNewViewIDs, CameraData 
 
 	// get old view ID (MVE view IDs are not necessarily compact)
 	if (1 != file.scanf(VIEW_ID_FORMAT, &oldViewID))
-		throw FileCorruptionException("View ID isn't provided in correct MVE cameras File format.", file.getName());
+		throw FileCorruptionException("View ID isn't provided in correct camera file format.", file.getName());
 
 	// link old to new view ID & set new view ID
 	if (oldToNewViewIDs.end() != oldToNewViewIDs.find(oldViewID))
@@ -247,7 +263,7 @@ void MVECameraIO::readViewData(map<uint32, uint32> &oldToNewViewIDs, CameraData 
 
 	// set view name
 	if (1 != file.scanfString(CAMERA_NAME_FORMAT_0, CAMERA_NAME_FORMAT_1, nameBuffer, File::READING_BUFFER_SIZE))
-		throw FileCorruptionException("Camera name isn't provided in correct MVE cameras File format.", file.getName());
+		throw FileCorruptionException("Camera name isn't provided in correct camera file format.", file.getName());
 	data.mName = nameBuffer;
 }
 
@@ -257,4 +273,66 @@ void MVECameraIO::clear(vector<View *> &views, map<uint32, uint32> &oldToNewView
 	if (!views.empty())
 		throw Exception("Views loading must always start from scratch!");
 	oldToNewViewIDs.clear();
+}
+
+void MVECameraIO::saveCamerasToFile(const vector<View *> &views) const
+{
+	// view count
+	const uint32 viewCount = (uint32) views.size();
+	cout << "SyntheticScene:: Writing synthetic camera infos of " << viewCount << " cameras: " << mPath << "...\n";
+
+	ofstream out(mPath.getString(), ios::binary);
+	if (!out.good())
+		throw FileException("Could not create a file to save data of synthetic cameras.", mPath);
+
+	// file header
+	out << HEADER_SIGNATURE;
+	out << "camera_count = " << viewCount << "\n";
+	out << "\n";
+
+	// write all cameras infos to the file
+	Matrix3x3 rotation;
+
+	for (size_t viewIdx = 0; viewIdx < viewCount; ++viewIdx)
+	{
+		const View &view = *views[viewIdx];
+		const PinholeCamera &camera = view.getCamera();
+		const Vector4 pHWS = camera.getPosition();
+		const Vector3 pWS(pHWS.x, pHWS.y, pHWS.z);
+		const Vector2 &principalPoint = camera.getPrincipalPoint();
+
+		// new camera with inverted looking direction for MVE convention
+		const Vector3 viewDirection = view.getViewDirection();
+		const Vector3 targetWS = pWS - viewDirection;
+
+		// output intrinsics
+		out << "focal_length = " << camera.getFocalLength() << "\n";
+		out << "pixel_aspect = " << 1.0f << "\n";
+		out << "principal_point = " << principalPoint.x << " " << principalPoint.y << "\n";
+		out << "camera_distortion = " << 0.0f << " " << 0.0f << "\n";
+
+		// convert extrinsics according to MVE conventions
+		PinholeCamera mveCamera(camera);
+		mveCamera.lookAt(pWS, targetWS, Vector3(0.0f, -1.0f, 0.0f)); // mve rotation conventions: flip y and z -> y down and z
+		
+		const Matrix4x4 viewMatrix = mveCamera.getViewMatrix();
+		for (uint32 rowIdx = 0; rowIdx < 3; ++rowIdx)
+			for (uint32 columnIdx = 0; columnIdx < 3; ++columnIdx)
+				rotation(rowIdx, columnIdx) = viewMatrix(rowIdx, columnIdx);
+
+		const Vector3 translation = -(pWS * rotation);// MVE directly uses this translation vector
+		rotation.transpose(); // rotation in MVE format (they use column vectors and left matrices, e.g. R * t = rotatedT instead of this projects t * R = rotatedT)
+
+		// output extrinsics
+		out << "rotation = ";
+		out << rotation(0, 0) << " " << rotation(0, 1) << " " << rotation(0, 2) << " ";
+		out << rotation(1, 0) << " " << rotation(1, 1) << " " << rotation(1, 2) << " ";
+		out << rotation(2, 0) << " " << rotation(2, 1) << " " << rotation(2, 2) << "\n";
+
+		out << "translation = " << translation[AXIS_X] << " " << translation[AXIS_Y] << " " << translation[AXIS_Z] << "\n";
+
+		// identifiers
+		out << "id = " << viewIdx << "\n";
+		out << "name = " << "v" << viewIdx << "\n\n";
+	}
 }

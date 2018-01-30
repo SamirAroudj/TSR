@@ -40,6 +40,8 @@ namespace SurfaceReconstruction
 		/** Assignment operator is forbidden. Don't use it.*/
 		inline CapturedScene &operator =(const CapturedScene &rhs);
 
+		void loadCameras(std::map<uint32, uint32> &oldToNewViewIDs);
+
 		/** todo */
 		void loadMetaData(std::vector<Storage::Path> &plyCloudFileNames, const Storage::Path &fileName);
 

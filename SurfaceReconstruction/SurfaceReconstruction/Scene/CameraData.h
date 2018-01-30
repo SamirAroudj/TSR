@@ -27,7 +27,7 @@ namespace SurfaceReconstruction
 		Math::Quaternion mOrientation;
 		Math::Vector3 mPosition;
 		Math::Vector2 mDistortion;
-		Math::Vector2 mPrinciplePoint;
+		Math::Vector2 mPrincipalPoint;
 		Real mFocalLength;
 		Real mPixelAspectRatio;
 		uint32 mViewID;

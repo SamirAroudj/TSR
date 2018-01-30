@@ -31,7 +31,7 @@ const uint32 View::INVALID_ID = (uint32) -1;
 View::View(const CameraData &data) :
 	View(data.mViewID,
 		 data.mOrientation, Vector4(data.mPosition.x, data.mPosition.y, data.mPosition.z, 1.0f),
-		 data.mFocalLength, data.mPrinciplePoint, data.mPixelAspectRatio)
+		 data.mFocalLength, data.mPrincipalPoint, data.mPixelAspectRatio)
 {
 
 }
@@ -56,8 +56,8 @@ View::View(const uint32 ID, const Vector3 AABB[2], const Real minSampleDistance,
 }
 
 View::View(const uint32 ID, const Quaternion &orientation, const Vector4 &position,
-	const Real focalLength, const Vector2 &principlePoint, const Real pixelAspectRatio) :
-	mCamera(orientation, position, focalLength, principlePoint, pixelAspectRatio), mID(ID)
+	const Real focalLength, const Vector2 &principalPoint, const Real pixelAspectRatio) :
+	mCamera(orientation, position, focalLength, principalPoint, pixelAspectRatio), mID(ID)
 {
 
 }
@@ -104,8 +104,8 @@ void View::loadFromFile(File &file, const Path &fileName)
 	file.read(&ori, sizeof(Quaternion), sizeof(Quaternion), 1);
 	file.read(&pos, sizeof(Vector3), sizeof(Vector3), 1);
 	
-	// get focalLenth & principle point
-	const Vector2 principlePoint(temp[0], temp[1]);
+	// get focalLenth & principal point
+	const Vector2 principalPoint(temp[0], temp[1]);
 	const Real focalLength = temp[2];
 
 	// compute aspect ratio
@@ -125,11 +125,11 @@ void View::loadFromFile(File &file, const Path &fileName)
 
 	// intrinsic camera parameters
 	mCamera.setProjectionProperties(focalLength, aspectRatio);
-	mCamera.setPrinciplePoint(principlePoint);
+	mCamera.setPrincipalPoint(principalPoint);
 	
-//	cout << "Loaded a view with (focal length, principle point, aspectRatio, position, orientation) = (" <<
+//	cout << "Loaded a view with (focal length, principal point, aspectRatio, position, orientation) = (" <<
 //		"(" << focalLength << "), " <<
-//		"(" << principlePoint << "), " <<
+//		"(" << principalPoint << "), " <<
 //		"(" << aspectRatio << "), " <<
 //		"(" << pos << "), " <<
 //		"(" << ori << ")" <<
@@ -141,8 +141,8 @@ void View::saveToFile(File &file) const
 	// save camera data
 	const Real temp[3] =
 	{
-		mCamera.getPrinciplePoint().x,
-		mCamera.getPrinciplePoint().y,
+		mCamera.getPrincipalPoint().x,
+		mCamera.getPrincipalPoint().y,
 		mCamera.getFocalLength()
 	};
 

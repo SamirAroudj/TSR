@@ -33,6 +33,8 @@ namespace SurfaceReconstruction
 		void loadFromMetaIniFiles(std::vector<View *> &views, std::map<uint32, uint32> &oldToNewViewIDs,
 			const Math::Matrix3x3 &inverseInputRotation, const Math::Vector3 &inverseInputTranslation);
 
+		void saveCamerasToFile(const std::vector<View *> &views) const;
+
 	private:
 		void clear(std::vector<View*>& views, std::map<uint32, uint32>& oldToNewViewIDs);
 
@@ -46,19 +48,19 @@ namespace SurfaceReconstruction
 			const Math::Matrix3x3 &inverseInputRotation, const Math::Vector3 &inverseInputTranslation);
 		void readFocalLength(CameraData &data, Storage::File &file);
 		void readPixelAspectRatio(CameraData &data, Storage::File& file);
-		void MVECameraIO::readPrinciplePoint(CameraData &data, Storage::File &file);
+		void readPrincipalPoint(CameraData &data, Storage::File &file);
 		void readViewData(std::map<uint32, uint32> &oldToNewViewIDs, CameraData &data, Storage::File &file,
 			const uint32 newViewID);
 
 	public:
-		static const char *ASPECT_RATIO_FORMAT;
 		static const char *CAMERA_COUNT_FORMAT;
 		static const char *CAMERA_NAME_FORMAT_0;
 		static const char *CAMERA_NAME_FORMAT_1;
 		static const char *DISTORTION_FORMAT;
 		static const char *FOCAL_LENGTH_FORMAT;
 		static const char *HEADER_SIGNATURE;
-		static const char *PRINCIPLE_POINT_FORMAT;
+		static const char *PIXEL_ASPECT_RATIO_FORMAT;
+		static const char *PRINCIPAL_POINT_FORMAT;
 		static const char *ROTATION_FORMAT;
 		static const char *TRANSLATION_FORMAT;
 		static const char *VIEW_ID_FORMAT;

@@ -6,8 +6,6 @@
  * This software may be modified and distributed under the terms
  * of the BSD 3-Clause license. See the License.txt file for details.
  */
-
-#include <fstream>
 #include "CollisionDetection/CollisionDetection.h"
 #include "Graphics/Color.h"
 #include "Graphics/ImageManager.h"
@@ -23,6 +21,7 @@
 #include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Image/DepthImage.h"
 #include "SurfaceReconstruction/Refinement/MeshRefiner.h"
+#include "SurfaceReconstruction/Scene/MVECameraIO.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/SyntheticScene.h"
 #include "SurfaceReconstruction/Scene/View.h"
@@ -82,8 +81,9 @@ SyntheticScene::SyntheticScene(const Path &fileName, const std::vector<IReconstr
 	RandomManager::getSingleton().setSeed(RANDOM_SEED);
 	createAndSaveSamples();
 
-	const Path camFile = Path::appendChild(getResultsFolder(), mRelativeCamerasFile);
-	saveCamerasToFile(camFile);
+	// save views to file
+	MVECameraIO mveIO(Path::appendChild(getResultsFolder(), mRelativeCamerasFile));
+	mveIO.saveCamerasToFile(mViews);
 }
 
 bool SyntheticScene::getParameters(const Path &fileName)
@@ -167,7 +167,7 @@ View *SyntheticScene::createSyntheticView(const uint32 viewIdx)
 
 	// view data
 	const Vector3 up(0.0f, 1.0f, 0.0f);
-	const Vector2 principlePoint(0.5f, 0.5f);
+	const Vector2 principalPoint(0.5f, 0.5f);
 	const Real aspectRatio = (Real) mViewResolution[0] / (Real) mViewResolution[1];
 
 	// AABB for view positions
@@ -204,7 +204,7 @@ View *SyntheticScene::createSyntheticView(const uint32 viewIdx)
 	const Vector4 pHWS(pWS.x, pWS.y, pWS.z, 1.0f);
 	const Vector3 lookAt = randomManager.getUniform(mMeshAABB[0], mMeshAABB[1]);
 
-	view = new View(viewIdx, Quaternion(), pHWS, focalLength, principlePoint, aspectRatio);
+	view = new View(viewIdx, Quaternion(), pHWS, focalLength, principalPoint, aspectRatio);
 	view->getCamera().lookAt(pWS, lookAt, up);
 	return view;
 }
@@ -424,76 +424,6 @@ void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vecto
 
 	delete triangulation;
 	triangulation = NULL;
-}
-
-void SyntheticScene::saveCamerasToFile(const Path &fileName) const
-{
-	// view count
-	const uint32 viewCount = (uint32) mViews.size();
-    cout << "SyntheticScene:: Writing synthetic camera infos of " << viewCount << " cameras: " << fileName << "...\n";
-
-    ofstream out(fileName.getString(), ios::binary);
-    if (!out.good())
-		throw FileException("Could not create a file to save data of synthetic cameras.",fileName);
-
-	// file header
-    out << "MVE camera infos 1.0\n";
-    out << "camera_count = " << viewCount << "\n";
-
-    // write all cameras infos to the file
-	Matrix3x3 rotation;
-
-    for (size_t viewIdx = 0; viewIdx < viewCount; ++viewIdx)
-    {
-        const View &view = *mViews[viewIdx];
-		const PinholeCamera &camera = view.getCamera();
-		const Vector4 pHWS = camera.getPosition();
-		const Vector3 pWS(pHWS.x, pHWS.y, pHWS.z);
-		const Vector2 &principlePoint = camera.getPrinciplePoint();
-
-		// new camera with inverted looking direction for MVE convention
-		const Vector3 viewDirection = view.getViewDirection();
-		const Vector3 targetWS = pWS - viewDirection;
-		PinholeCamera mveCamera(camera);
-		mveCamera.lookAt(pWS, targetWS, Vector3(0.0f, -1.0f, 0.0f));
-
-		// 3x3 rotation matrix
-		const Matrix4x4 viewMatrix = mveCamera.getViewMatrix();
-		for (uint32 rowIdx = 0; rowIdx < 3; ++rowIdx)
-			for (uint32 columnIdx = 0; columnIdx < 3; ++columnIdx)
-				rotation(rowIdx, columnIdx) = viewMatrix(rowIdx, columnIdx);
-		
-		//// mve rotation conventions: flip y and z -> y down and z 
-		//rotation.m10 = -rotation.m10;
-		//rotation.m11 = -rotation.m11;
-		//rotation.m12 = -rotation.m12;
-		//rotation.m20 = -rotation.m20;
-		//rotation.m21 = -rotation.m21;
-		//rotation.m22 = -rotation.m22;
-
-        // identifiers
-        out << "id = " << viewIdx << "\n";
-        out << "name = " << "view" << viewIdx << "\n";
-
-        // intrinsics
-        out << "focal_length = " << mveCamera.getFocalLength() << "\n";
-        out << "principle_point = " << principlePoint.x << " " << principlePoint.y << "\n";
-        out << "pixel_aspect_ratio = " << 1.0f << "\n";
-        out << "camera_distortion = " << 0.0f << " " << 0.0f << "\n";
-
-		// extrinsics
-        // store translation vector
-		const Vector3 translation = -(pWS * rotation);// MVE directly uses this translation vector
-        out << "translation = " << translation[AXIS_X] << " " << translation[AXIS_Y] << " " << translation[AXIS_Z] << "\n";
-		
-		// store rotation with MVE conventions
-		rotation.transpose(); // rotation in MVE format (they use column vectors and left matrices, e.g. R * t = rotatedT instead of this projects t * R = rotatedT)
-		
-        out << "rotation = ";
-        out << rotation(0, 0) << " " << rotation(0, 1) << " " << rotation(0, 2) << " ";
-        out << rotation(1, 0) << " " << rotation(1, 1) << " " << rotation(1, 2) << " ";
-        out << rotation(2, 0) << " " << rotation(2, 1) << " " << rotation(2, 2) << "\n";
-    }
 }
 
 SyntheticScene::~SyntheticScene()

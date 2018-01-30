@@ -54,7 +54,7 @@ namespace SurfaceReconstruction
 		@param pixelAspectRatio This is the ratio of width to height of the camera's image plane. Must be positive.
 		todo */
 		View(const uint32 ID, const Math::Quaternion &orientation, const Math::Vector4 &position,
-			 const Real focalLength, const Math::Vector2 &principlePoint, const Real pixelAspectRatio);
+			 const Real focalLength, const Math::Vector2 &principalPoint, const Real pixelAspectRatio);
 		
 		/** todo
 		@param ID Set this to a unique number to find / identify this particular view.

@@ -55,9 +55,6 @@ namespace SurfaceReconstruction
 		virtual bool getParameters(const Storage::Path &fileName);
 
 		/** todo */
-		void saveCamerasToFile(const Storage::Path &fileName) const;
-
-		/** todo */
 		void saveColorImage(const std::vector<Real> &depthMap, const uint32 viewIdx, const bool withNoise) const;
 
 	public:

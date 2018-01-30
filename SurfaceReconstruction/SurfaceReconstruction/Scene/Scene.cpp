@@ -587,7 +587,7 @@ void Scene::createFSSFRefiner()
 
 bool Scene::getParameters(const Path &fileName)
 {
-	const string missingParameter = "Missing parameter in synthetic scene description file: ";
+	const string missingParameter = "Missing parameter in scene description file: ";
 	ParametersManager &manager = ParametersManager::getSingleton();
 	manager.loadFromFile(fileName);
 
@@ -600,10 +600,11 @@ bool Scene::getParameters(const Path &fileName)
 	}
 	setRootFolder(temp);
 	
-	// load cameras file name
-	if (!manager.get(temp, "relativeCamerasFileName"))
-		cerr << missingParameter << "string relativeCamerasFileName = <fileName>;\n";
-	mRelativeCamerasFile = temp;
+	// load where cameras are
+	if (manager.get(temp, "relativeCamerasFileName"))
+		mRelativeCamerasFile = temp;
+	else
+		mRelativeCamerasFile = Path("");
 
 	return true;
 }
