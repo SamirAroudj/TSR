@@ -83,8 +83,10 @@ set(renderingHeaderFiles
 
 # scene sub namespace header files
 set(sceneHeaderFiles
+	${scenePath}/CameraData.h
 	${scenePath}/CapturedScene.h
 	${scenePath}/IReconstructorObserver.h
+	${scenePath}/MVECameraIO.h
 	${scenePath}/Samples.h
 	${scenePath}/Scene.h
 	${scenePath}/SyntheticScene.h
@@ -167,8 +169,10 @@ set(renderingSourceFiles
 
 # scene sub namespace source files
 set(sceneSourceFiles
+	${scenePath}/CameraData.cpp
 	${scenePath}/CapturedScene.cpp
 	${scenePath}/IReconstructorObserver.cpp
+	${scenePath}/MVECameraIO.cpp
 	${scenePath}/Samples.cpp
 	${scenePath}/Scene.cpp
 	${scenePath}/SyntheticScene.cpp

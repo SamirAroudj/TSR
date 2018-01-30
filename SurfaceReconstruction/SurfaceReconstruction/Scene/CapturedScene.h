@@ -41,9 +41,6 @@ namespace SurfaceReconstruction
 		inline CapturedScene &operator =(const CapturedScene &rhs);
 
 		/** todo */
-		void loadViews(std::map<uint32, uint32> &oldToNewViewIDs, const Storage::Path &viewsFile);
-
-		/** todo */
 		void loadMetaData(std::vector<Storage::Path> &plyCloudFileNames, const Storage::Path &fileName);
 
 		/** todo */

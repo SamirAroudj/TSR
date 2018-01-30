@@ -28,12 +28,20 @@ using namespace Utilities;
 
 const uint32 View::INVALID_ID = (uint32) -1;
 
+View::View(const CameraData &data) :
+	View(data.mViewID,
+		 data.mOrientation, Vector4(data.mPosition.x, data.mPosition.y, data.mPosition.z, 1.0f),
+		 data.mFocalLength, data.mPrinciplePoint, data.mPixelAspectRatio)
+{
+
+}
+
 View::View(const uint32 ID, const Vector3 AABB[2], const Real minSampleDistance, const Real maxSampleDistance,
-	const Real meanFOV, const Real maxFOVDeviation, const Real aspectRatio) :
+	const Real meanFOV, const Real maxFOVDeviation, const Real pixelAspectRatio) :
 		mCamera(
 			Quaternion(0, 0, 0, 1), Vector4(0, 0, 0, 1), 
 			RandomManager::getSingleton().getUniform(meanFOV - maxFOVDeviation, meanFOV + maxFOVDeviation),
-			Vector2(0.5f, 0.5f), aspectRatio),
+			Vector2(0.5f, 0.5f), pixelAspectRatio),
 		mID(ID)
 {
 	RandomManager &manager = RandomManager::getSingleton();
@@ -48,8 +56,8 @@ View::View(const uint32 ID, const Vector3 AABB[2], const Real minSampleDistance,
 }
 
 View::View(const uint32 ID, const Quaternion &orientation, const Vector4 &position,
-	const Real focalLength, const Vector2 &principlePoint, const Real aspectRatio) :
-	mCamera(orientation, position, focalLength, principlePoint, aspectRatio), mID(ID)
+	const Real focalLength, const Vector2 &principlePoint, const Real pixelAspectRatio) :
+	mCamera(orientation, position, focalLength, principlePoint, pixelAspectRatio), mID(ID)
 {
 
 }

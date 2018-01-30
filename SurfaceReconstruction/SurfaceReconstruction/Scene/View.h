@@ -12,6 +12,7 @@
 #include <vector>
 #include "Graphics/PinholeCamera.h"
 #include "Platform/Storage/File.h"
+#include "SurfaceReconstruction/Scene/CameraData.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 
 namespace SurfaceReconstruction
@@ -35,6 +36,8 @@ namespace SurfaceReconstruction
 		static Math::Vector3 getRay(const uint32 x, const uint32 y, const Math::Matrix3x3 &pixelToRayDir);
 
 	public:
+		View(const CameraData &data);
+
 		/** Creates a projective view somewhere inside sceneAABB but outside the objects described by surfaces.
 		@param ID Set this to a unique number to find / identify this particular view.
 		@param sceneAABB Set this to an axis aligned bounding box (first min, then max) to restrict the camera placement area.
@@ -42,16 +45,16 @@ namespace SurfaceReconstruction
 		@param maxSampleDistance This is the maximum distance from the ground truth surfaces to the camera position which a Sample must have during its creation otherwise it is discarded.
 		@param meanFOV Defines the mean field of view (radiance measure) which is used for random FOV creation.
 		@param maxFOVDeviation Defines the maximally possible difference between the field of view of this object and meanFOV. (radiance measure)
-		@param aspectRatio This is the ratio of width to height of the camera's image plane. Must be positive. */
+		@param pixelAspectRatio This is the ratio of width to height of the camera's image plane. Must be positive. */
 		View(const uint32 ID, const Math::Vector3 sceneAABB[2], const Real minSampleDistance, const Real maxSampleDistance,
-			const Real meanFOV, const Real maxFOVDeviation, const Real aspectRatio);
+			const Real meanFOV, const Real maxFOVDeviation, const Real pixelAspectRatio);
 
 		/** todo
 		@param ID Set this to a unique number to find / identify this particular view.
-		@param aspectRatio This is the ratio of width to height of the camera's image plane. Must be positive.
+		@param pixelAspectRatio This is the ratio of width to height of the camera's image plane. Must be positive.
 		todo */
 		View(const uint32 ID, const Math::Quaternion &orientation, const Math::Vector4 &position,
-			 const Real focalLength, const Math::Vector2 &principlePoint, const Real aspectRatio);
+			 const Real focalLength, const Math::Vector2 &principlePoint, const Real pixelAspectRatio);
 		
 		/** todo
 		@param ID Set this to a unique number to find / identify this particular view.

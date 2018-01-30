@@ -10,14 +10,11 @@
 #ifdef _DEBUG
 	#include <iostream>
 #endif // _DEBUG
-#include "Math/MathHelper.h"
-#include "Math/Matrix4x4.h"
-#include "Math/Quaternion.h"
-#include "Math/Vector2.h"
 #include "Platform/FailureHandling/FileCorruptionException.h"
 #include "Platform/MagicConstants.h"
 #include "Platform/ParametersManager.h"
 #include "SurfaceReconstruction/Scene/CapturedScene.h"
+#include "SurfaceReconstruction/Scene/MVECameraIO.h"
 #include "SurfaceReconstruction/Scene/View.h"
 #include "Utilities/HelperFunctions.h"
 #include "Utilities/PlyFile.h"
@@ -35,14 +32,17 @@ CapturedScene::CapturedScene(const Path &metaFileName, const vector<IReconstruct
 	Scene(observers)
 {
 	// load what scene / what data to be loaded
+	map<uint32, uint32> oldToNewViewIDs;
 	vector<Path> plyCloudFileNames;	
 	loadMetaData(plyCloudFileNames, metaFileName);
 
-	// load views & samples
-	const Path camFile = Path::appendChild(mFolder, mRelativeCamerasFile);
-	map<uint32, uint32> oldToNewViewIDs;
 
-	loadViews(oldToNewViewIDs, camFile);
+	// load views from some cameras file containing all cameras
+	const Path camFile = Path::appendChild(mFolder, mRelativeCamerasFile);
+	MVECameraIO loader(camFile);
+	loader.loadFromCamerasFile(mViews, oldToNewViewIDs, mInvInputRotation, mInvInputTranslation);
+
+	// load samples
 	loadSampleClouds(plyCloudFileNames, oldToNewViewIDs);
 	mSamples->computeAABB();
 }
@@ -107,122 +107,6 @@ bool CapturedScene::getParameters(const Path &fileName)
 	manager.get(mInvInputTranslation.z, "translationZ");
 
 	return true;
-}
-
-void CapturedScene::loadViews(map<uint32, uint32> &oldToNewViewIDs, const Path &camerasFileName)
-{
-	// contents of a MVE cameras file
-	const char *header				= "MVE camera infos 1.0\n";
-	const char *cameraCountFormat	= "camera_count = %d\n";
-	const char *viewIDFormat		= "id = %d\n";
-	const char *cameraNameFormat0	= "name = ";
-	const char *cameraNameFormat1	= "\n";
-	const char *focalLengthFormat	= "focal_length = " REAL_IT "\n";
-	const char *ppFormat			= "principle_point = " REAL_IT " " REAL_IT "\n";
-	const char *aspectRatioFormat	= "pixel_aspect_ratio = " REAL_IT "\n";
-	const char *distortionFormat	= "camera_distortion = " REAL_IT " " REAL_IT "\n";
-	const char *translationFormat	= "translation = " REAL_IT " " REAL_IT " " REAL_IT "\n";
-	const char *rotationFormat		= "rotation = " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT "\n";
-
-	// variables to store read data
-	string line;
-	Matrix3x3 rotation;
-	Quaternion orientation;
-	Vector3 camPosition;
-	Vector2 principlePoint;
-	Vector2 distortion;
-	Real aspectRatio;
-	Real focalLength;
-	uint32 viewID;
-	uint32 cameraCount;
-	char nameBuffer[File::READING_BUFFER_SIZE];
-
-	oldToNewViewIDs.clear();
-
-	// open the file
-	File file(camerasFileName, File::OPEN_READING, false);
-
-	// read header
-	file.readTextLine(line);
-	if (string::npos == line.find(header))
-		throw FileCorruptionException("First line of MVE cameras file is not in correct format.", camerasFileName);
-
-	if (1 != file.scanf(cameraCountFormat, &cameraCount))
-		throw FileCorruptionException("Camera count isn't provided in correct MVE cameras file format.", camerasFileName);
-	mViews.reserve(cameraCount);
-
-	// read each camera
-	uint32 newViewID = 0;
-	while (file.hasLeftData())
-	{
-		
-		if (1 != file.scanf(viewIDFormat, &viewID))
-			throw FileCorruptionException("View ID isn't provided in correct MVE cameras file format.", camerasFileName);
-		if (oldToNewViewIDs.end() != oldToNewViewIDs.find(viewID))
-			throw FileCorruptionException("Duplicate view ID. All view IDs in MVE cameras file must be unique!", camerasFileName);
-		oldToNewViewIDs[viewID] = newViewID;	
-
-		if (1 != file.scanfString(cameraNameFormat0, cameraNameFormat1, nameBuffer, File::READING_BUFFER_SIZE))
-			throw FileCorruptionException("Camera name isn't provided in correct MVE cameras file format.", camerasFileName);
-
-		if (1 != file.scanf(focalLengthFormat, &focalLength))
-			throw FileCorruptionException("Camera focal length isn't provided in correct MVE cameras file format.", camerasFileName);
-
-		if (2 != file.scanf(ppFormat, &principlePoint.x, &principlePoint.y))
-			throw FileCorruptionException("Principle point isn't provided in correct MVE cameras file format.", camerasFileName);
-
-		if (1 != file.scanf(aspectRatioFormat, &aspectRatio))
-			throw FileCorruptionException("Camera focal length isn't provided in correct MVE cameras file format.", camerasFileName);
-
-		if (2 != file.scanf(distortionFormat, &distortion.x, &distortion.y))
-			throw FileCorruptionException("Camera distortion parameters aren't provided in correct MVE cameras file format.", camerasFileName);
-
-		if (3 != file.scanf(translationFormat, &camPosition.x, &camPosition.y, &camPosition.z))
-			throw FileCorruptionException("Camera translation vector isn't provided in correct MVE cameras file format.", camerasFileName);
-
-		Real *p = (Real *) rotation.values;
-		if (9 != file.scanf(rotationFormat, p, p + 1, p + 2, p + 3, p + 4, p + 5, p + 6, p + 7, p + 8, p + 9))
-			throw FileCorruptionException("Camera rotation matrix isn't provided in correct MVE cameras file format.", camerasFileName);
-
-		// adapt camera data to this project's conventions
-		{
-			// translation = -R^-1 * cam position -> position = -R * translation (loaded rotation is R as it is (R^-1)^t = R)
-			const Vector3 temp = -camPosition * rotation;
-			camPosition = temp;
-
-			// here a camera looks along negative z-direction in order to have a local camera frame which is right handed and
-			// the camera has x pointing right and y up
-			rotation.m10 = -rotation.m10;
-			rotation.m11 = -rotation.m11;
-			rotation.m12 = -rotation.m12;
-			rotation.m20 = -rotation.m20;
-			rotation.m21 = -rotation.m21;
-			rotation.m22 = -rotation.m22;
-		}
-
-		// check parameters
-		if (EPSILON >= focalLength)
-			continue;
-
-		// transform camera into the coordinate system dataBasis
-		orientation = Math::createQuaternionFromMatrix(rotation * mInvInputRotation);
-		camPosition = camPosition * mInvInputRotation - mInvInputTranslation;
-
-		// create view
-		const Vector4 temp(camPosition.x, camPosition.y, camPosition.z, 1.0f);
-		View *newView = new View(newViewID, orientation, temp, focalLength, principlePoint, aspectRatio);
-		mViews.push_back(newView);
-		++newViewID;
-		
-		// debug output
-		#ifdef _DEBUG
-			cout << "\nRead & created view " << viewID << " " << nameBuffer;
-		#endif // _DEBUG
-	}
-
-	#ifdef _DEBUG
-		cout << endl;
-	#endif // _DEBUG
 }
 
 void CapturedScene::loadSampleClouds(const vector<Path> &plyCloudFileNames, const map<uint32, uint32> &oldToNewViewIDs)
