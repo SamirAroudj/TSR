@@ -108,7 +108,6 @@ namespace SurfaceReconstruction
 
 	private:
 		Graphics::PinholeCamera mCamera;/// Defines where the view is, its field of view and so on.
-		Math::Matrix4x4 mWSToPS;		/// Cached matrix which transforms world coordinates to pixel coordinates
 		uint32 mID;						/// Unique identifier.
 	};
 
