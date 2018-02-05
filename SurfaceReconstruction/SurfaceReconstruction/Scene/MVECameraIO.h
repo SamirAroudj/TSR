@@ -52,10 +52,14 @@ namespace SurfaceReconstruction
 		void readViewData(std::map<uint32, uint32> &oldToNewViewIDs, CameraData &data, Storage::File &file,
 			const uint32 newViewID);
 
+		int64 saveViewToMVECamerasFile(char *buffer, const int64 bufferSize, const View &view) const;
+
 	public:
+		static const char *BLOCK_IDENTIFIER_CAMERA;
+		static const char *BLOCK_IDENTIFIER_VIEW;
 		static const char *CAMERA_COUNT_FORMAT;
-		static const char *CAMERA_NAME_FORMAT_0;
-		static const char *CAMERA_NAME_FORMAT_1;
+		static const char *NAME_FORMAT_0;
+		static const char *NAME_FORMAT_1;
 		static const char *DISTORTION_FORMAT;
 		static const char *FOCAL_LENGTH_FORMAT;
 		static const char *HEADER_SIGNATURE;

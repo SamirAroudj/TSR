@@ -25,9 +25,11 @@ using namespace SurfaceReconstruction;
 using namespace std;
 using namespace Storage;
 
+const char *MVECameraIO::BLOCK_IDENTIFIER_CAMERA = "[camera]";
+const char *MVECameraIO::BLOCK_IDENTIFIER_VIEW = "[view]";
 const char *MVECameraIO::CAMERA_COUNT_FORMAT = "camera_count = %d\n";
-const char *MVECameraIO::CAMERA_NAME_FORMAT_0 = "name = ";
-const char *MVECameraIO::CAMERA_NAME_FORMAT_1 = "\n";
+const char *MVECameraIO::NAME_FORMAT_0 = "name = ";
+const char *MVECameraIO::NAME_FORMAT_1 = "\n";
 const char *MVECameraIO::DISTORTION_FORMAT = "camera_distortion = " REAL_IT " " REAL_IT "\n";
 const char *MVECameraIO::FOCAL_LENGTH_FORMAT = "focal_length = " REAL_IT "\n";
 const char *MVECameraIO::HEADER_SIGNATURE = "MVE camera infos 1.1\n";
@@ -161,8 +163,8 @@ void MVECameraIO::loadFromMetaIniFile(vector<View *> &views, map<uint32, uint32>
 		if ('#' == line[0])
 			continue;
 
-		// [camera] block start?
-		if (string::npos != line.find("[camera]"))
+		// camera block start?
+		if (string::npos != line.find(BLOCK_IDENTIFIER_CAMERA))
 		{
 			readFocalLength(cameraData, file);
 			readPixelAspectRatio(cameraData, file);
@@ -171,12 +173,15 @@ void MVECameraIO::loadFromMetaIniFile(vector<View *> &views, map<uint32, uint32>
 			continue;
 		}
 
-		// [view] block start?
-		if (string::npos != line.find("[view]"))
+		// view block start?
+		if (string::npos != line.find(BLOCK_IDENTIFIER_VIEW))
 		{
 			readViewData(oldToNewViewIDs, cameraData, file, newViewID);
 			continue;
 		}
+
+		// ignore this line
+		// todo log this
 	}
 
 	// create view
@@ -198,7 +203,9 @@ void MVECameraIO::readExtrinsics(CameraData &data, File &file,
 	Vector3 &pos = data.mPosition;
 
 	// load rotation in matrix format
-	if (9 != file.scanf(ROTATION_FORMAT, p, p + 1, p + 2, p + 3, p + 4, p + 5, p + 6, p + 7, p + 8, p + 9))
+	if (9 != file.scanf(ROTATION_FORMAT, p,     p + 1, p + 2,
+										 p + 3, p + 4, p + 5,
+										 p + 6, p + 7, p + 8))
 		throw FileCorruptionException("Camera rotation matrix isn't provided in correct camera file format.", file.getName());
 
 	// load translation vector (MVE conventions t = -R^t * cameraPos with R as row major matrix for rhs column vectors)
@@ -233,11 +240,8 @@ void MVECameraIO::readFocalLength(CameraData &data, File &file)
 
 void MVECameraIO::readPixelAspectRatio(CameraData &data, File &file)
 {
-	string line;
-	file.readTextLine(line);
-
-	if (1 != sscanf(line.c_str(), PIXEL_ASPECT_RATIO_FORMAT, &data.mPixelAspectRatio))
-			throw FileCorruptionException("Camera focal length isn't provided in correct camera file format.", file.getName());
+	if (1 != file.scanf(PIXEL_ASPECT_RATIO_FORMAT, &data.mPixelAspectRatio))
+		throw FileCorruptionException("Camera focal length isn't provided in correct camera file format.", file.getName());
 }
 
 void MVECameraIO::readPrincipalPoint(CameraData &data, File &file)
@@ -262,7 +266,7 @@ void MVECameraIO::readViewData(map<uint32, uint32> &oldToNewViewIDs, CameraData 
 	data.mViewID = newViewID;
 
 	// set view name
-	if (1 != file.scanfString(CAMERA_NAME_FORMAT_0, CAMERA_NAME_FORMAT_1, nameBuffer, File::READING_BUFFER_SIZE))
+	if (1 != file.scanfString(NAME_FORMAT_0, NAME_FORMAT_1, nameBuffer, File::READING_BUFFER_SIZE))
 		throw FileCorruptionException("Camera name isn't provided in correct camera file format.", file.getName());
 	data.mName = nameBuffer;
 }
@@ -277,62 +281,79 @@ void MVECameraIO::clear(vector<View *> &views, map<uint32, uint32> &oldToNewView
 
 void MVECameraIO::saveCamerasToFile(const vector<View *> &views) const
 {
-	// view count
+	// view count & allocate memory for output
 	const uint32 viewCount = (uint32) views.size();
-	cout << "SyntheticScene:: Writing synthetic camera infos of " << viewCount << " cameras: " << mPath << "...\n";
+	const uint32 lineCount = 2 + viewCount * 8;
+	const int64 bufferSize = File::READING_BUFFER_SIZE * lineCount;
+	char *buffer = new char[bufferSize];
+	int64 byteCount = 0;
 
-	ofstream out(mPath.getString(), ios::binary);
-	if (!out.good())
-		throw FileException("Could not create a file to save data of synthetic cameras.", mPath);
+	// header
+	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, HEADER_SIGNATURE);
+	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, CAMERA_COUNT_FORMAT, viewCount);
 
-	// file header
-	out << HEADER_SIGNATURE;
-	out << "camera_count = " << viewCount << "\n";
-	out << "\n";
-
+	// body = cameras' data
 	// write all cameras infos to the file
-	Matrix3x3 rotation;
-
-	for (size_t viewIdx = 0; viewIdx < viewCount; ++viewIdx)
+	for (size_t viewIdx = 0; viewIdx < viewCount && byteCount < bufferSize; ++viewIdx)
 	{
-		const View &view = *views[viewIdx];
-		const PinholeCamera &camera = view.getCamera();
-		const Vector4 pHWS = camera.getPosition();
-		const Vector3 pWS(pHWS.x, pHWS.y, pHWS.z);
-		const Vector2 &principalPoint = camera.getPrincipalPoint();
-
-		// new camera with inverted looking direction for MVE convention
-		const Vector3 viewDirection = view.getViewDirection();
-		const Vector3 targetWS = pWS - viewDirection;
-
-		// output intrinsics
-		out << "focal_length = " << camera.getFocalLength() << "\n";
-		out << "pixel_aspect = " << 1.0f << "\n";
-		out << "principal_point = " << principalPoint.x << " " << principalPoint.y << "\n";
-		out << "camera_distortion = " << 0.0f << " " << 0.0f << "\n";
-
-		// convert extrinsics according to MVE conventions
-		PinholeCamera mveCamera(camera);
-		mveCamera.lookAt(pWS, targetWS, Vector3(0.0f, -1.0f, 0.0f)); // mve rotation conventions: flip y and z -> y down and z
-		
-		const Matrix4x4 viewMatrix = mveCamera.getViewMatrix();
-		for (uint32 rowIdx = 0; rowIdx < 3; ++rowIdx)
-			for (uint32 columnIdx = 0; columnIdx < 3; ++columnIdx)
-				rotation(rowIdx, columnIdx) = viewMatrix(rowIdx, columnIdx);
-
-		const Vector3 translation = -(pWS * rotation);// MVE directly uses this translation vector
-		rotation.transpose(); // rotation in MVE format (they use column vectors and left matrices, e.g. R * t = rotatedT instead of this projects t * R = rotatedT)
-
-		// output extrinsics
-		out << "rotation = ";
-		out << rotation(0, 0) << " " << rotation(0, 1) << " " << rotation(0, 2) << " ";
-		out << rotation(1, 0) << " " << rotation(1, 1) << " " << rotation(1, 2) << " ";
-		out << rotation(2, 0) << " " << rotation(2, 1) << " " << rotation(2, 2) << "\n";
-
-		out << "translation = " << translation[AXIS_X] << " " << translation[AXIS_Y] << " " << translation[AXIS_Z] << "\n";
-
-		// identifiers
-		out << "id = " << viewIdx << "\n";
-		out << "name = " << "v" << viewIdx << "\n\n";
+		buffer[byteCount++] = '\n';
+		byteCount += saveViewToMVECamerasFile(buffer + byteCount, bufferSize - byteCount, *views[viewIdx]);
 	}
+
+	// todo log this
+	// save to file
+	cout << "SyntheticScene:: Writing synthetic camera infos of " << viewCount << " cameras: " << mPath << "...\n";
+	File file(mPath, File::CREATE_WRITING, false);
+	file.write(buffer, sizeof(char), byteCount);
+
+	// free resources
+	delete [] buffer;
+	buffer = NULL;
+}
+
+int64 MVECameraIO::saveViewToMVECamerasFile(char *buffer, const int64 bufferSize, const View &view) const
+{
+	// get camera data
+	const PinholeCamera &camera = view.getCamera();
+	const Vector3 &viewDirection = view.getViewDirection();
+	const Vector3 pWS(camera.getPosition().x, camera.getPosition().y, camera.getPosition().z);
+	const Vector2 &principalPoint = camera.getPrincipalPoint();
+
+	// output intrinsics
+	uint32 byteCount = 0;
+	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, FOCAL_LENGTH_FORMAT, camera.getFocalLength());
+	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, PIXEL_ASPECT_RATIO_FORMAT, 1.0f);
+	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, PRINCIPAL_POINT_FORMAT, principalPoint.x, principalPoint.y);
+	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, DISTORTION_FORMAT, 0.0f, 0.0f);
+
+	// convert extrinsics according to MVE conventions
+	const Vector3 targetWS = pWS - viewDirection; // inverted due to difference to MVE conventions
+	PinholeCamera mveCamera(camera);
+	mveCamera.lookAt(pWS, targetWS, Vector3(0.0f, -1.0f, 0.0f)); // mve rotation conventions: flip y and z -> y down and z
+
+	const Matrix4x4 &viewMatrix = mveCamera.getViewMatrix();
+	Matrix3x3 rotation;
+	for (uint32 rowIdx = 0; rowIdx < 3; ++rowIdx)
+		for (uint32 columnIdx = 0; columnIdx < 3; ++columnIdx)
+			rotation(rowIdx, columnIdx) = viewMatrix(rowIdx, columnIdx);
+
+	const Vector3 translation = -(pWS * rotation);// MVE directly uses this translation vector (used for conversion of 3D points in view space to 3D points in world space)
+	rotation.transpose(); // rotation in MVE format (they use column vectors and left matrices, e.g. R * t = rotatedT instead of this projects t * R = rotatedT)
+
+	 // output extrinsics
+	const Real *p = rotation.getData();
+	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, ROTATION_FORMAT,	*p,       *(p + 1), *(p + 2),
+																						*(p + 3), *(p + 4), *(p + 5),
+																						*(p + 6), *(p + 7), *(p + 8));
+	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, TRANSLATION_FORMAT, translation.x, translation.y, translation.z);
+
+	// view ID & name
+	const uint32 &viewID = view.getID();
+	const string name = Scene::getIDString(viewID);
+	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, VIEW_ID_FORMAT, viewID);
+	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, NAME_FORMAT_0);
+	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, name.c_str());
+	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, NAME_FORMAT_1);
+
+	return byteCount;
 }
