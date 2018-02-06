@@ -249,61 +249,6 @@ bool Scene::reconstruct()
 	return true;
 }
 
-//void Scene::eraseSamplesInEmptySpace()
-//{
-//	cout << "Starting to erase free space outlier surface samples." << endl;
-//	vector<uint32> sampleOffsets(mSamples->getCount() + 1);
-//	vector<uint32> doomedSamples;
-//
-//	while (true)
-//	{
-//		// sample offsets for deletion of outliers in free space and corresponding compaction of samples
-//		const uint32 oldSampleCount = (uint32) mSamples->getCount();
-//		sampleOffsets.resize(oldSampleCount + 1);
-//	
-//		// find samples in free space & erase them from these nodes
-//		mTree->eraseSamplesInNodes(sampleOffsets.data(), mOccupancy->getNodeStates(), oldSampleCount, Occupancy::NODE_FLAG_EMPTY);
-//		const uint32 doomedSampleCount = sampleOffsets[oldSampleCount];
-//		if (0 == doomedSampleCount)
-//			return;
-//	
-//		// remove outliers from occupancy & samples
-//		doomedSamples.resize(doomedSampleCount);
-//		#pragma omp parallel for
-//		for (int64 sampleIdx = 0; sampleIdx < oldSampleCount; ++sampleIdx)
-//		{
-//			const uint32 offset = sampleOffsets[sampleIdx];
-//			if (offset != sampleOffsets[sampleIdx + 1])
-//				doomedSamples[offset] = (uint32) sampleIdx;
-//		}
-//
-//		mOccupancy->eraseSamples(doomedSamples.data(), doomedSampleCount);
-//		mSamples->compact(sampleOffsets.data());
-//
-//		// output
-//		const uint32 newSampleCount = mSamples->getCount();
-//		const uint32 removalCount = sampleOffsets[oldSampleCount];
-//		cout << "Finished removal iteration of free space outliers.\n";
-//		cout << "Number of removed outliers: " << removalCount << ", new sample count: " << newSampleCount << "\n";
-//	}
-//
-//	cout << flush;
-//}
-
-void Scene::checkSamples()
-{
-	const int64 sampleCount = mSamples->getCount();
-
-	#pragma omp parallel for
-	for (int64 sampleIdx = 0; sampleIdx < sampleCount; ++sampleIdx)
-	{
-		const Real &scale = mSamples->getScale((uint32) sampleIdx);
-		assert(scale > 0.0f);
-		if (0.0f >= scale)
-			throw Exception("Invalid (non-positive) sample scale detected.");
-	}
-}
-
 void Scene::refine(const ReconstructionType type)
 {	
 	// refine reconstruction
@@ -479,21 +424,6 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 			cout << "There is no saved free space representation which could be loaded." << endl;
 		}
 	}
-
-	//if (mOccupancy)
-	//{
-	//	try
-	//	{
-	//		Samples *samples = new Samples(beginning + "SamplesFiltered.Samples");
-	//		delete mSamples;
-	//		mSamples = samples;
-	//	}
-	//	catch (Exception &exception)
-	//	{
-	//		cout << exception;
-	//		cout << "There are no saved with free space filtered samples which could be loaded." << endl;
-	//	}
-	//}
 
 	// there might be a ground truth which can be loaded
 	Path fileName;

@@ -54,6 +54,8 @@ Samples::Samples(const Path &fileName) :
 }
 
 Samples::Samples() :
+	mAABBWS{Vector3(REAL_MAX, REAL_MAX, REAL_MAX), Vector3(-REAL_MAX, -REAL_MAX, -REAL_MAX)},
+	mMaxRelativeSamplingDistance(1.0f),
 	mViewConeCount(0), mViewsPerSample(-1)
 {
 	// required user parameters
@@ -71,7 +73,6 @@ Samples::Samples() :
 	{
 		message += samplingDistanceName;
 		message += ", choosing 1.0\n";
-		mMaxRelativeSamplingDistance = 1.0f;
 	}
 
 	cerr << message << endl;
@@ -118,6 +119,21 @@ void Samples::addToAABB(Vector3 AABB[2], const uint32 sampleIdx) const
 
 	AABB[0] = AABB[0].minimum(sampleMin);
 	AABB[1] = AABB[1].maximum(sampleMax);
+}
+
+void Samples::check()
+{
+	const int64 sampleCount = getCount();
+
+	// check sample scale / samples' 3D footprint sizes
+	#pragma omp parallel for
+	for (int64 sampleIdx = 0; sampleIdx < sampleCount; ++sampleIdx)
+	{
+		const Real &scale = getScale((uint32) sampleIdx);
+		assert(scale > 0.0f);
+		if (scale <= 0.0f)
+			throw Exception("Invalid (non-positive) sample scale detected.");
+	}
 }
 
 void Samples::computeAABB()

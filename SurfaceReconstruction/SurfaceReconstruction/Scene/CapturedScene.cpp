@@ -41,7 +41,6 @@ CapturedScene::CapturedScene(const Path &metaFileName, const vector<IReconstruct
 
 	// load samples
 	loadSampleClouds(plyCloudFileNames, oldToNewViewIDs);
-	mSamples->computeAABB();
 }
 
 void CapturedScene::loadMetaData(vector<Path> &plyCloudFileNames, const Path &fileName)
@@ -138,15 +137,23 @@ void CapturedScene::loadSampleClouds(const vector<Path> &plyCloudFileNames, cons
 	for (uint32 fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 		loadSampleCloud(plyCloudFileNames[fileIdx]);
 
+	// no samples?
+	if (!mSamples)
+		return;
+	mSamples->check();
+
 	// transform samples
 	const uint32 sampleCount = mSamples->getCount();
 	#pragma omp parallel for
 	for (int64 sampleIdx = 0; sampleIdx < sampleCount; ++sampleIdx)
 		mSamples->transform((uint32) sampleIdx, mInvInputRotation, -mInvInputTranslation);
 
+	// update and count parent view links
 	mSamples->updateParentViews(oldToNewViewIDs);
 	mSamples->computeParentViewCount();
-	checkSamples();
+
+	// world space AABB of all samples
+	mSamples->computeAABB();
 }
 
 void CapturedScene::loadSampleCloud(const Path &plyCloudFileName)

@@ -56,6 +56,9 @@ namespace SurfaceReconstruction
 		@param sampleIdx Identifies the sample. Must be a global index relative to the list of all scene samples.**/
 		void addToAABB(Math::Vector3 AABB[2], const uint32 sampleIdx) const;
 
+		/** Checks whether sample properties look valid. */
+		void check();
+
 		/** Removes samples according to entered offsets. 
 		@param sampleOffsets todo*/
 		void compact(const uint32 *sampleOffsets);
@@ -99,16 +102,6 @@ namespace SurfaceReconstruction
 		/** Returns the number of samples represented by this object.
 		@return Returns the number of samples represented by this object.*/
 		inline uint32 getCount() const;
-
-		///** Computes the distance between a set of samples and a point in world space.
-		//	The samples are considered to have a spherical extents with a size according to their scale.
-		//@param todo
-		//@return Returns the minimum of the distances between positionWS and all sample spheres*/
-		//Real getDistance(const std::vector<uint32> &sampleSet, const Math::Vector3 &positionWS) const;
-
-		//Real getDistanceConfidence(const uint32 sampleIdx, const uint32 parentViewIdx = 0) const;
-
-		//Real getDistanceCosts(const uint32 sampleIdx0, const uint32 sampleIdx1) const;
 
 		/** Computes the Euclidean distance between the world space point p and the specified Sample object which is treated like an infinitely large plane.
 		@param pWS Set this to the world space point you want to know the distance for. (relative to the specified Sample plane)

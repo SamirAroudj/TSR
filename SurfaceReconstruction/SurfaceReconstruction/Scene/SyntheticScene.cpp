@@ -275,9 +275,9 @@ void SyntheticScene::createAndSaveSamples()
 		++viewIdx;
 	}
 	
+	mSamples->check();
 	mSamples->computeParentViewCount();
 	mSamples->computeAABB();
-	checkSamples();
 }
 
 bool SyntheticScene::fill(vector<Real> &depthMap, vector<Vector3> &positionsWSMap,

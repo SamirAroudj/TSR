@@ -151,9 +151,6 @@ namespace SurfaceReconstruction
 		/** Creates an empty scene with a default name.*/
 		Scene(const std::vector<IReconstructorObserver *> &observers);
 
-		/** Checks that sample properties are valid. */
-		void checkSamples();
-
 		/** Frees allocated memory and sets pointers to NULL. */
 		void clear();
 
@@ -163,9 +160,6 @@ namespace SurfaceReconstruction
 		/** Gets synthetic scene description from a parameters file.
 		@param fileName Describes where to create the scene, what data to load, how to create the scene, etc.*/
 		virtual bool getParameters(const Storage::Path &fileName);
-
-		///** todo */
-		//void eraseSamplesInEmptySpace();
 
 		/** todo */
 		void loadFromFile(const Storage::Path &rootFolder, const Storage::Path &FSSFReconstruction);
