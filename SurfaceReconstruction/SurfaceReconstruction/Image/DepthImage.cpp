@@ -12,6 +12,7 @@
 #include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Image/DepthImage.h"
 #include "SurfaceReconstruction/Image/MVEIHeader.h"
+#include "Utilities/HelperFunctions.h"
 
 using namespace FailureHandling;
 using namespace Math;
@@ -108,26 +109,12 @@ DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
 
 	// convert the data
 	const uint32 pixelCount = header.mSize.getElementCount();
-	mDepths = new Real[pixelCount];
-
 	if (MVEIHeader::MVE_FLOAT == header.mType)
-	{
-		const float *floatData = (float *) data;
-		for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
-			mDepths[pixelIdx] = floatData[pixelIdx];
-		delete [] floatData;
-		floatData = NULL;
-	}
+		mDepths = Utilities::convert<Real, float>(data, pixelCount);
+	else if (MVEIHeader::MVE_DOUBLE == header.mType)
+		mDepths = Utilities::convert<Real, double>(data, pixelCount);
 	else
-	{
-		const double *doubleData = (double *) data;
-		for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
-			mDepths[pixelIdx] = doubleData[pixelIdx];
-		delete [] doubleData;
-		doubleData = NULL;
-	}
-	data = NULL;
-
+		throw FileCorruptionException("MVE image for depth image creation! Only supported data types are float and double.", imageFileName);
 }
 
 void DepthImage::saveAsMVEFloatImage(const Path &fileName, const bool invertX, const bool invertY, float *temporaryStorage)

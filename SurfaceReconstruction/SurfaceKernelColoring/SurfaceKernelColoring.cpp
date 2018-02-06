@@ -355,8 +355,9 @@ void SurfaceKernelColoring::clearMeshColors()
 void SurfaceKernelColoring::saveMesh()
 {
 	// output mesh name
-	char buffer[1000];
-	sprintf(buffer, "%.4u", mOutputMeshCounter);
+	const uint32 BUFFER_SIZE = 100;
+	char buffer[BUFFER_SIZE];
+	snprintf(buffer, BUFFER_SIZE, "%.4u", mOutputMeshCounter);
 	const string counter = buffer;
 	const string name = counter + mMeshName;
 
