@@ -96,27 +96,18 @@ const Vector3 View::getViewDirection() const
 void View::loadFromFile(File &file, const Path &fileName)
 {
 	// load camera data
-	Real temp[3];
+	Real temp[4];
 	Quaternion ori;
 	Vector3 pos;
 
-	file.read(temp, sizeof(Real) * 3, sizeof(Real), 3);
+	file.read(temp, sizeof(Real) * 4, sizeof(Real), 4);
 	file.read(&ori, sizeof(Quaternion), sizeof(Quaternion), 1);
 	file.read(&pos, sizeof(Vector3), sizeof(Vector3), 1);
 	
 	// get focalLenth & principal point
 	const Vector2 principalPoint(temp[0], temp[1]);
 	const Real focalLength = temp[2];
-
-	// compute aspect ratio
-	const ColorImage *image = getColorImage("undistorted", 0);
-	//if (!image) todo
-	//{
-	//	string message = "Could not load the image for a view to determine its aspect ratio.";
-	//	message += " View: " + getIDString(mID);
-	//	throw FileException(message, fileName);
-	//} todo 
-	const Real aspectRatio = (image ? (Real) image->getSize()[0] / (Real) image->getSize()[1] : 1.0f);
+	const Real pixelAspectRatio = temp[3];
 
 	// update camera
 	// extrinsic camera parameters
@@ -124,7 +115,7 @@ void View::loadFromFile(File &file, const Path &fileName)
 	mCamera.setPosition(pos.x, pos.y, pos.z, 1.0f);
 
 	// intrinsic camera parameters
-	mCamera.setProjectionProperties(focalLength, aspectRatio);
+	mCamera.setProjectionProperties(focalLength, pixelAspectRatio);
 	mCamera.setPrincipalPoint(principalPoint);
 	
 //	cout << "Loaded a view with (focal length, principal point, aspectRatio, position, orientation) = (" <<
@@ -139,18 +130,19 @@ void View::loadFromFile(File &file, const Path &fileName)
 void View::saveToFile(File &file) const
 {
 	// save camera data
-	const Real temp[3] =
+	const Real temp[4] =
 	{
 		mCamera.getPrincipalPoint().x,
 		mCamera.getPrincipalPoint().y,
-		mCamera.getFocalLength()
+		mCamera.getFocalLength(),
+		mCamera.getAspectRatio()
 	};
 
-	const Vector4		&camWS	= mCamera.getPosition();
-	const Quaternion	&ori	= mCamera.getOrientation();
-	const Vector3		&pos	= Vector3(camWS.x, camWS.y, camWS.z);
+	const Vector4 &camWS = mCamera.getPosition();
+	const Quaternion &ori = mCamera.getOrientation();
+	const Vector3 &pos = Vector3(camWS.x, camWS.y, camWS.z);
 
-	file.write(temp, sizeof(Real), 3);
+	file.write(temp, sizeof(Real), 4);
 	file.write(&ori, sizeof(Quaternion), 1);
 	file.write(&pos, sizeof(Vector3), 1);
 }

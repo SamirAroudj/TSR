@@ -42,8 +42,11 @@ namespace SurfaceReconstruction
 
 		void loadCameras(std::map<uint32, uint32> &oldToNewViewIDs);
 
+		void loadImages(const std::vector<uint32> &imagesScales);
+
 		/** todo */
-		void loadMetaData(std::vector<Storage::Path> &plyCloudFileNames, const Storage::Path &fileName);
+		void loadMetaData(std::vector<Storage::Path> &plyCloudFileNames, std::vector<uint32> &imageScales,
+			const Storage::Path &fileName);
 
 		/** todo */
 		void loadSampleCloud(const Storage::Path &plyCloudFileName);
@@ -60,9 +63,15 @@ namespace SurfaceReconstruction
 		void readSampleProperty(Utilities::PlyFile &file, const uint32 sampleIdx,
 			const Graphics::ElementsDescription::TYPES type, const Graphics::VerticesDescription::SEMANTICS semantic);
 
+	public:
+		static const char *PARAMETER_NAME_IMAGE_SCALE;
+		static const char *PARAMETER_NAME_INPUT_ORIENTATION;
+		static const char *PARAMETER_NAME_INPUT_ORIGIN;
+		static const char *PARAMETER_NAME_PLY_FILE;
+
 	protected:
-		Math::Matrix3x3 mInvInputRotation;
-		Math::Vector3 mInvInputTranslation;
+		Math::Matrix3x3 mInputOrientation;	/// all points are transformed into the coordinate system defined by mInputOrientation and mInputOrigin via x = R^t * (inputX - origin)
+		Math::Vector3 mInputOrigin;			/// all points are transformed into the coordinate system defined by mInputOrientation and mInputOrigin via x = R^t * (inputX - origin)
 	};
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -183,7 +183,16 @@ namespace SurfaceReconstruction
 		inline Scene &operator =(const Scene &rhs);
 
 	public:
-		static const uint32 REFINEMENT_VIA_PHOTOS_MESH_OUTPUT_FREQUENCY;	/// todo
+		/// parameter names for identification in configuration files
+		static const char *PARAMETER_NAME_RELATIVE_CAMERAS_FILE;
+		static const char *PARAMETER_NAME_SCENE_FOLDER;
+		static const char *PARAMETER_NAME_TRIANGLE_ISLE_SIZE_MINIMUM;
+
+		// default parameter values in case there are no valid configurations given by the user
+		static const char *PARAMETER_VALUE_RELATIVE_CAMERAS_FILE;	/// default value for PARAMETER_RELATIVE_CAMERAS_FILE_NAME
+		static const uint32 PARAMETER_VALUE_TRIANGLE_ISLE_SIZE_MINIMUM;
+		static const uint32 PARAMETER_VALUE_REFINEMENT_VIA_PHOTOS_MESH_OUTPUT_FREQUENCY;	/// todo
+
 		static const uint32 VIEWS_FILE_VERSION;								/// Identifies the version of implementation of saving and loading of views for persistent storage.
 
 	protected:
@@ -201,7 +210,6 @@ namespace SurfaceReconstruction
 		
 		Storage::Path mFolder;				/// Defines the root scene folder. Contains scene data and is the parent folder of the folders like views containing sub folders for each view with their images. 
 		Storage::Path mRelativeCamerasFile;	/// Defines the file with the data of all cameras, file name is relative to folder.
-		std::string mImageTag;				/// Defines what kind of images are loaded (e.g. undist-L2)
 		uint32 mMinIsleSize;		/// Triangle isles (isolated, connected sets of triangles) smaller than this are removed.
 	};
 

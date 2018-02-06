@@ -122,29 +122,29 @@ void DepthImage::saveAsMVEFloatImage(const Path &fileName, const bool invertX, c
 	Image::saveAsMVEFloatImage(fileName, true, mSize, mDepths, invertX, invertY, temporaryStorage);
 }
 
-FlexibleMesh *DepthImage::triangulate(vector<vector<uint32>> &vertexNeighbors, vector<uint32> &indices, vector<uint32> &pixelToVertexIndices,
+FlexibleMesh *DepthImage::triangulate(vector<vector<uint32>> &tempVertexNeighbors, vector<uint32> &tempIndices, vector<uint32> &tempPixelToVertexIndices,
 	const vector<Vector3> &positionsWSMap, const Matrix3x3 &pixelToViewSpace, const ColorImage *image) const
 {
 	// reserve memory & clear buffers
 	const uint32 pixelCount = mSize.getElementCount();
-	pixelToVertexIndices.resize(pixelCount);
-	memset(pixelToVertexIndices.data(), -1, sizeof(uint32) * pixelCount);
-	indices.clear();
+	tempPixelToVertexIndices.resize(pixelCount);
+	memset(tempPixelToVertexIndices.data(), -1, sizeof(uint32) * pixelCount);
+	tempIndices.clear();
 
 	// compute vertex & index count & index buffer
 	uint32 vertexCount = 0;
 	for (uint32 y = 0; y < mSize[1] - 1; ++y)
 		for (uint32 x = 0; x < mSize[0] - 1; ++x)
-			vertexCount = triangulateBlock(indices, pixelToVertexIndices, vertexCount, x, y, pixelToViewSpace);
-	const uint32 indexCount = (uint32) indices.size();
+			vertexCount = triangulateBlock(tempIndices, tempPixelToVertexIndices, vertexCount, x, y, pixelToViewSpace);
+	const uint32 indexCount = (uint32) tempIndices.size();
 
 	// recompute vertex neighbors
-	vertexNeighbors.resize(vertexCount);
+	tempVertexNeighbors.resize(vertexCount);
 	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
-		vertexNeighbors[vertexIdx].clear();
-	FlexibleMesh::findVertexNeighbors(vertexNeighbors.data(), indices.data(), indexCount);
+		tempVertexNeighbors[vertexIdx].clear();
+	FlexibleMesh::findVertexNeighbors(tempVertexNeighbors.data(), tempIndices.data(), indexCount);
 
-	return createFlexibleMesh(vertexNeighbors, indices, pixelToVertexIndices, positionsWSMap, vertexCount, image);
+	return createFlexibleMesh(tempVertexNeighbors, tempIndices, tempPixelToVertexIndices, positionsWSMap, vertexCount, image);
 }
 
 uint32 DepthImage::triangulateBlock(vector<uint32> &indices, vector<uint32> &pixelToVertexIndices, uint32 vertexCount,

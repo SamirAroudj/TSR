@@ -34,7 +34,16 @@ using namespace Storage;
 using namespace SurfaceReconstruction;
 using namespace Utilities;
 
-const uint32 Scene::REFINEMENT_VIA_PHOTOS_MESH_OUTPUT_FREQUENCY = 25;
+// parameter names
+const char *Scene::PARAMETER_NAME_RELATIVE_CAMERAS_FILE = "relativeCamerasFileName";
+const char *Scene::PARAMETER_NAME_TRIANGLE_ISLE_SIZE_MINIMUM = "Scene::minimumTriangleIsleSize";
+const char *Scene::PARAMETER_NAME_SCENE_FOLDER = "sceneFolder";
+
+// default parameter values
+const char *Scene::PARAMETER_VALUE_RELATIVE_CAMERAS_FILE = "Cameras.txt";
+
+const uint32 Scene::PARAMETER_VALUE_REFINEMENT_VIA_PHOTOS_MESH_OUTPUT_FREQUENCY = 25;
+const uint32 Scene::PARAMETER_VALUE_TRIANGLE_ISLE_SIZE_MINIMUM = 2500;
 const uint32 Scene::VIEWS_FILE_VERSION = 0;
 
 string Scene::getIDString(const uint32 viewID)
@@ -69,7 +78,7 @@ const string Scene::getLocalImageName(const string &tag, const uint32 scale, con
 	const char *colorImageEnding = ".png";
 	const char *MVEImageEnding = ".mvei";
 
-	// special case
+	// special case: color image scale 0 (no downscaling)
 	if (colorImage && 0 == scale)
 		return (tag + colorImageEnding);
 
@@ -100,30 +109,23 @@ Scene::Scene(const vector<IReconstructorObserver *> &observers) :
 	mTree(NULL),
 	mRefinerObservers(observers),
 	mFolder(""),
-	mImageTag("undistorted"),
-	mRelativeCamerasFile("Cameras.txt")
+	mRelativeCamerasFile(PARAMETER_VALUE_RELATIVE_CAMERAS_FILE),
+	mMinIsleSize(PARAMETER_VALUE_TRIANGLE_ISLE_SIZE_MINIMUM)
 {
 	for (uint32 meshIdx = 0; meshIdx < RECONSTRUCTION_TYPE_COUNT; ++meshIdx)
 		mReconstructions[meshIdx] = NULL;
 	
 	// required parameters
-	const string isleSizeName = "Scene::minimumTriangleIsleSize";
-
 	// get required parameters
 	const ParametersManager &manager = ParametersManager::getSingleton();
-	const bool loadedIsleSize = manager.get(mMinIsleSize, isleSizeName);
+	const bool loadedIsleSize = manager.get(mMinIsleSize, PARAMETER_NAME_TRIANGLE_ISLE_SIZE_MINIMUM);
 	if (loadedIsleSize)
 		return;
 
 	// error handling
 	string message = "Scene: Could not load all parameters:\n";
-	
 	if (!loadedIsleSize)
-	{
-		message += isleSizeName;
-		message += ", choosing 2500\n";
-		mMinIsleSize = 2500;
-	}
+		message += PARAMETER_NAME_TRIANGLE_ISLE_SIZE_MINIMUM;
 
 	cerr << message << endl;
 }
@@ -523,18 +525,16 @@ bool Scene::getParameters(const Path &fileName)
 
 	// load scene folder
 	string temp; 
-	if (!manager.get(temp, "sceneFolder"))
+	if (!manager.get(temp, PARAMETER_NAME_SCENE_FOLDER))
 	{
-		cerr << missingParameter << "string sceneFolder = <folder>;\n";
+		cerr << missingParameter << "string " << PARAMETER_NAME_SCENE_FOLDER << " = <folder>;\n";
 		return false;
 	}
 	setRootFolder(temp);
 	
 	// load where cameras are
-	if (manager.get(temp, "relativeCamerasFileName"))
+	if (manager.get(temp, PARAMETER_NAME_RELATIVE_CAMERAS_FILE))
 		mRelativeCamerasFile = temp;
-	else
-		mRelativeCamerasFile = Path("");
 
 	return true;
 }

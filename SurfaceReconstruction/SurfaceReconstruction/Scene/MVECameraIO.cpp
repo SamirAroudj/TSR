@@ -229,7 +229,7 @@ void MVECameraIO::readExtrinsics(CameraData &data, File &file,
 
 	// transform camera into the coordinate system dataBasis
 	data.mOrientation = Math::createQuaternionFromMatrix(rotation * inverseInputRotation);
-	pos = pos * inverseInputRotation - inverseInputTranslation;
+	pos = pos * inverseInputRotation + inverseInputTranslation;
 }
 
 void MVECameraIO::readFocalLength(CameraData &data, File &file)

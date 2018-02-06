@@ -13,6 +13,8 @@
 #include "Platform/FailureHandling/FileCorruptionException.h"
 #include "Platform/MagicConstants.h"
 #include "Platform/ParametersManager.h"
+#include "SurfaceReconstruction/Image/ColorImage.h"
+#include "SurfaceReconstruction/Image/DepthImage.h"
 #include "SurfaceReconstruction/Scene/CapturedScene.h"
 #include "SurfaceReconstruction/Scene/MVECameraIO.h"
 #include "SurfaceReconstruction/Scene/View.h"
@@ -28,12 +30,18 @@ using namespace Storage;
 using namespace SurfaceReconstruction;
 using namespace Utilities;
 
+const char *CapturedScene::PARAMETER_NAME_IMAGE_SCALE = "imageScale";
+const char *CapturedScene::PARAMETER_NAME_INPUT_ORIENTATION = "inputOrientation";
+const char *CapturedScene::PARAMETER_NAME_INPUT_ORIGIN = "inputOrigin";
+const char *CapturedScene::PARAMETER_NAME_PLY_FILE = "plyFile";
+
 CapturedScene::CapturedScene(const Path &metaFileName, const vector<IReconstructorObserver *> &observers) :
 	Scene(observers)
 {
 	// load what scene / what data to be loaded
-	vector<Path> plyCloudFileNames;	
-	loadMetaData(plyCloudFileNames, metaFileName);
+	vector<Path> plyCloudFileNames;
+	vector<uint32> imageScales;
+	loadMetaData(plyCloudFileNames, imageScales, metaFileName);
 
 	// load cameras & create views
 	map<uint32, uint32> oldToNewViewIDs;
@@ -41,28 +49,48 @@ CapturedScene::CapturedScene(const Path &metaFileName, const vector<IReconstruct
 
 	// load samples
 	loadSampleClouds(plyCloudFileNames, oldToNewViewIDs);
+
+	// load images
+	loadImages(imageScales);
 }
 
-void CapturedScene::loadMetaData(vector<Path> &plyCloudFileNames, const Path &fileName)
+void CapturedScene::loadMetaData(vector<Path> &plyCloudFileNames, vector<uint32> &imageScales,
+	const Path &fileName)
 {
 	// get parameters
 	if (!getParameters(fileName))
 		return;
 
-	// load ply file names
+	// load ply file names and scales of images to determine what images are loaded
 	File file(fileName, File::OPEN_READING, false);
 	string textLine;
 	vector<string> parts;
 
 	while (file.readTextLine(textLine))
 	{
+		// get & check parameter parts: type name = value;
 		Utilities::split(parts, textLine, " \t");
-		if ("string" != parts[0] || "plyFile" != parts[1] || "=" != parts[2])
+		if (parts.size() != 4)
 			continue;
-
-		const string fileName = parts[3].substr(0, parts[3].find_last_of(";"));
-		const Path path(fileName);
-		plyCloudFileNames.push_back(path);
+		if (parts[2] != "=")
+			continue;
+		
+		// some ply file or image tag?
+		const string value = parts[3].substr(0, parts[3].find_last_of(";"));
+		if (parts[0] == "string" && parts[1] == PARAMETER_NAME_PLY_FILE)
+		{
+			const Path path(value);
+			plyCloudFileNames.push_back(path);
+		}
+		else if (parts[0] == "uint32" && parts[1] == PARAMETER_NAME_IMAGE_SCALE)
+		{
+			const uint32 scale = Utilities::convert<uint32>(value);
+			imageScales.push_back(scale);
+		}
+		else
+		{
+			continue;
+		}
 	}
 }
 
@@ -74,39 +102,26 @@ bool CapturedScene::getParameters(const Path &fileName)
 
 	// get parameters for captured scene
 	ParametersManager &manager = ParametersManager::getSingleton();
-	if (!manager.get(mImageTag, "imageTag"))
-		mImageTag = "undistorted.png";
 
 	// load inverse rotation matrix for input data
-	bool angles = false;
-	Real alpha = 0.0f;
-	Real beta = 0.0f;
-	Real gamma = 0.0f;
-
-	angles |= manager.get(alpha, "extrinsicAngleX");
-	angles |= manager.get(beta,  "extrinsicAngleY");
-	angles |= manager.get(gamma, "extrinsicAngleZ");
-	if (angles)
-	{
-		mInvInputRotation = Matrix3x3::createRotationFromExtrinsicAngles(alpha, beta, gamma);
-		mInvInputRotation.transpose();
-	}
+	Vector3 angles(0.0f, 0.0f, 0.0f);
+	if (manager.get(angles, PARAMETER_NAME_INPUT_ORIENTATION))
+		mInputOrientation = Matrix3x3::createRotationFromExtrinsicAngles(angles.x, angles.y, angles.z);
 	else
-	{
-		mInvInputRotation.setToIdentity();
-	}
+		mInputOrientation.setToIdentity();
 
 	// load inverse translation for input data
-	mInvInputTranslation.set(0.0f, 0.0f, 0.0f);
-	manager.get(mInvInputTranslation.x, "translationX");
-	manager.get(mInvInputTranslation.y, "translationY");
-	manager.get(mInvInputTranslation.z, "translationZ");
-
+	mInputOrigin.set(0.0f, 0.0f, 0.0f);
+	manager.get(mInputOrigin, PARAMETER_NAME_INPUT_ORIGIN);
 	return true;
 }
 
 void CapturedScene::loadCameras(map<uint32, uint32> &oldToNewViewIDs)
 {
+	Matrix3x3 inverseRotation(mInputOrientation);
+	inverseRotation.transpose();
+	const Vector3 translation = -mInputOrigin * inverseRotation;
+
 	try
 	{
 		// load cameras from single MVE cameras file?
@@ -115,7 +130,7 @@ void CapturedScene::loadCameras(map<uint32, uint32> &oldToNewViewIDs)
 			// load views from some cameras file containing all cameras
 			const Path camFile = Path::appendChild(mFolder, mRelativeCamerasFile);
 			MVECameraIO loader(camFile);
-			loader.loadFromCamerasFile(mViews, oldToNewViewIDs, mInvInputRotation, mInvInputTranslation);
+			loader.loadFromCamerasFile(mViews, oldToNewViewIDs, inverseRotation, translation);
 			return;
 		}
 	}
@@ -127,7 +142,7 @@ void CapturedScene::loadCameras(map<uint32, uint32> &oldToNewViewIDs)
 
 	// load views from folders within MVE views folder?
 	MVECameraIO loader(getViewsFolder());
-	loader.loadFromMetaIniFiles(mViews, oldToNewViewIDs, mInvInputRotation, mInvInputTranslation);
+	loader.loadFromMetaIniFiles(mViews, oldToNewViewIDs, inverseRotation, translation);
 }
 
 void CapturedScene::loadSampleClouds(const vector<Path> &plyCloudFileNames, const map<uint32, uint32> &oldToNewViewIDs)
@@ -143,10 +158,14 @@ void CapturedScene::loadSampleClouds(const vector<Path> &plyCloudFileNames, cons
 	mSamples->check();
 
 	// transform samples
+	Matrix3x3 inverseRotation(mInputOrientation);
+	inverseRotation.transpose();
+	const Vector3 translation = -mInputOrigin * inverseRotation;
 	const uint32 sampleCount = mSamples->getCount();
+
 	#pragma omp parallel for
 	for (int64 sampleIdx = 0; sampleIdx < sampleCount; ++sampleIdx)
-		mSamples->transform((uint32) sampleIdx, mInvInputRotation, -mInvInputTranslation);
+		mSamples->transform((uint32) sampleIdx, inverseRotation, translation);
 
 	// update and count parent view links
 	mSamples->updateParentViews(oldToNewViewIDs);
@@ -253,6 +272,44 @@ void CapturedScene::readSampleProperty(PlyFile &file, const uint32 sampleIdx,
 	uint32 *viewIDs = mSamples->mParentViews.data() + mSamples->mViewsPerSample * sampleIdx;
 
 	file.readVertexProperty(color, normal, position, NULL, confidence, scale, viewIDs, type, semantic);
+}
+
+#include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
+void CapturedScene::loadImages(const vector<uint32> &imageScales)
+{
+	// load the corresponding images for all views at all scales
+	const uint32 scaleCount = (uint32) imageScales.size();
+	const uint32 viewCount = (uint32) mViews.size();
+	vector<vector<uint32>> tempVertexNeighbors;
+	vector<uint32> tempIndices;
+	vector<uint32> tempPixelToVertexIndices;
+
+	for (uint32 viewIdx = 0; viewIdx < viewCount; ++viewIdx)
+	{
+		for (uint32 scaleIdx = 0; scaleIdx < scaleCount; ++scaleIdx)
+		{
+			const uint32 &scale = imageScales[scaleIdx];
+
+			// load corresponding images
+			const string colorImageName = getLocalImageName((0 == scale ? "undistorted" : "undist"), scale, true);
+			const string depthImageName = getLocalImageName("depth", scale, false);
+
+			const ColorImage *colorImage = ColorImage::request(colorImageName, colorImageName);
+			if (!colorImage)
+				continue;
+
+			const DepthImage *depthImage = DepthImage::request(depthImageName, depthImageName);
+			if (!depthImage)
+				continue;
+
+			//const ViewsImage *viewsImage = ???;
+			//if (!viewsImage)
+			//	continue;
+
+			//FlexibleMesh *triangulation = depthImage->triangulate(tempVertexNeighbors, tempIndices, tempPixelToVertexIndices,
+			//	positionsWSMap, pixelToViewSpace, colorImage);
+		}
+	}
 }
 
 CapturedScene::~CapturedScene()

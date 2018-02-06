@@ -33,7 +33,7 @@ namespace SurfaceReconstruction
 
 	public:
 		/** todo */
-		FlexibleMesh *triangulate(std::vector<std::vector<uint32>> &vertexNeighbors, std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices,
+		FlexibleMesh *triangulate(std::vector<std::vector<uint32>> &tempVertexNeighbors, std::vector<uint32> &tempIndices, std::vector<uint32> &tempPixelToVertexIndices,
 			const std::vector<Math::Vector3> &positionsWSMap, const Math::Matrix3x3 &pixelToViewSpace,
 			const ColorImage *image = NULL) const;	
 		void saveAsMVEFloatImage(const Storage::Path &fileName, 
