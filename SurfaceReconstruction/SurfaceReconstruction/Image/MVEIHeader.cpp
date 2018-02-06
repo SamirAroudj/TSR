@@ -7,6 +7,7 @@
 * of the BSD 3-Clause license. See the License.txt file for details.
 */
 
+#include <cstring>
 #include "Platform/FailureHandling/FileCorruptionException.h"
 #include "SurfaceReconstruction/Image/MVEIHeader.h"
 

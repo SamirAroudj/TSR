@@ -115,16 +115,19 @@ DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
 		const float *floatData = (float *) data;
 		for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
 			mDepths[pixelIdx] = floatData[pixelIdx];
+		delete [] floatData;
+		floatData = NULL;
 	}
 	else
 	{
 		const double *doubleData = (double *) data;
 		for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
 			mDepths[pixelIdx] = doubleData[pixelIdx];
+		delete [] doubleData;
+		doubleData = NULL;
 	}
-
-	delete [] data;
 	data = NULL;
+
 }
 
 void DepthImage::saveAsMVEFloatImage(const Path &fileName, const bool invertX, const bool invertY, float *temporaryStorage)
