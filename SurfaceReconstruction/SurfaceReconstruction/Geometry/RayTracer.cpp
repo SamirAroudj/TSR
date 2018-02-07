@@ -15,7 +15,7 @@
 #include "SurfaceReconstruction/Geometry/RayTracer.h" 
 #include "SurfaceReconstruction/Geometry/Triangle.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
-#include "SurfaceReconstruction/Scene/View.h"
+#include "SurfaceReconstruction/Scene/View/View.h"
 
 using namespace FailureHandling;
 using namespace Graphics;

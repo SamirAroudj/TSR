@@ -12,7 +12,7 @@
 #include <map>
 #include <vector>
 #include "Platform/Storage/File.h"
-#include "SurfaceReconstruction/Scene/CameraData.h"
+#include "SurfaceReconstruction/Scene/View/CameraData.h"
 
 // todo comments
 

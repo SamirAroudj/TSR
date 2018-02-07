@@ -183,31 +183,17 @@ namespace SurfaceReconstruction
 		inline Scene &operator =(const Scene &rhs);
 
 	public:
-		// file endings
-		static const char *FILE_ENDING_COLOR_IMAGE;
-		static const char *FILE_ENDING_MESH;
-		static const char *FILE_ENDING_MVE_IMAGE;
-		static const char *FILE_ENDING_OCCUPANCY;
-		static const char *FILE_ENDING_OCTREE;
-		static const char *FILE_ENDING_SAMPLES;
-		static const char *FILE_ENDING_VIEWS;
-
-		// image tags for file naming
-		static const char *IMAGE_TAG_COLOR;
-		static const char *IMAGE_TAG_COLOR_S0;
-		static const char *IMAGE_TAG_DEPTH;
-
 		/// parameter names for identification in configuration files
 		static const char *PARAMETER_NAME_RELATIVE_CAMERAS_FILE;
 		static const char *PARAMETER_NAME_SCENE_FOLDER;
 		static const char *PARAMETER_NAME_TRIANGLE_ISLE_SIZE_MINIMUM;
 
 		// default parameter values in case there are no valid configurations given by the user
-		static const char *PARAMETER_VALUE_RELATIVE_CAMERAS_FILE;	/// default value for PARAMETER_RELATIVE_CAMERAS_FILE_NAME
+		static const char *PARAMETER_VALUE_RELATIVE_CAMERAS_FILE;		/// default value for PARAMETER_RELATIVE_CAMERAS_FILE_NAME
 		static const uint32 PARAMETER_VALUE_TRIANGLE_ISLE_SIZE_MINIMUM;
 		static const uint32 PARAMETER_VALUE_REFINEMENT_VIA_PHOTOS_MESH_OUTPUT_FREQUENCY;	/// todo
 
-		static const uint32 VIEWS_FILE_VERSION;								/// Identifies the version of implementation of saving and loading of views for persistent storage.
+		static const uint32 VIEWS_FILE_VERSION;	/// Identifies the version of implementation of saving and loading of views for persistent storage.
 
 	protected:
 		StaticMesh *mGroundTruth;															/// Contains ground truth surfaces to be reconstructed.

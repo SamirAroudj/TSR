@@ -23,7 +23,7 @@
 #include "SurfaceReconstruction/Scene/Tree/Tree.h"
 #include "SurfaceReconstruction/SurfaceExtraction/ViewConeNodesChecker.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
-#include "SurfaceReconstruction/Scene/View.h"
+#include "SurfaceReconstruction/Scene/View/View.h"
 #include "SurfaceReconstruction/SurfaceExtraction/DualMarchingCells.h"
 #include "SurfaceReconstruction/SurfaceExtraction/LineChecker.h"
 #include "SurfaceReconstruction/SurfaceExtraction/Occupancy.h"

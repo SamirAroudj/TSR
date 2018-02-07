@@ -14,7 +14,7 @@
 #include "SurfaceReconstruction/Scene/Tree/Leaves.h"
 #include "SurfaceReconstruction/Scene/Tree/Nodes.h"
 #include "SurfaceReconstruction/Scene/Tree/Tree.h"
-#include "SurfaceReconstruction/Scene/View.h"
+#include "SurfaceReconstruction/Scene/View/View.h"
 
 using namespace FailureHandling;
 using namespace Math;

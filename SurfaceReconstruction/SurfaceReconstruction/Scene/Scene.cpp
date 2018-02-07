@@ -19,10 +19,11 @@
 #ifdef PCS_REFINEMENT
 	#include "SurfaceReconstruction/Refinement/PCSRefiner.h"
 #endif // PCS_REFINEMENT
+#include "SurfaceReconstruction/Scene/FileNaming.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 #include "SurfaceReconstruction/Scene/Tree/Tree.h"
-#include "SurfaceReconstruction/Scene/View.h"
+#include "SurfaceReconstruction/Scene/View/View.h"
 #include "SurfaceReconstruction/SurfaceExtraction/DualMarchingCells.h"
 #include "SurfaceReconstruction/SurfaceExtraction/Occupancy.h"
 
@@ -33,20 +34,6 @@ using namespace Platform;
 using namespace Storage;
 using namespace SurfaceReconstruction;
 using namespace Utilities;
-
-// file endings
-const char *Scene::FILE_ENDING_COLOR_IMAGE = ".png";
-const char *Scene::FILE_ENDING_MESH = ".Mesh";
-const char *Scene::FILE_ENDING_MVE_IMAGE = ".mvei";
-const char *Scene::FILE_ENDING_OCCUPANCY = ".Occupancy";
-const char *Scene::FILE_ENDING_OCTREE = ".Tree";
-const char *Scene::FILE_ENDING_SAMPLES = ".Samples";
-const char *Scene::FILE_ENDING_VIEWS = ".Views";
-
-// image tags
-const char *Scene::IMAGE_TAG_COLOR = "undist";
-const char *Scene::IMAGE_TAG_COLOR_S0 = "undistorted";
-const char *Scene::IMAGE_TAG_DEPTH = "depth";
 
 // parameter names
 const char *Scene::PARAMETER_NAME_RELATIVE_CAMERAS_FILE = "relativeCamerasFileName";
@@ -90,10 +77,10 @@ const string Scene::getLocalImageName(const string &tag, const uint32 scale, con
 {
 	// special case: color image scale 0 (no downscaling)
 	if (colorImage && 0 == scale)
-		return (tag + FILE_ENDING_COLOR_IMAGE);
+		return (tag + FileNaming::ENDING_COLOR_IMAGE);
 
 	// name = <tag>-L<scale><ending>, e.g., undist-L1.png
-	const char *ending = (colorImage ? FILE_ENDING_COLOR_IMAGE : FILE_ENDING_MVE_IMAGE);
+	const char *ending = (colorImage ? FileNaming::ENDING_COLOR_IMAGE : FileNaming::ENDING_MVE_IMAGE);
 	char scaleString[4];
 	snprintf(scaleString, 4, "-L%u", scale);
 	string name = ((tag + scaleString) + ending);
@@ -176,7 +163,7 @@ bool Scene::reconstruct()
 
 	// save mata data & views
 	const Path beginning = getFileBeginning();
-	saveViewsToFile(Path::extendLeafName(beginning, FILE_ENDING_VIEWS));
+	saveViewsToFile(Path::extendLeafName(beginning, FileNaming::ENDING_VIEWS));
 
 	// check samples
 	if (0 == sampleCount)
@@ -208,7 +195,7 @@ bool Scene::reconstruct()
 
 		// save tree & samples
 		mSamples->saveToFile(Path::extendLeafName(beginning, "SamplesReordered"), true, true);
-		mTree->saveToFiles(Path::extendLeafName(beginning, FILE_ENDING_OCTREE));
+		mTree->saveToFiles(Path::extendLeafName(beginning, FileNaming::ENDING_OCTREE));
 	}
 
 	// create scene tree and estimate free space?
@@ -218,7 +205,7 @@ bool Scene::reconstruct()
 		mOccupancy = new Occupancy(mTree);
 
 		// save filtered samples, free space & scene tree
-		mOccupancy->saveToFile(Path::extendLeafName(beginning, FILE_ENDING_OCCUPANCY));
+		mOccupancy->saveToFile(Path::extendLeafName(beginning, FileNaming::ENDING_OCCUPANCY));
 	}
 
 	if (!mReconstructions[RECONSTRUCTION_VIA_OCCUPANCIES])
@@ -347,14 +334,14 @@ void Scene::eraseSamples(const bool *inliers, const bool saveResults)
 	cout << "Saving data." << endl;
 	const Path beginning = getFileBeginning();
 
-	mSamples->saveToFile(Path::extendLeafName(beginning, "SamplesFiltered2"), true, true);
-	mTree->saveToFiles(Path::extendLeafName(beginning, FILE_ENDING_OCTREE));
-	mOccupancy->saveToFile(Path::extendLeafName(beginning, FILE_ENDING_OCCUPANCY));
+	mSamples->saveToFile(Path::extendLeafName(beginning, FileNaming::FILTERED_SAMPLES), true, true);
+	mTree->saveToFiles(Path::extendLeafName(beginning, FileNaming::ENDING_OCTREE));
+	mOccupancy->saveToFile(Path::extendLeafName(beginning, FileNaming::ENDING_OCCUPANCY));
 }
 
 Path Scene::getFileBeginning() const
 {
-	const Path childPath("Scene");
+	const Path childPath(FileNaming::RESULTS_BEGINNING);
 	return Path::appendChild(getResultsFolder(), childPath);
 }
 
@@ -371,7 +358,7 @@ const FlexibleMesh *Scene::getMostRefinedReconstruction() const
 
 Path Scene::getResultsFolder() const
 {
-	const Path resultsFolder("Results");
+	const Path resultsFolder(FileNaming::RESULTS_FOLDER);
 	return Path::appendChild(mFolder, resultsFolder);
 }
 
@@ -386,7 +373,7 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 	// there must be a valid meta, views and samples file otherwise the scene is useless
 	try
 	{
-		loadViewsFromFile(Path::extendLeafName(beginning, FILE_ENDING_VIEWS));
+		loadViewsFromFile(Path::extendLeafName(beginning, FileNaming::ENDING_VIEWS));
 	}
 	catch (Exception &exception)
 	{
@@ -401,7 +388,7 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 	// try to load the scene tree
 	try
 	{
-		mTree = new Tree(Path::extendLeafName(beginning, FILE_ENDING_OCTREE));
+		mTree = new Tree(Path::extendLeafName(beginning, FileNaming::ENDING_OCTREE));
 	}
 	catch(Exception &exception)
 	{
@@ -410,9 +397,7 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 	}	
 
 	// load the right sample set
-	string localSamplesName = (mTree ? "SamplesReordered" : "Samples");
-	localSamplesName += FILE_ENDING_SAMPLES;
-	const Path samplesPath = Path::extendLeafName(beginning, localSamplesName);
+	const Path samplesPath = (mTree ? Path::extendLeafName(beginning, "Reordered") : beginning);
 	mSamples = new Samples(samplesPath);
 
 	// try to load the free space
@@ -420,7 +405,7 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 	{
 		try
 		{
-			mOccupancy = new Occupancy(Path::extendLeafName(beginning, FILE_ENDING_OCCUPANCY));
+			mOccupancy = new Occupancy(Path::extendLeafName(beginning, FileNaming::ENDING_OCCUPANCY));
 		}
 		catch(Exception &exception)
 		{
@@ -434,7 +419,7 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 	try
 	{
 		fileName = Path::extendLeafName(beginning, "GroundTruth");
-		fileName = fileName.extendLeafName(FILE_ENDING_MESH);
+		fileName = fileName.extendLeafName(FileNaming::ENDING_MESH);
 		mGroundTruth = new StaticMesh(fileName);
 	}
 	catch (FileException &exception)
@@ -456,7 +441,7 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 		else
 		{
 			string localName = IReconstructorObserver::RECONSTRUCTION_TYPE_TEXTS[meshIdx];
-			localName += FILE_ENDING_MESH;
+			localName += FileNaming::ENDING_MESH;
 			fileName = Path::appendChild(getResultsFolder(), localName);
 		}
 

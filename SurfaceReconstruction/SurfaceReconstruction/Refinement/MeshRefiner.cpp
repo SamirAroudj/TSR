@@ -12,7 +12,7 @@
 #include "SurfaceReconstruction/Geometry/Triangle.h"
 #include "SurfaceReconstruction/Refinement/MeshRefiner.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
-#include "SurfaceReconstruction/Scene/View.h"
+#include "SurfaceReconstruction/Scene/View/View.h"
 #include "Utilities/HelperFunctions.h"
 
 using namespace Graphics;

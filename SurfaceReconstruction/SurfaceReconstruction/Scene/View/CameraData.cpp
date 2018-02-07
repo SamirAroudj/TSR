@@ -6,7 +6,7 @@
 * This software may be modified and distributed under the terms
 * of the BSD 3-Clause license. See the License.txt file for details.
 */
-#include "SurfaceReconstruction/Scene/CameraData.h"
+#include "SurfaceReconstruction/Scene/View/CameraData.h"
 
 using namespace Math;
 using namespace std;

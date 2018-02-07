@@ -12,8 +12,8 @@
 #include <vector>
 #include "Graphics/PinholeCamera.h"
 #include "Platform/Storage/File.h"
-#include "SurfaceReconstruction/Scene/CameraData.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
+#include "SurfaceReconstruction/Scene/View/CameraData.h"
 
 namespace SurfaceReconstruction
 {

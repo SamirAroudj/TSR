@@ -14,7 +14,7 @@
 #include "Platform/Platform.h"
 #include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Scene/CapturedScene.h"
-#include "SurfaceReconstruction/Scene/View.h"
+#include "SurfaceReconstruction/Scene/View/View.h"
 #include "Utilities/RandomManager.h"
 
 using namespace FailureHandling;

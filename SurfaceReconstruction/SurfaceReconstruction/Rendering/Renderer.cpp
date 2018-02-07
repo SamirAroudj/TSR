@@ -32,7 +32,7 @@
 #include "SurfaceReconstruction/Scene/Tree/Tree.h"
 #include "SurfaceReconstruction/Scene/Tree/TriangleNodesChecker.h"
 #include "SurfaceReconstruction/Scene/SyntheticScene.h"
-#include "SurfaceReconstruction/Scene/View.h"
+#include "SurfaceReconstruction/Scene/View/View.h"
 #include "SurfaceReconstruction/SurfaceExtraction/Occupancy.h"
 
 using namespace Graphics;

@@ -16,8 +16,9 @@
 #include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Image/DepthImage.h"
 #include "SurfaceReconstruction/Scene/CapturedScene.h"
-#include "SurfaceReconstruction/Scene/MVECameraIO.h"
-#include "SurfaceReconstruction/Scene/View.h"
+#include "SurfaceReconstruction/Scene/FileNaming.h"
+#include "SurfaceReconstruction/Scene/View/MVECameraIO.h"
+#include "SurfaceReconstruction/Scene/View/View.h"
 #include "Utilities/HelperFunctions.h"
 #include "Utilities/PlyFile.h"
 
@@ -294,9 +295,9 @@ void CapturedScene::loadImages(const vector<uint32> &imageScales)
 			const uint32 &scale = imageScales[scaleIdx];
 
 			// load corresponding images
-			const char *colorImageTag = (0 == scale ? IMAGE_TAG_COLOR_S0 : IMAGE_TAG_COLOR);
+			const char *colorImageTag = (0 == scale ? FileNaming::IMAGE_TAG_COLOR_S0 : FileNaming::IMAGE_TAG_COLOR);
 			const string colorImageName = getLocalImageName(colorImageTag, scale, true);
-			const string depthImageName = getLocalImageName(IMAGE_TAG_DEPTH, scale, false);
+			const string depthImageName = getLocalImageName(FileNaming::IMAGE_TAG_DEPTH, scale, false);
 
 			const ColorImage *colorImage = ColorImage::request(colorImageName, colorImageName);
 			if (!colorImage)

@@ -15,9 +15,10 @@
 #include "Platform/ParametersManager.h"
 #include "Platform/Platform.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
+#include "SurfaceReconstruction/Scene/FileNaming.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
-#include "SurfaceReconstruction/Scene/View.h"
+#include "SurfaceReconstruction/Scene/View/View.h"
 #include "Utilities/PlyFile.h"
 #include "Utilities/RandomManager.h"
 
@@ -709,7 +710,7 @@ void Samples::saveToFile(const Path &beginning, const bool saveAsPly, const bool
 	// as Stanford ply mesh?
 	if (saveAsPly)
 	{
-		const Path fileName = Path::extendLeafName(beginning, ".ply");
+		const Path fileName = Path::extendLeafName(beginning, FileNaming::ENDING_PLY);
 		PlyFile file(fileName, File::CREATE_WRITING, true);
 		file.saveTriangleMesh(ENCODING_BINARY_LITTLE_ENDIAN, true,
 			getCount(), 0, mColors.data(), mNormals.data(), mPositions.data(), 
@@ -720,7 +721,7 @@ void Samples::saveToFile(const Path &beginning, const bool saveAsPly, const bool
 	if (saveAsSamples)
 	{
 		// create file & write version
-		const Path fileName = Path::extendLeafName(beginning, ".Samples");
+		const Path fileName = Path::extendLeafName(beginning, FileNaming::ENDING_SAMPLES);
 		File file(fileName, File::CREATE_WRITING, true, FILE_VERSION);
 
 		// save sample count, views per sample & AABB

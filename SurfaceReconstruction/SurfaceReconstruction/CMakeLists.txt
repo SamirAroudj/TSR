@@ -18,6 +18,7 @@ set(refinementPath ${componentPath}/Refinement)
 set(renderingPath ${componentPath}/Rendering)
 set(scenePath ${componentPath}/Scene)
 set(sceneTreePath ${scenePath}/Tree)
+set(sceneViewPath ${scenePath}/View)
 set(surfaceExtractionPath ${componentPath}/SurfaceExtraction)
 
 
@@ -83,17 +84,15 @@ set(renderingHeaderFiles
 
 # scene sub namespace header files
 set(sceneHeaderFiles
-	${scenePath}/CameraData.h
 	${scenePath}/CapturedScene.h
+	${scenePath}/FileNaming.h
 	${scenePath}/IReconstructorObserver.h
-	${scenePath}/MVECameraIO.h
 	${scenePath}/Samples.h
 	${scenePath}/Scene.h
 	${scenePath}/SyntheticScene.h
-	${scenePath}/View.h
 )
 
-# scene tree sub namespace header files
+# scene/tree sub namespace header files
 set (sceneTreeHeaderFiles
 	${sceneTreePath}/DualCells.h
 	${sceneTreePath}/NodesChecker.h
@@ -105,6 +104,13 @@ set (sceneTreeHeaderFiles
 	${sceneTreePath}/SphereNodesChecker.h
 	${sceneTreePath}/Tree.h
 	${sceneTreePath}/TriangleNodesChecker.h
+)
+
+# scene/view sub namespace header files
+set (sceneViewHeaderFiles
+	${sceneViewPath}/CameraData.h
+	${sceneViewPath}/MVECameraIO.h
+	${sceneViewPath}/View.h
 )
 
 # surface extraction sub namespace header files
@@ -169,17 +175,15 @@ set(renderingSourceFiles
 
 # scene sub namespace source files
 set(sceneSourceFiles
-	${scenePath}/CameraData.cpp
 	${scenePath}/CapturedScene.cpp
+	${scenePath}/FileNaming.cpp
 	${scenePath}/IReconstructorObserver.cpp
-	${scenePath}/MVECameraIO.cpp
 	${scenePath}/Samples.cpp
 	${scenePath}/Scene.cpp
 	${scenePath}/SyntheticScene.cpp
-	${scenePath}/View.cpp
 )
 
-# scene tree sub namespace source files
+# scene/tree sub namespace source files
 set (sceneTreeSourceFiles
 	${sceneTreePath}/DualCells.cpp
 	${sceneTreePath}/Leaves.cpp
@@ -190,6 +194,13 @@ set (sceneTreeSourceFiles
 	${sceneTreePath}/SphereNodesChecker.cpp
 	${sceneTreePath}/Tree.cpp
 	${sceneTreePath}/TriangleNodesChecker.cpp
+)
+
+# scene/view sub namespace ource files
+set (sceneViewSourceFiles
+	${sceneViewPath}/CameraData.cpp
+	${sceneViewPath}/MVECameraIO.cpp
+	${sceneViewPath}/View.cpp
 )
 
 # surface extraction sub namespace source files
@@ -212,6 +223,7 @@ set(headerFiles
 	${renderingHeaderFiles}
 	${sceneHeaderFiles}
 	${sceneTreeHeaderFiles}
+	${sceneViewHeaderFiles}
 	${surfaceExtractionHeaderFiles}
 )
 
@@ -223,6 +235,7 @@ set(sourceFiles
 	${renderingSourceFiles}
 	${sceneSourceFiles}
 	${sceneTreeSourceFiles}
+	${sceneViewSourceFiles}
 	${surfaceExtractionSourceFiles}
 )
 
@@ -243,4 +256,5 @@ source_group("Refinement" FILES ${refinementHeaderFiles} ${refinementSourceFiles
 source_group("Rendering" FILES ${renderingHeaderFiles} ${renderingSourceFiles})
 source_group("Scene" FILES ${sceneHeaderFiles} ${sceneSourceFiles})
 source_group("Scene\\Tree" FILES ${sceneTreeHeaderFiles} ${sceneTreeSourceFiles})
+source_group("Scene\\View" FILES ${sceneViewHeaderFiles} ${sceneViewSourceFiles})
 source_group("SurfaceExtraction" FILES ${surfaceExtractionHeaderFiles} ${surfaceExtractionSourceFiles})

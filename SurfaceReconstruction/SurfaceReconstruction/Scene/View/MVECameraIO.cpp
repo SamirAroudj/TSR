@@ -14,9 +14,9 @@
 #include "Platform/FailureHandling/FileCorruptionException.h"
 #include "Platform/Storage/Directory.h"
 #include "Platform/Storage/Path.h"
-#include "SurfaceReconstruction/Scene/MVECameraIO.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
-#include "SurfaceReconstruction/Scene/View.h"
+#include "SurfaceReconstruction/Scene/View/MVECameraIO.h"
+#include "SurfaceReconstruction/Scene/View/View.h"
 
 using namespace FailureHandling;
 using namespace Graphics;

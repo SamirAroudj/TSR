@@ -21,10 +21,11 @@
 #include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Image/DepthImage.h"
 #include "SurfaceReconstruction/Refinement/MeshRefiner.h"
-#include "SurfaceReconstruction/Scene/MVECameraIO.h"
+#include "SurfaceReconstruction/Scene/FileNaming.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/SyntheticScene.h"
-#include "SurfaceReconstruction/Scene/View.h"
+#include "SurfaceReconstruction/Scene/View/MVECameraIO.h"
+#include "SurfaceReconstruction/Scene/View/View.h"
 #include "tinyxml2.h"
 #include "Utilities/PlyFile.h"
 #include "Utilities/RandomManager.h"
@@ -264,7 +265,7 @@ void SyntheticScene::createAndSaveSamples()
 		//	saveColorImage(depthMap, viewIdx, true);
 
 		// save depth map as undistorted color image and MVEI depth map
-		const Path depthMapName = getRelativeImageFileName(viewIDString, IMAGE_TAG_DEPTH, 0, false);
+		const Path depthMapName = getRelativeImageFileName(viewIDString, FileNaming::IMAGE_TAG_DEPTH, 0, false);
 		Image::saveAsMVEFloatImage(depthMapName, true, mViewResolution, depthMap.data(), false, false);
 		saveColorImage(depthMap, viewIdx, false);
 
@@ -357,7 +358,7 @@ void SyntheticScene::saveColorImage(const vector<Real> &depthMap, const uint32 v
 	// create file name
 	// file name with noise data inside?
 	char tagBuffer[File::READING_BUFFER_SIZE];
-	snprintf(tagBuffer, File::READING_BUFFER_SIZE, IMAGE_TAG_COLOR_S0);
+	snprintf(tagBuffer, File::READING_BUFFER_SIZE, FileNaming::IMAGE_TAG_COLOR_S0);
 	if (withNoise)
 		snprintf(tagBuffer + 5, File::READING_BUFFER_SIZE - 5, "Mean" REAL_IT "StdDev" REAL_IT, mDepthMapNoise[0], mDepthMapNoise[1]);
 
@@ -397,7 +398,7 @@ void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vecto
 	const PinholeCamera &camera = view.getCamera();
 
 	// load depth map & triangulate it
-	const Path colorImageName = getRelativeImageFileName(viewIdx, IMAGE_TAG_COLOR_S0, 0, true);
+	const Path colorImageName = getRelativeImageFileName(viewIdx, FileNaming::IMAGE_TAG_COLOR_S0, 0, true);
 	const ColorImage *colorImage = ColorImage::request(colorImageName.getString(), colorImageName);
 
 	DepthImage *depthMap = DepthImage::request(depthMapName.getString(), depthMapName);

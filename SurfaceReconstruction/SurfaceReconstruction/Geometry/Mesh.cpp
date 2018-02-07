@@ -11,6 +11,7 @@
 #include "Math/MathHelper.h"
 #include "Platform/Storage/File.h"
 #include "SurfaceReconstruction/Geometry/Mesh.h"
+#include "SurfaceReconstruction/Scene/FileNaming.h"
 #include "Utilities/PlyFile.h"
 
 using namespace FailureHandling;
@@ -271,11 +272,11 @@ void Mesh::loadFromFile(const Path &fileName)
 {
 	clear();	
 	
-	const string plyEnding = ".ply";
+	const string plyEnding = FileNaming::ENDING_PLY;
 	const string &name = fileName.getString();
 	const uint32 nameLength = (uint32) name.length();
 	
-	// ".Mesh" or ".ply"?
+	// FileNaming::ENDING_MESH or FileNaming::ENDING_PLY?
 	string fileNameEnding = name.substr(nameLength - plyEnding.size(), plyEnding.size());
 	const bool fromPly = (fileNameEnding == plyEnding);
 	
@@ -285,7 +286,7 @@ void Mesh::loadFromFile(const Path &fileName)
 		return;
 	}
 	
-	const string meshEnding = ".Mesh";
+	const string meshEnding = FileNaming::ENDING_MESH;
 	fileNameEnding = name.substr(nameLength - meshEnding.size(), meshEnding.size());
 	const bool fromMesh = (fileNameEnding == meshEnding);
 	if (fromMesh)
@@ -391,7 +392,7 @@ void Mesh::saveToFile(const Path &fileNameBeginning, const bool saveAsPly, const
 	// save in ply file format?
 	if (saveAsPly)
 	{
-		const Path fileName = Path::extendLeafName(fileNameBeginning, ".ply");
+		const Path fileName = Path::extendLeafName(fileNameBeginning, FileNaming::ENDING_PLY);
 		cout << "Saving " << fileName << "\n";
 
 		PlyFile file(fileName, File::CREATE_WRITING, true);
@@ -403,7 +404,7 @@ void Mesh::saveToFile(const Path &fileNameBeginning, const bool saveAsPly, const
 	// save in internal file format?
 	if (saveAsMesh)
 	{
-		const Path fileName = Path::extendLeafName(fileNameBeginning, ".Mesh");
+		const Path fileName = Path::extendLeafName(fileNameBeginning, FileNaming::ENDING_MESH);
 		cout << "Saving " << fileName << "\n";
 
 		File file(fileName, File::CREATE_WRITING, true, FILE_VERSION);
