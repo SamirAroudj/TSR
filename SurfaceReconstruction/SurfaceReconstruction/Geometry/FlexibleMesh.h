@@ -115,8 +115,6 @@ namespace SurfaceReconstruction
 		their links to triangles & triangle neighbors / all used connectivity information. */
 		void findAdjacencies();
 
-		void findScaleExtrema();
-
 		bool getAdjacentTriangleNormals(Math::Vector3 &n0, Math::Vector3 &n1, const uint32 edgeVertexIdx0, const uint32 edgeVertexIdx1) const;
 		
 		Math::Vector3 getCenterOfNeighbors(const uint32 vertexIdx) const;
@@ -223,7 +221,6 @@ namespace SurfaceReconstruction
 		void addEdgeConflict(const uint32 globalEdgeIdx, const uint32 newTriangleIdx);
 		
 		void addNewEdgeSplitTriangles(uint32 oldTriangleIndices[3], const uint32 newIdx, const uint32 replacedIdx);
-		void addTriangleToEdge(const uint32 globalEdgeIdx, const uint32 triangleIdx);
 
 		void allocateMemory(const uint32 vertexCount, const uint32 indexCount);		
 

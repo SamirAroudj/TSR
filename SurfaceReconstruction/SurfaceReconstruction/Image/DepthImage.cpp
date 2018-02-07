@@ -15,6 +15,7 @@
 #include "Utilities/HelperFunctions.h"
 
 using namespace FailureHandling;
+using namespace Graphics;
 using namespace Math;
 using namespace Storage;
 using namespace std;
@@ -122,9 +123,18 @@ void DepthImage::saveAsMVEFloatImage(const Path &fileName, const bool invertX, c
 	Image::saveAsMVEFloatImage(fileName, true, mSize, mDepths, invertX, invertY, temporaryStorage);
 }
 
-FlexibleMesh *DepthImage::triangulate(vector<vector<uint32>> &tempVertexNeighbors, vector<uint32> &tempIndices, vector<uint32> &tempPixelToVertexIndices,
-	const vector<Vector3> &positionsWSMap, const Matrix3x3 &pixelToViewSpace, const ColorImage *image) const
+FlexibleMesh *DepthImage::triangulate( vector<uint32> &tempPixelToVertexIndices, vector<vector<uint32>> &tempVertexNeighbors, vector<uint32> &tempIndices,
+	const PinholeCamera &camera, const ColorImage *image) const
 {
+	// get necessary camera data
+	const Matrix3x3 invViewPort = camera.computeInverseViewportMatrix(mSize, true);
+	const Matrix3x3 invProj = camera.computeInverseProjectionMatrix();
+	const Matrix3x3 invRot = camera.computeInverseRotationMatrix();
+	const Matrix3x3 pixelToViewSpace = invViewPort * invProj;
+	const Matrix3x3 hPSToNNRayDirWS = pixelToViewSpace * invRot;
+	const Vector4 &camPosHWS = camera.getPosition();
+	const Vector3 camPosWS(camPosHWS.x, camPosHWS.y, camPosHWS.z);
+
 	// reserve memory & clear buffers
 	const uint32 pixelCount = mSize.getElementCount();
 	tempPixelToVertexIndices.resize(pixelCount);
@@ -144,7 +154,7 @@ FlexibleMesh *DepthImage::triangulate(vector<vector<uint32>> &tempVertexNeighbor
 		tempVertexNeighbors[vertexIdx].clear();
 	FlexibleMesh::findVertexNeighbors(tempVertexNeighbors.data(), tempIndices.data(), indexCount);
 
-	return createFlexibleMesh(tempVertexNeighbors, tempIndices, tempPixelToVertexIndices, positionsWSMap, vertexCount, image);
+	return createFlexibleMesh(tempPixelToVertexIndices, tempVertexNeighbors, hPSToNNRayDirWS, camPosWS, tempIndices, image);
 }
 
 uint32 DepthImage::triangulateBlock(vector<uint32> &indices, vector<uint32> &pixelToVertexIndices, uint32 vertexCount,
@@ -316,39 +326,66 @@ bool DepthImage::isDepthDiscontinuity(const Real footprints[4], const Real block
 	return discontinuity;
 }
 
-FlexibleMesh *DepthImage::createFlexibleMesh(const vector<vector<uint32>> &vertexNeighbors, const vector<uint32> &indices,
-	const vector<uint32> &pixelToVertexIndices,	const vector<Vector3> &positionsWSMap, const uint32 vertexCount, const ColorImage *image) const
+FlexibleMesh *DepthImage::createFlexibleMesh(const vector<uint32> &pixelToVertexIndices, const vector<vector<uint32>> &vertexNeighbors,
+	const Matrix3x3 &hPSToNNRayDirWS, const Vector3 &centerOfProjection,
+	const vector<uint32> &indices, const ColorImage *image) const
 {
-	// create triangulation & set indices
+	// index & vertex count
 	const uint32 indexCount = (uint32) indices.size();
-	FlexibleMesh *triangulation = new FlexibleMesh(vertexCount, indexCount);
-	triangulation->setIndices(indices.data(), indexCount);
+	const uint32 vertexCount = (uint32) vertexNeighbors.size();
 
+	// create mesh & set indices
+	FlexibleMesh *viewMesh = new FlexibleMesh(vertexCount, indexCount);
+	viewMesh->setIndices(indices.data(), indexCount);
+
+	// set vertices: position, color, normal & scale for each vertex
+	setVertexPositions(*viewMesh, pixelToVertexIndices, hPSToNNRayDirWS, centerOfProjection);
+	setVertexColors(*viewMesh, pixelToVertexIndices, vertexCount, image);
+	viewMesh->computeNormalsWeightedByAngles();
+	FlexibleMesh::computeVertexScales(viewMesh->getScales(), vertexNeighbors.data(), viewMesh->getPositions(), viewMesh->getVertexCount());
+	
+	return viewMesh;
+}
+
+void DepthImage::setVertexPositions(FlexibleMesh &viewMesh, const vector<uint32> &pixelToVertexIndices,
+	const Matrix3x3 &hPSToNNRayDirWS, const Vector3 &centerOfProjection) const
+{
 	// vertex positions
 	const uint32 pixelCount = mSize.getElementCount();
 	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
 	{
 		// triangulated back projected depth value?
 		const uint32 vertexIdx = pixelToVertexIndices[pixelIdx];
-		if (Vertex::INVALID_IDX != vertexIdx)
-			triangulation->setPosition(positionsWSMap[pixelIdx], vertexIdx);
+		if (Vertex::INVALID_IDX == vertexIdx)
+			continue;
+		
+		// compute direction of ray through the current pixel (relative to world space)
+		const Vector3 posHPS(pixelIdx % mSize[0], pixelIdx / mSize[1], 1.0f);
+		Vector3 directionWS = posHPS * hPSToNNRayDirWS;
+		directionWS.normalize();
+
+		// compute world space position using ray direction, center of projection and depth
+		const Real &depth = mDepths[pixelIdx];
+		const Vector3 posWS = centerOfProjection + (directionWS * depth);
+		viewMesh.setPosition(posWS, vertexIdx);
 	}
+}
 
-	// vertex normals & scales
-	triangulation->computeNormalsWeightedByAngles();
-	FlexibleMesh::computeVertexScales(triangulation->getScales(), vertexNeighbors.data(), triangulation->getPositions(), triangulation->getVertexCount());
-
+void DepthImage::setVertexColors(FlexibleMesh &viewMesh,
+	const vector<uint32> &pixelToVertexIndices, const uint32 &vertexCount, const ColorImage *image) const
+{
 	// vertex colors via default color?
 	if (!image)
 	{
 		// no image? -> set vertex colors to some default value
 		const Vector3 defaultColor(0.5f, 0.5f, 0.5f);
 		for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
-			triangulation->setColor(defaultColor, vertexIdx);
-		return triangulation;
+			viewMesh.setColor(defaultColor, vertexIdx);
+		return;
 	}
 
 	// set vertex colors via image
+	const uint32 pixelCount = mSize.getElementCount();
 	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
 	{
 		const uint32 vertexIdx = pixelToVertexIndices[pixelIdx];
@@ -360,10 +397,8 @@ FlexibleMesh *DepthImage::createFlexibleMesh(const vector<vector<uint32>> &verte
 		Vector3 color;
 
 		image->get(color, pixelIdx % width, pixelIdx / width);
-		triangulation->setColor(color, vertexIdx);
+		viewMesh.setColor(color, vertexIdx);
 	}
-	
-	return triangulation;
 }
 
 DepthImage::DepthImage(Real *depths, const ImgSize &size, const string &resourceName) :

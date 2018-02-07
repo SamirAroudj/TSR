@@ -10,6 +10,7 @@
 #ifndef _DEPTH_IMAGE_H_
 #define _DEPTH_IMAGE_H_
 
+#include "Graphics/PinholeCamera.h"
 #include "Math/Vector2.h"
 #include "SurfaceReconstruction/Image/Image.h"
 #include "Utilities/Size2.h"
@@ -33,9 +34,8 @@ namespace SurfaceReconstruction
 
 	public:
 		/** todo */
-		FlexibleMesh *triangulate(std::vector<std::vector<uint32>> &tempVertexNeighbors, std::vector<uint32> &tempIndices, std::vector<uint32> &tempPixelToVertexIndices,
-			const std::vector<Math::Vector3> &positionsWSMap, const Math::Matrix3x3 &pixelToViewSpace,
-			const ColorImage *image = NULL) const;	
+		FlexibleMesh *triangulate(std::vector<uint32> &tempPixelToVertexIndices, std::vector<std::vector<uint32>> &tempVertexNeighbors, std::vector<uint32> &tempIndices,
+			const Graphics::PinholeCamera &camera, const ColorImage *image = NULL) const;	
 		void saveAsMVEFloatImage(const Storage::Path &fileName, 
 			const bool invertX = false, const bool invertY = true, float *temporaryStorage = NULL);
 
@@ -46,9 +46,15 @@ namespace SurfaceReconstruction
 
 		virtual void clear();
 		
-		FlexibleMesh *createFlexibleMesh(const std::vector<std::vector<uint32>> &vertexNeighbors, const std::vector<uint32> &indices,
-			const std::vector<uint32> &pixelToVertexIndices, const std::vector<Math::Vector3> &positionsWSMap, const uint32 vertexCount,
-			const ColorImage *image = NULL) const;
+		FlexibleMesh *createFlexibleMesh(const std::vector<uint32> &pixelToVertexIndices, const std::vector<std::vector<uint32>> &vertexNeighbors,
+			const Math::Matrix3x3 &hPSToNNRayDirWS, const Math::Vector3 &centerOfProjection,
+			const std::vector<uint32> &indices, const ColorImage *image = NULL) const;
+
+		void setVertexColors(FlexibleMesh &viewMesh, const std::vector<uint32> &pixelToVertexIndices, const uint32 &vertexCount,
+			const ColorImage *image) const;
+
+		void setVertexPositions(FlexibleMesh &viewMesh, const std::vector<uint32> &pixelToVertexIndices,
+			const Math::Matrix3x3 &hPSToNNRayDirWS, const Math::Vector3 &centerOfProjection) const;
 
 		uint32 triangulateBlock(std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices, uint32 vertexCount,
 			const uint32 x, const uint32 y, const Math::Matrix3x3 &pixelToViewSpace) const;	

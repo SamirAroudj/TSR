@@ -274,25 +274,29 @@ void CapturedScene::readSampleProperty(PlyFile &file, const uint32 sampleIdx,
 	file.readVertexProperty(color, normal, position, NULL, confidence, scale, viewIDs, type, semantic);
 }
 
-#include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 void CapturedScene::loadImages(const vector<uint32> &imageScales)
 {
 	// load the corresponding images for all views at all scales
 	const uint32 scaleCount = (uint32) imageScales.size();
 	const uint32 viewCount = (uint32) mViews.size();
-	vector<vector<uint32>> tempVertexNeighbors;
-	vector<uint32> tempIndices;
-	vector<uint32> tempPixelToVertexIndices;
+	vector<vector<uint32>> vertexNeighbors;
+	vector<uint32> indices;
+	vector<uint32> pixelToVertexIndices;
 
 	for (uint32 viewIdx = 0; viewIdx < viewCount; ++viewIdx)
 	{
+		// get camera data
+		const View &view = *mViews[viewIdx];
+		const PinholeCamera &camera = view.getCamera();
+
 		for (uint32 scaleIdx = 0; scaleIdx < scaleCount; ++scaleIdx)
 		{
 			const uint32 &scale = imageScales[scaleIdx];
 
 			// load corresponding images
-			const string colorImageName = getLocalImageName((0 == scale ? "undistorted" : "undist"), scale, true);
-			const string depthImageName = getLocalImageName("depth", scale, false);
+			const char *colorImageTag = (0 == scale ? IMAGE_TAG_COLOR_S0 : IMAGE_TAG_COLOR);
+			const string colorImageName = getLocalImageName(colorImageTag, scale, true);
+			const string depthImageName = getLocalImageName(IMAGE_TAG_DEPTH, scale, false);
 
 			const ColorImage *colorImage = ColorImage::request(colorImageName, colorImageName);
 			if (!colorImage)
@@ -306,8 +310,9 @@ void CapturedScene::loadImages(const vector<uint32> &imageScales)
 			//if (!viewsImage)
 			//	continue;
 
-			//FlexibleMesh *triangulation = depthImage->triangulate(tempVertexNeighbors, tempIndices, tempPixelToVertexIndices,
-			//	positionsWSMap, pixelToViewSpace, colorImage);
+
+			FlexibleMesh *viewMesh = depthImage->triangulate(pixelToVertexIndices, vertexNeighbors, indices, camera, colorImage);
+			mViewMeshes.push_back(viewMesh);
 		}
 	}
 }

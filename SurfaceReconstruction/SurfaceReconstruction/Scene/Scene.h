@@ -183,6 +183,11 @@ namespace SurfaceReconstruction
 		inline Scene &operator =(const Scene &rhs);
 
 	public:
+		// image tags for file naming
+		static const char *IMAGE_TAG_COLOR;
+		static const char *IMAGE_TAG_COLOR_S0;
+		static const char *IMAGE_TAG_DEPTH;
+
 		/// parameter names for identification in configuration files
 		static const char *PARAMETER_NAME_RELATIVE_CAMERAS_FILE;
 		static const char *PARAMETER_NAME_SCENE_FOLDER;
@@ -207,7 +212,8 @@ namespace SurfaceReconstruction
 
 		std::vector<IReconstructorObserver *> mRefinerObservers;	/// get updates from mesh refiners
 		std::vector<View *> mViews;									/// These represent projective capturing views measuring surfaces and creating samples.
-		
+		std::vector<FlexibleMesh *> mViewMeshes;					/// Triangulated depth maps - one mesh per registered view.
+
 		Storage::Path mFolder;				/// Defines the root scene folder. Contains scene data and is the parent folder of the folders like views containing sub folders for each view with their images. 
 		Storage::Path mRelativeCamerasFile;	/// Defines the file with the data of all cameras, file name is relative to folder.
 		uint32 mMinIsleSize;		/// Triangle isles (isolated, connected sets of triangles) smaller than this are removed.

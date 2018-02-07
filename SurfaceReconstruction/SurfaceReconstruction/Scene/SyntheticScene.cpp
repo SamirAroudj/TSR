@@ -264,7 +264,7 @@ void SyntheticScene::createAndSaveSamples()
 		//	saveColorImage(depthMap, viewIdx, true);
 
 		// save depth map as undistorted color image and MVEI depth map
-		const Path depthMapName = getRelativeImageFileName(viewIDString, "depth", 0, false);
+		const Path depthMapName = getRelativeImageFileName(viewIDString, IMAGE_TAG_DEPTH, 0, false);
 		Image::saveAsMVEFloatImage(depthMapName, true, mViewResolution, depthMap.data(), false, false);
 		saveColorImage(depthMap, viewIdx, false);
 
@@ -357,7 +357,7 @@ void SyntheticScene::saveColorImage(const vector<Real> &depthMap, const uint32 v
 	// create file name
 	// file name with noise data inside?
 	char tagBuffer[File::READING_BUFFER_SIZE];
-	snprintf(tagBuffer, File::READING_BUFFER_SIZE, "undistorted");
+	snprintf(tagBuffer, File::READING_BUFFER_SIZE, IMAGE_TAG_COLOR_S0);
 	if (withNoise)
 		snprintf(tagBuffer + 5, File::READING_BUFFER_SIZE - 5, "Mean" REAL_IT "StdDev" REAL_IT, mDepthMapNoise[0], mDepthMapNoise[1]);
 
@@ -392,27 +392,27 @@ void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vecto
 	const uint32 newSampleCount = validDepthCount + oldSampleCount;
 	mSamples->reserve(newSampleCount);
 
-	// K^(-1) matrix (inverse kamera calibration)
-	const PinholeCamera &camera = mViews[viewIdx]->getCamera();
-	const Matrix3x3 invProj = camera.computeInverseProjectionMatrix();
-	const Matrix3x3 invViewPort = camera.computeInverseViewportMatrix(mViewResolution, true);
-	const Matrix3x3 pixelToViewSpace = invViewPort * invProj;
+	// camera data
+	const View &view = *mViews[viewIdx];
+	const PinholeCamera &camera = view.getCamera();
 
 	// load depth map & triangulate it
-	const Path colorImageName = getRelativeImageFileName(viewIdx, "undistorted", 0, true);
+	const Path colorImageName = getRelativeImageFileName(viewIdx, IMAGE_TAG_COLOR_S0, 0, true);
 	const ColorImage *colorImage = ColorImage::request(colorImageName.getString(), colorImageName);
-	DepthImage *depthMap = DepthImage::request(depthMapName.getString(), depthMapName);
-	FlexibleMesh *triangulation = depthMap->triangulate(vertexNeighbors, indices, pixelToVertexIndices,
-		positionsWSMap, pixelToViewSpace, colorImage);
 
-	// add triangulation to all other samples
+	DepthImage *depthMap = DepthImage::request(depthMapName.getString(), depthMapName);
+
+	FlexibleMesh *viewMesh = depthMap->triangulate(pixelToVertexIndices, vertexNeighbors, indices, camera, colorImage);
+	mViewMeshes.push_back(viewMesh);
+
+	// add view mesh / triangulated depth map to all other samples
 	//const uint32 pixelCount = mViewResolution.getElementCount();
-	const Vector3 *colors = triangulation->getColors();
-	const Vector3 *normals = triangulation->getNormals();
-	const Vector3 *positions = triangulation->getPositions();
-	const Real *scales = triangulation->getScales();
+	const Vector3 *colors = viewMesh->getColors();
+	const Vector3 *normals = viewMesh->getNormals();
+	const Vector3 *positions = viewMesh->getPositions();
+	const Real *scales = viewMesh->getScales();
 	const Real confidence = 1.0f; // todo: how to get reasonable confidence values?
-	const uint32 vertexCount = triangulation->getVertexCount();
+	const uint32 vertexCount = viewMesh->getVertexCount();
 
 	for (uint32 vertexIdx = 0, nextSampleIdx = oldSampleCount; vertexIdx < vertexCount; ++vertexIdx, ++nextSampleIdx)
 	{
@@ -421,9 +421,6 @@ void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vecto
 			colors[vertexIdx], normals[vertexIdx], positions[vertexIdx], 
 			confidence, scales[vertexIdx], &viewIdx);
 	}
-
-	delete triangulation;
-	triangulation = NULL;
 }
 
 SyntheticScene::~SyntheticScene()

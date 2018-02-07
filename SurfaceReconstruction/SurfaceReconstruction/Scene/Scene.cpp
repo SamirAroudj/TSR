@@ -34,6 +34,11 @@ using namespace Storage;
 using namespace SurfaceReconstruction;
 using namespace Utilities;
 
+// image tags
+const char *Scene::IMAGE_TAG_COLOR = "undist";
+const char *Scene::IMAGE_TAG_COLOR_S0 = "undistorted";
+const char *Scene::IMAGE_TAG_DEPTH = "depth";
+
 // parameter names
 const char *Scene::PARAMETER_NAME_RELATIVE_CAMERAS_FILE = "relativeCamerasFileName";
 const char *Scene::PARAMETER_NAME_TRIANGLE_ISLE_SIZE_MINIMUM = "Scene::minimumTriangleIsleSize";
@@ -133,10 +138,6 @@ Scene::Scene(const vector<IReconstructorObserver *> &observers) :
 Scene::~Scene()
 {
 	clear();
-
-	// free volatile resources
-	// free cached images
-	Image::freeMemory();
 }
 
 bool Scene::reconstruct()
@@ -666,10 +667,21 @@ void Scene::clear()
 	mSamples = NULL;
 	mTree = NULL;
 
+	// free view meshes
+	const uint32 viewMeshCount = (uint32) mViewMeshes.size();
+	for (uint32 meshIdx = 0; meshIdx < viewMeshCount; ++meshIdx)
+		delete mViewMeshes[meshIdx];
+	mViewMeshes.clear();
+	mViewMeshes.shrink_to_fit();
+
 	// free views
 	const uint32 viewCount = (uint32) mViews.size();
 	for (uint32 viewIdx = 0; viewIdx < viewCount; ++viewIdx)
 		delete mViews[viewIdx];
 	mViews.clear();
 	mViews.shrink_to_fit();
+
+	// free volatile resources
+	// free cached images
+	Image::freeMemory();
 }
