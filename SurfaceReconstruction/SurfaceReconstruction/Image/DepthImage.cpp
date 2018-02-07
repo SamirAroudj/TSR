@@ -253,18 +253,18 @@ uint32 DepthImage::triangulateBlock(vector<uint32> &indices, vector<uint32> &pix
 	for (uint32 triangleIdxIdx = 0; triangleIdxIdx < 2; ++triangleIdxIdx)
 	{
 		// valid triangle?
-		const uint32 triangleIdx = triangleIndices[triangleIdxIdx];
+		uint32 &triangleIdx = triangleIndices[triangleIdxIdx];
 		if (Triangle::isInvalidIndex(triangleIdx))
 			continue;
 
 		// invalidate triangle if it looks like going over a depth discontinuity
 		const uint32 *triangle = blockTriangles[triangleIdx];
-		for (uint32 edgeIdx = 0; edgeIdx < 3 && !Triangle::isInvalidIndex(triangleIndices[triangleIdxIdx]); ++edgeIdx)
+		for (uint32 edgeIdx = 0; edgeIdx < 3 && !Triangle::isInvalidIndex(triangleIdx); ++edgeIdx)
 		{
 			const uint32 edgeEnd0 = edgeIdx;
 			const uint32 edgeEnd1 = (edgeIdx + 1) % 3;
 			if (isDepthDiscontinuity(footprints, blockDepths, triangle[edgeEnd0], triangle[edgeEnd1]))
-				triangleIndices[triangleIdxIdx] = Triangle::INVALID_IDX;
+				triangleIdx = Triangle::INVALID_IDX;
 		}
 	}
 
