@@ -10,10 +10,3 @@
 #include "SurfaceReconstruction/Scene/IReconstructorObserver.h"
 
 using namespace SurfaceReconstruction;
-
-const char *IReconstructorObserver::RECONSTRUCTION_TYPE_TEXTS[RECONSTRUCTION_TYPE_COUNT] =
-{
-	"Crust",
-	"ReconstructionViaPhotos",
-	"ReconstructionViaSamples"
-};

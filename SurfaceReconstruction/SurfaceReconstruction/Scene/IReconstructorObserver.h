@@ -39,9 +39,6 @@ namespace SurfaceReconstruction
 			This is only valid if the model asks for taking responsibility by setting the parameter responsible to true. */
 		virtual bool onNewReconstruction(FlexibleMesh *reconstruction,
 			const uint32 iteration, const std::string &text, const ReconstructionType type, const bool responsible) = 0;
-
-	public:
-		static const char *RECONSTRUCTION_TYPE_TEXTS[RECONSTRUCTION_TYPE_COUNT];	/// Texts for ReconstructionType enumeration.
 	};
 }
 

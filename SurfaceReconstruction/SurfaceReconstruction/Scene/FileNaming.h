@@ -10,6 +10,8 @@
 #ifndef _FILE_NAMING_H_
 #define _FILE_NAMING_H_
 
+#include "IReconstructorObserver.h"
+
 namespace SurfaceReconstruction
 {
 	class FileNaming
@@ -35,6 +37,7 @@ namespace SurfaceReconstruction
 		
 		// file name parts
 		static const char *FILTERED_SAMPLES;
+		static const char *RECONSTRUCTED_MESHES[IReconstructorObserver::RECONSTRUCTION_TYPE_COUNT];
 		static const char *REORDERED_SAMPLES;
 		static const char *RESULTS_FOLDER;
 

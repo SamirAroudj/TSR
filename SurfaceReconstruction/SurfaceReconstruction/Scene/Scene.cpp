@@ -440,7 +440,7 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 		}
 		else
 		{
-			string localName = IReconstructorObserver::RECONSTRUCTION_TYPE_TEXTS[meshIdx];
+			string localName = FileNaming::RECONSTRUCTED_MESHES[meshIdx];
 			localName += FileNaming::ENDING_MESH;
 			fileName = Path::appendChild(getResultsFolder(), localName);
 		}
@@ -480,7 +480,7 @@ void Scene::takeReconstructionFromOccupancy()
 
 	// take over
 	const ReconstructionType type = RECONSTRUCTION_VIA_OCCUPANCIES;
-	const char *text = RECONSTRUCTION_TYPE_TEXTS[type];
+	const char *text = FileNaming::RECONSTRUCTED_MESHES[type];
 
 	FlexibleMesh *mesh = new FlexibleMesh(crust->getSurface());
 	takeOverReconstruction(mesh, type);

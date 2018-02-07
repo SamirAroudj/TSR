@@ -31,6 +31,12 @@ const char *FileNaming::ENDING_VIEW_FOLDER = ".mve";
 
 // other file names
 const char *FileNaming::FILTERED_SAMPLES = "Filtered";
+const char *FileNaming::RECONSTRUCTED_MESHES[IReconstructorObserver::RECONSTRUCTION_TYPE_COUNT] =
+{
+	"Crust", 
+	"ReconstructionViaPhotos",
+	"ReconstructionViaSamples"
+};
 const char *FileNaming::REORDERED_SAMPLES = "Reordered";
 const char *FileNaming::RESULTS_FOLDER = "Results";
 
