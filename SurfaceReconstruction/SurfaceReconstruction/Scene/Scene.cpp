@@ -179,7 +179,7 @@ bool Scene::reconstruct()
 
 	// save unfiltered / initial non-zero confidence surface samples
 	if (!mOccupancy && !mTree)
-		mSamples->saveToFile(Path::extendLeafName(beginning, "Samples"), true, true);
+		mSamples->saveToFile(beginning, true, true);
 		
 	if (!mTree)
 	{
@@ -194,7 +194,7 @@ bool Scene::reconstruct()
 		mTree->getNodes().checkSamplesOrder(mTree->getRootScope());
 
 		// save tree & samples
-		mSamples->saveToFile(Path::extendLeafName(beginning, "SamplesReordered"), true, true);
+		mSamples->saveToFile(Path::extendLeafName(beginning, FileNaming::REORDERED_SAMPLES), true, true);
 		mTree->saveToFiles(Path::extendLeafName(beginning, FileNaming::ENDING_OCTREE));
 	}
 
