@@ -15,21 +15,27 @@ namespace SurfaceReconstruction
 	class FileNaming
 	{
 	public:
-		
+		// file beginnings
+		static const char *BEGINNING_RESULTS;
+		static const char *BEGINNING_VIEW_FOLDER;
+
 		// file endings
 		static const char *ENDING_COLOR_IMAGE;
+		static const char *ENDING_DUAL_CELLS;
+		static const char *ENDING_LEAVES;
 		static const char *ENDING_MESH;
 		static const char *ENDING_MVE_IMAGE;
+		static const char *ENDING_NODES;
 		static const char *ENDING_OCCUPANCY;
 		static const char *ENDING_OCTREE;
 		static const char *ENDING_PLY;
 		static const char *ENDING_SAMPLES;
 		static const char *ENDING_VIEWS;
+		static const char *ENDING_VIEW_FOLDER;
 		
 		// file name parts
 		static const char *FILTERED_SAMPLES;
 		static const char *REORDERED_SAMPLES;
-		static const char *RESULTS_BEGINNING;
 		static const char *RESULTS_FOLDER;
 
 		// image tags for file naming

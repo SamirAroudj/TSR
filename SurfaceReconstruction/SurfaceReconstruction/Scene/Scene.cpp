@@ -67,9 +67,9 @@ Path Scene::getRelativeImageFileName(const string &viewID, const string &tag, co
 
 Path Scene::getRelativeViewFolder(const string &viewID)
 {
-	string temp("view_");
+	string temp(FileNaming::BEGINNING_VIEW_FOLDER);
 	temp += viewID;
-	temp += ".mve";
+	temp += FileNaming::ENDING_VIEW_FOLDER;
 	return Path(temp);
 }
 
@@ -341,7 +341,7 @@ void Scene::eraseSamples(const bool *inliers, const bool saveResults)
 
 Path Scene::getFileBeginning() const
 {
-	const Path childPath(FileNaming::RESULTS_BEGINNING);
+	const Path childPath(FileNaming::BEGINNING_RESULTS);
 	return Path::appendChild(getResultsFolder(), childPath);
 }
 
@@ -397,7 +397,7 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 	}	
 
 	// load the right sample set
-	const Path samplesPath = (mTree ? Path::extendLeafName(beginning, "Reordered") : beginning);
+	const Path samplesPath = (mTree ? Path::extendLeafName(beginning, FileNaming::REORDERED_SAMPLES) : beginning);
 	mSamples = new Samples(samplesPath);
 
 	// try to load the free space
