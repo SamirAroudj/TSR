@@ -183,6 +183,15 @@ namespace SurfaceReconstruction
 		inline Scene &operator =(const Scene &rhs);
 
 	public:
+		// file endings
+		static const char *FILE_ENDING_COLOR_IMAGE;
+		static const char *FILE_ENDING_MESH;
+		static const char *FILE_ENDING_MVE_IMAGE;
+		static const char *FILE_ENDING_OCCUPANCY;
+		static const char *FILE_ENDING_OCTREE;
+		static const char *FILE_ENDING_SAMPLES;
+		static const char *FILE_ENDING_VIEWS;
+
 		// image tags for file naming
 		static const char *IMAGE_TAG_COLOR;
 		static const char *IMAGE_TAG_COLOR_S0;
