@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -87,6 +87,9 @@ TSR::TSR
 		mCamera = new Camera3D(Math::HALF_PI, window.getAspectRatio(), 0.1f, 25.0f);
 		mCamera->setAsActiveCamera();
 		resetCamera();
+
+		// create mesh renderer
+		mMeshRenderer = new MeshRenderer();
 	}
 
 	// create scene from MVE, synthetic or previous run data?
@@ -112,6 +115,7 @@ TSR::~TSR()
 
 	// free visualization stuff
 	delete mCamera;
+	delete mMeshRenderer;
 	delete mRenderer;
 	
 	// free managers
@@ -124,7 +128,8 @@ TSR::~TSR()
 void TSR::render()
 {
 	GraphicsManager::getSingleton().clearBackAndDepthStencilBuffer();
-		mRenderer->render(mScale);
+		//mRenderer->render(mScale);
+		mMeshRenderer->renderUploadedMeshes();
 	GraphicsManager::getSingleton().presentBackBuffer();
 }
 
@@ -419,6 +424,8 @@ void TSR::createNewScene(const uint32 sceneCreationType, const vector<string> &a
 	if (Platform::Window::exists())
 	{
 		// reset rendering
+		mMeshRenderer->clear();
+
 		delete mRenderer;
 		mRenderer = new Renderer();
 
@@ -451,6 +458,12 @@ void TSR::createNewScene(const uint32 sceneCreationType, const vector<string> &a
 		default:
 			assert(false);
 	}
+
+	// test: render all view meshes
+	const vector<FlexibleMesh *> &viewMeshes = mScene->getViewMeshes();
+	const uint32 meshCount = (uint32) viewMeshes.size();
+	for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
+		mMeshRenderer->uploadData(*viewMeshes[meshIdx]);
 }
 
 void TSR::resetCamera()

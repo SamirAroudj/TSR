@@ -7,17 +7,16 @@
  * of the BSD 3-Clause license. See the License.txt file for details.
  */
 
-#include "SurfaceReconstruction/Scene/Tree/Nodes.h"
-#include "SurfaceReconstruction/Scene/Tree/Scope.h"
+ attribute vec4 inPosition;
+ attribute vec3 inNormal;
+ attribute vec3 inColor;
 
-using namespace Math;
-using namespace SurfaceReconstruction;
+ varying vec3 outNormal;
+ varying vec3 outColor;
 
-
-Scope::Scope() :
-	mPositionWS(-REAL_MAX, -REAL_MAX, -REAL_MAX),
-	mSize(-REAL_MAX),
-	mIdx(Nodes::INVALID_INDEX)
-{
-
-}
+ void main()
+ {
+	gl_Position = gl_ModelViewProjectionMatrix * inPosition;
+	outNormal = gl_NormalMatrix * inNormal;
+	outColor = inColor;
+ }

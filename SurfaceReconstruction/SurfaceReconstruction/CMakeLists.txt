@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2017 by Author: Aroudj, Samir
+# Copyright (C) 2018 by Author: Aroudj, Samir
 # TU Darmstadt - Graphics, Capture and Massively Parallel Computing
 # All rights reserved.
 #
@@ -79,6 +79,7 @@ endif (PCS_REFINEMENT)
 
 # rendering sub namespace header files
 set(renderingHeaderFiles
+	${renderingPath}/MeshRenderer.h
 	${renderingPath}/Renderer.h	
 )
 
@@ -170,6 +171,7 @@ endif (PCS_REFINEMENT)
 
 # rendering sub namespace source files
 set(renderingSourceFiles
+	${renderingPath}/MeshRenderer.cpp
 	${renderingPath}/Renderer.cpp	
 )
 
@@ -177,7 +179,6 @@ set(renderingSourceFiles
 set(sceneSourceFiles
 	${scenePath}/CapturedScene.cpp
 	${scenePath}/FileNaming.cpp
-	${scenePath}/IReconstructorObserver.cpp
 	${scenePath}/Samples.cpp
 	${scenePath}/Scene.cpp
 	${scenePath}/SyntheticScene.cpp

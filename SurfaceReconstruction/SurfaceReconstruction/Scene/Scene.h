@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -111,6 +111,8 @@ namespace SurfaceReconstruction
 		inline uint32 getViewCount() const;
 
 		inline Storage::Path getViewFolder(const std::string &viewIDString) const;
+
+		inline const std::vector<FlexibleMesh *> getViewMeshes() const;
 
 		/** Provides access to existing View objects.
 		@return Returns all exisiting View objects of this Scene object.*/
@@ -291,6 +293,11 @@ namespace SurfaceReconstruction
 	inline Storage::Path Scene::getViewFolder(const std::string &viewIDString) const
 	{
 		return Storage::Path::appendChild(getViewsFolder(), getRelativeViewFolder(viewIDString));
+	}
+
+	inline const std::vector<FlexibleMesh *> Scene::getViewMeshes() const
+	{
+		return mViewMeshes;
 	}
 
 	inline std::vector<View *> &Scene::getViews()
