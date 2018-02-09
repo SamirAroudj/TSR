@@ -9,6 +9,7 @@
 
 #include <GL/glew.h>
 #include <GL/gL.h>
+#include "Platform/FailureHandling/GraphicsException.h"
 #include "Math/Vector3.h"
 #include "Platform/Storage/File.h"
 #include "SurfaceReconstruction/Geometry/Mesh.h"
@@ -66,6 +67,7 @@ void MeshRenderer::setupShaders()
 
 	// link & use the program
 	glLinkProgram(mPNCProgramIDs[INDEX_PROGRAM]);
+	checkProgramAndShaders();
 	glUseProgram(mPNCProgramIDs[INDEX_PROGRAM]);
 }
 
@@ -192,6 +194,85 @@ void MeshRenderer::defineVertexFormat()
 	glEnableVertexAttribArray(PNCVertex::VERTEX_ATTRIBUTE_COLOR);
 	glVertexAttribFormat(PNCVertex::VERTEX_ATTRIBUTE_COLOR, 3, GL_FLOAT, GL_FALSE, offsetof(PNCVertex, mColor));
 	glVertexAttribBinding(PNCVertex::VERTEX_ATTRIBUTE_COLOR, VERTEX_BUFFER_BINDING_INDEX);
+}
+
+void MeshRenderer::checkProgramAndShaders() const
+{
+	// check shaders
+	for (IndexType indexType = INDEX_VERTEX_SHADER; indexType < INDEX_TYPE_COUNT; indexType = (IndexType) (indexType + 1))
+		checkShader(mPNCProgramIDs[indexType]);
+
+	// check program
+	checkProgram();
+}
+
+void MeshRenderer::checkProgram() const
+{
+	// check program
+	glValidateProgram(mPNCProgramIDs[INDEX_PROGRAM]);
+
+	// valid program?
+	GLint valid = GL_FALSE;
+	glGetProgramiv(mPNCProgramIDs[INDEX_PROGRAM], GL_VALIDATE_STATUS, &valid);
+	if (GL_TRUE == valid)
+		return;
+
+	// get link status & log entry on failure
+	GLint linked = GL_FALSE;
+	glGetProgramiv(mPNCProgramIDs[INDEX_PROGRAM], GL_LINK_STATUS, &linked);
+	if (GL_TRUE != linked)
+	{
+		// todo log this properly
+		cerr << "Program could not be linked!" << endl;
+	}
+
+	// get program log length
+	GLint infoLogLength = 0;
+	glGetProgramiv(mPNCProgramIDs[INDEX_PROGRAM], GL_INFO_LOG_LENGTH, &infoLogLength);
+
+	// get program log
+	GLsizei actualLength;
+	char *log = new char[infoLogLength];
+	glGetProgramInfoLog(mPNCProgramIDs[INDEX_PROGRAM], infoLogLength, &actualLength, log);
+
+	// output log
+	// todo log this properly
+	cerr << "glGetProgramInfoLog:\n";
+	cerr << log << endl;
+	GraphicsException exception(log, mPNCProgramIDs[INDEX_PROGRAM]);
+
+	delete [] log;
+	log = NULL;
+
+	throw exception;
+}
+
+void MeshRenderer::checkShader(const uint32 shaderID)
+{
+	// compiled?
+	GLint compiled = GL_FALSE;
+	glGetShaderiv(shaderID, GL_COMPILE_STATUS, &compiled);
+	if (GL_TRUE == compiled)
+		return;
+
+	// get shader log length
+	GLint infoLogLength = 0;
+	glGetShaderiv(shaderID, GL_INFO_LOG_LENGTH, &infoLogLength);
+
+	// get shader log
+	GLsizei actualLength;
+	char *log = new char[infoLogLength];
+	glGetShaderInfoLog(shaderID, infoLogLength, &actualLength, log);
+
+	// output log
+	cerr << "glGetShaderInfoLog:\n";
+	cerr << log << endl;
+	GraphicsException exception(log, shaderID);
+
+	delete [] log;
+	log = NULL;
+
+	throw exception;
 }
 
 PNCVertex *MeshRenderer::createVertexBuffer(const Mesh &mesh)
