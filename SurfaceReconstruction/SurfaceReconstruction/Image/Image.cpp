@@ -23,7 +23,7 @@ using namespace Utilities;
 
 // constants for resource management
 template <>
-const char *Image::Resource<Image>::msResourcePath = NULL;
+Path Image::Resource<Image>::msResourcePath;
 
 template <>
 vector<Image *> Image::Resource<Image>::msResources(0);
@@ -54,8 +54,8 @@ void Image::freeMemory()
 Image *Image::request(const string &resourceName)
 {
 	// resource path and memory for loading available?
-	assert(msResourcePath);
-	if (!msResourcePath)
+	assert(!msResourcePath.getString().empty());
+	if (msResourcePath.getString().empty())
 		throw FileAccessException("Cannot get color image since resource path is not set.", resourceName, -1);
 
 	// is the image available in main memory?
@@ -147,17 +147,6 @@ void Image::saveAsMVEI(const Path &fileName, const bool relativePath,
 	const uint32 writtenCount = file.write(data, header.getPixelSize(), pixelCount);
 	if (writtenCount != pixelCount)
 		throw FileException("Could not write MVE image content to file.", targetFileName);
-}
-
-void Image::setPathToImages(const Path &path)
-{
-	// copy path to memory
-	const uint32 length = (uint32) path.getString().length();
-	char *pathMemory = new char[length + 1];
-	memcpy(pathMemory, path.getCString(), length);
-	pathMemory[length] = '\0';
-
-	msResourcePath = pathMemory;
 }
 
 Image::Image(const ImgSize &size, const string &resourceName) :

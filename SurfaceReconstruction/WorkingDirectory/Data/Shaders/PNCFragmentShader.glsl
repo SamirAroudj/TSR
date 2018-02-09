@@ -13,5 +13,5 @@
  void main()
  {
 	vec3 normal = normalize(inNormal);
-	gl_FragColor = vec4(inColor.x, inColor.y, inColor.z, 1.0);
+	gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);//vec4(inColor.x, inColor.y, inColor.z, 1.0);
  }

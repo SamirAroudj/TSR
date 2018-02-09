@@ -82,8 +82,7 @@ ColorImage::ColorImage(const string &resourceName, const Path &imageFileName) :
 	Image(ImgSize(0, 0), resourceName), mPixels(NULL), mFormat(Texture::FORMAT_NUM_OF)
 {
 	// get complete file name
-	const char *path = VolatileResource<Image>::getPathToResources();
-	const Path folder(path);
+	const Path &folder = VolatileResource<Image>::getPathToResources();
 	const Path fileName = Path::appendChild(folder, imageFileName);
 
 	// load data

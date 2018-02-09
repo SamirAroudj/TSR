@@ -43,7 +43,7 @@ namespace SurfaceReconstruction
 		static void saveAsMVEI(const Storage::Path &fileName, const bool relativePath,
 			const MVEIHeader &header, const void *data);
 
-		static void setPathToImages(const Storage::Path &path);
+		static inline void setPathToImages(const Storage::Path &path);
 
 	public:
 		/** todo
@@ -73,6 +73,11 @@ namespace SurfaceReconstruction
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	///   inline function definitions   ////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	inline void Image::setPathToImages(const Storage::Path &path)
+	{
+		msResourcePath = path;
+	}
 
 	bool Image::contains(const Math::Vector2 trianglePS[3]) const
 	{
