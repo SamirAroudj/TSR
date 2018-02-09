@@ -128,7 +128,7 @@ TSR::~TSR()
 void TSR::render()
 {
 	GraphicsManager::getSingleton().clearBackAndDepthStencilBuffer();
-		//mRenderer->render(mScale);
+		mRenderer->render(mScale);
 		mMeshRenderer->renderUploadedMeshes();
 	GraphicsManager::getSingleton().presentBackBuffer();
 }

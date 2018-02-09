@@ -38,10 +38,10 @@ namespace SurfaceReconstruction
 	public:
 		enum VertexAttributeIndices
 		{
-			VERTEX_ATTRIBUTE_POSITION = 0,
-			VERTEX_ATTRIBUTE_NORMAL = 1,
-			VERTEX_ATTRIBUTE_COLOR = 2,
-			VERTEX_ATTRIBUTE_COUNT = 3
+			VERTEX_ATTRIBUTE_POSITION,
+			VERTEX_ATTRIBUTE_NORMAL,
+			VERTEX_ATTRIBUTE_COLOR,
+			VERTEX_ATTRIBUTE_COUNT
 		};
 
 	public:
@@ -55,10 +55,16 @@ namespace SurfaceReconstruction
 	public:
 		enum IndexType
 		{
-			INDEX_PROGRAM = 0,
-			INDEX_VERTEX_SHADER = 1,
-			INDEX_FRAGMENT_SHADER = 2,
-			INDEX_TYPE_COUNT = 3
+			INDEX_PROGRAM,
+			INDEX_VERTEX_SHADER,
+			INDEX_FRAGMENT_SHADER,
+			INDEX_TYPE_COUNT
+		};
+
+		enum LocationType
+		{
+			LOCATION_VP,
+			LOCATION_TYPE_COUNT
 		};
 
 	public:
@@ -91,7 +97,8 @@ namespace SurfaceReconstruction
 
 	private:
 		std::vector<MeshOnGPU> mMeshes;
-		uint32 mPNCProgramIDs[INDEX_TYPE_COUNT]; /// program, vertex and fragment shader IDs
+		uint32 mPNCProgramIDs[INDEX_TYPE_COUNT];		/// program, vertex and fragment shader IDs
+		uint32 mUniformLocations[LOCATION_TYPE_COUNT];	/// locations of uniform variables to be fed into vertex shaders
 	};
 }
 

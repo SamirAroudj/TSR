@@ -7,6 +7,8 @@
  * of the BSD 3-Clause license. See the License.txt file for details.
  */
 
+ uniform mat4 VP;
+
  attribute vec4 inPosition;
  attribute vec3 inNormal;
  attribute vec3 inColor;
@@ -16,7 +18,7 @@
 
  void main()
  {
-	gl_Position = gl_ModelViewProjectionMatrix * inPosition;
-	outNormal = gl_NormalMatrix * inNormal;
+	gl_Position = VP * inPosition;
+	outNormal = inNormal;
 	outColor = inColor;
  }

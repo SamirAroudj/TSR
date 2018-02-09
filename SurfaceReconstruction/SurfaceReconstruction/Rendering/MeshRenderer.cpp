@@ -9,13 +9,15 @@
 
 #include <GL/glew.h>
 #include <GL/gL.h>
-#include "Platform/FailureHandling/GraphicsException.h"
+#include "Graphics/Camera3D.h"
 #include "Math/Vector3.h"
+#include "Platform/FailureHandling/GraphicsException.h"
 #include "Platform/Storage/File.h"
 #include "SurfaceReconstruction/Geometry/Mesh.h"
 #include "SurfaceReconstruction/Rendering/MeshRenderer.h"
 
 using namespace FailureHandling;
+using namespace Graphics;
 using namespace Math;
 using namespace std;
 using namespace Storage;
@@ -26,6 +28,12 @@ const uint32 MeshRenderer::VERTEX_BUFFER_BINDING_INDEX = 0;
 
 MeshRenderer::MeshRenderer()
 {
+	// initialize IDs with invalid values
+	for (uint32 i = 0; i < LOCATION_TYPE_COUNT; ++i)
+		mUniformLocations[i] = (uint32) - 1;
+	for (uint32 i = 0; i < INDEX_TYPE_COUNT; ++i)
+		mPNCProgramIDs[i] = (uint32) -1;
+
 	setupShaders();
 }
 
@@ -69,6 +77,9 @@ void MeshRenderer::setupShaders()
 	glLinkProgram(mPNCProgramIDs[INDEX_PROGRAM]);
 	checkProgramAndShaders();
 	glUseProgram(mPNCProgramIDs[INDEX_PROGRAM]);
+
+	// get uniform locations
+	mUniformLocations[LOCATION_VP] = glGetUniformLocation(mPNCProgramIDs[INDEX_PROGRAM], "VP");
 }
 
 MeshRenderer::~MeshRenderer()
@@ -122,6 +133,19 @@ void MeshRenderer::deleteUploadedMesh(const uint32 targetMeshIdx)
 
 void MeshRenderer::renderUploadedMeshes() const
 {
+	// get camera
+	const Camera3D *camera = Camera3D::getActiveCamera();
+	if (!camera)
+		return;
+
+	// compute matrix mapping from world space to clipping coordinates
+	const Matrix4x4 &projection = camera->getProjectionMatrix();
+	const Matrix4x4 &viewMatrix = camera->getViewMatrix();
+	const Matrix4x4 VP = viewMatrix * projection;
+
+	// upload matrix
+	glUniformMatrix4rv(mUniformLocations[LOCATION_VP], 1, GL_FALSE, VP.getData());
+
 	// render each mesh
 	const uint32 meshCount = (uint32) mMeshes.size();
 	for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
