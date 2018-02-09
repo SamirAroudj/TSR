@@ -360,7 +360,8 @@ void DepthImage::setVertexPositions(FlexibleMesh &viewMesh, const vector<uint32>
 			continue;
 		
 		// compute direction of ray through the current pixel (relative to world space)
-		const Vector3 posHPS(pixelIdx % mSize[0], pixelIdx / mSize[0], 1.0f);
+		uint32 coords[2] = { pixelIdx % mSize[0], pixelIdx / mSize[0] };
+		const Vector3 posHPS((Real) coords[0], (Real) coords[1], 1.0f);
 		Vector3 directionWS = posHPS * hPSToNNRayDirWS;
 		directionWS.normalize();
 

@@ -103,36 +103,36 @@ Renderer::Renderer() :
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 
-	// configure shading
-	glShadeModel(GL_SMOOTH); // GL_FLAT
-	glEnable(GL_COLOR_MATERIAL);
-	glEnable(GL_NORMALIZE);
+	//// configure shading
+	//glShadeModel(GL_SMOOTH); // GL_FLAT
+	//glEnable(GL_COLOR_MATERIAL);
+	//glEnable(GL_NORMALIZE);
 
-	// lights
-	const float lightAmbient[4]		= { 0.3f, 0.3f, 0.3f, 1.0f };
-	const float lightDiffuse[4]		= { 0.2f, 0.2f, 0.2f, 1.0f };
-	const float lightSpecular[4]	= { 0.3f, 0.3f, 0.3f, 1.0f };
-	
-	glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmbient);
-	glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiffuse);
-	glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpecular);
-	glEnable(GL_LIGHT0);
+	//// lights
+	//const float lightAmbient[4]		= { 0.3f, 0.3f, 0.3f, 1.0f };
+	//const float lightDiffuse[4]		= { 0.2f, 0.2f, 0.2f, 1.0f };
+	//const float lightSpecular[4]	= { 0.3f, 0.3f, 0.3f, 1.0f };
+	//
+	//glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmbient);
+	//glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiffuse);
+	//glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpecular);
+	//glEnable(GL_LIGHT0);
 
-	glLightfv(GL_LIGHT1, GL_AMBIENT, lightAmbient);
-	glLightfv(GL_LIGHT1, GL_DIFFUSE, lightDiffuse);
-	glLightfv(GL_LIGHT1, GL_SPECULAR, lightSpecular);
-	glEnable(GL_LIGHT1);
+	//glLightfv(GL_LIGHT1, GL_AMBIENT, lightAmbient);
+	//glLightfv(GL_LIGHT1, GL_DIFFUSE, lightDiffuse);
+	//glLightfv(GL_LIGHT1, GL_SPECULAR, lightSpecular);
+	//glEnable(GL_LIGHT1);
 
-	glLightfv(GL_LIGHT2, GL_AMBIENT, lightAmbient);
-	glLightfv(GL_LIGHT2, GL_DIFFUSE, lightDiffuse);
-	glLightfv(GL_LIGHT2, GL_SPECULAR, lightSpecular);
-	glEnable(GL_LIGHT2);
+	//glLightfv(GL_LIGHT2, GL_AMBIENT, lightAmbient);
+	//glLightfv(GL_LIGHT2, GL_DIFFUSE, lightDiffuse);
+	//glLightfv(GL_LIGHT2, GL_SPECULAR, lightSpecular);
+	//glEnable(GL_LIGHT2);
 
-	// set point size & line width
-	mElementSizes[0] = 0.5f;
-	mElementSizes[1] = 0.5f;
-	glPointSize(mElementSizes[0]);
-	glLineWidth(mElementSizes[1]);
+	//// set point size & line width
+	//mElementSizes[0] = 0.5f;
+	//mElementSizes[1] = 0.5f;
+	//glPointSize(mElementSizes[0]);
+	//glLineWidth(mElementSizes[1]);
 }
 
 Renderer::~Renderer()
@@ -148,6 +148,7 @@ bool Renderer::onNewReconstruction(FlexibleMesh *mesh,
 
 void Renderer::render(const Real zoom)
 {
+	return;
 	const Camera3D *cam = Camera3D::getActiveCamera();
 	if (!cam)
 		return;

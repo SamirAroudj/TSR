@@ -68,9 +68,6 @@ namespace SurfaceReconstruction
 		};
 
 	public:
-		static void checkShader(const uint32 shaderID);
-
-	public:
 		MeshRenderer();
 		~MeshRenderer();
 
@@ -84,8 +81,8 @@ namespace SurfaceReconstruction
 
 	private:
 		void checkProgramAndShaders() const;
-		void checkProgram() const;
 
+		void createShader(const Storage::Path &fileName, const IndexType shaderType);
 		PNCVertex *createVertexBuffer(const Mesh &mesh);
 		void defineVertexFormat();
 		void deleteUploadedMesh(const uint32 meshIdx);

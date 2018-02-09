@@ -10,6 +10,7 @@
 #include <GL/glew.h>
 #include <GL/gL.h>
 #include "Graphics/Camera3D.h"
+#include "Graphics/GraphicsManager.h"
 #include "Math/Vector3.h"
 #include "Platform/FailureHandling/GraphicsException.h"
 #include "Platform/Storage/File.h"
@@ -39,47 +40,52 @@ MeshRenderer::MeshRenderer()
 
 void MeshRenderer::setupShaders()
 {
-	// load vertex & fragment shader
-	const Path vertexShaderFileName = Path::appendChild(SHADER_DIRECTORY, "PNCVertexShader.glsl");
-	const Path fragmentShaderFileName = Path::appendChild(SHADER_DIRECTORY, "PNCFragmentShader.glsl");
-	string vertexShader;
-	string fragmentShader;
-	File::loadTextFile(vertexShader, vertexShaderFileName);
-	File::loadTextFile(fragmentShader, fragmentShaderFileName);
-
-	// create vertex shader
-	const uint32 vertexShaderSourceCount = 1;
-	const char *vertexShaderSources[vertexShaderSourceCount] = { vertexShader.c_str() };
-	const int32 vertexShaderSourceLengths[vertexShaderSourceCount] = { (int32) vertexShader.length() };
-	mPNCProgramIDs[INDEX_VERTEX_SHADER] = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(mPNCProgramIDs[INDEX_VERTEX_SHADER], vertexShaderSourceCount, vertexShaderSources, vertexShaderSourceLengths);
-	glCompileShader(mPNCProgramIDs[INDEX_VERTEX_SHADER]);
-
-	// create fragment shader
-	const uint32 fragmentShaderSourceCount = 1;
-	const char *fragmentShaderSources[fragmentShaderSourceCount] = { fragmentShader.c_str() };
-	const int32 fragmentShaderSourceLengths[fragmentShaderSourceCount] = { (int32) fragmentShader.length() };
-	mPNCProgramIDs[INDEX_FRAGMENT_SHADER] = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(mPNCProgramIDs[INDEX_FRAGMENT_SHADER], fragmentShaderSourceCount, fragmentShaderSources, fragmentShaderSourceLengths);
-	glCompileShader(mPNCProgramIDs[INDEX_FRAGMENT_SHADER]);
-
-	// put vertex & fragment shader together in one program
+	// create program
 	mPNCProgramIDs[INDEX_PROGRAM] = glCreateProgram();
-	glAttachShader(mPNCProgramIDs[INDEX_PROGRAM], mPNCProgramIDs[INDEX_VERTEX_SHADER]);
-	glAttachShader(mPNCProgramIDs[INDEX_PROGRAM], mPNCProgramIDs[INDEX_FRAGMENT_SHADER]);
+
+	// load, compile & attach vertex & fragment shader
+	const Path vertexShaderFileName = Path::appendChild(SHADER_DIRECTORY, "PNCVertexShader.glsl");
+	createShader(vertexShaderFileName, INDEX_VERTEX_SHADER);
+	
+	const Path fragmentShaderFileName = Path::appendChild(SHADER_DIRECTORY, "PNCFragmentShader.glsl");
+	createShader(fragmentShaderFileName, INDEX_FRAGMENT_SHADER);
 
 	// specify mapping of vertex attributes to shader variables
 	glBindAttribLocation(mPNCProgramIDs[INDEX_PROGRAM], PNCVertex::VERTEX_ATTRIBUTE_POSITION, "inPosition");
 	glBindAttribLocation(mPNCProgramIDs[INDEX_PROGRAM], PNCVertex::VERTEX_ATTRIBUTE_NORMAL, "inNormal");
 	glBindAttribLocation(mPNCProgramIDs[INDEX_PROGRAM], PNCVertex::VERTEX_ATTRIBUTE_COLOR, "inColor");
-
+	
 	// link & use the program
 	glLinkProgram(mPNCProgramIDs[INDEX_PROGRAM]);
 	checkProgramAndShaders();
-	glUseProgram(mPNCProgramIDs[INDEX_PROGRAM]);
 
 	// get uniform locations
 	mUniformLocations[LOCATION_VP] = glGetUniformLocation(mPNCProgramIDs[INDEX_PROGRAM], "VP");
+	glUseProgram(mPNCProgramIDs[INDEX_PROGRAM]);
+}
+
+void MeshRenderer::createShader(const Path &fileName, const IndexType shaderIdx)
+{
+	// load shader text from file
+	string shader;
+	File::loadTextFile(shader, fileName);
+	
+	const uint32 sourceCount = 1;
+	const char *sources[sourceCount] = { shader.c_str() };
+	const int32 sourceLengths[sourceCount] = { (int32) shader.length() };
+	
+	uint32 shaderType = (uint32) -1;
+	switch (shaderIdx)
+	{
+		case INDEX_VERTEX_SHADER: shaderType = GL_VERTEX_SHADER; break;
+		case INDEX_FRAGMENT_SHADER: shaderType = GL_FRAGMENT_SHADER; break;
+		default: assert(false); throw Exception("Unimplemented case: createShader. Unsupported shader type.");
+	}
+	mPNCProgramIDs[shaderIdx] = glCreateShader(shaderType);
+
+	glShaderSource(mPNCProgramIDs[shaderIdx], sourceCount, sources, sourceLengths);
+	glCompileShader(mPNCProgramIDs[shaderIdx]);
+	glAttachShader(mPNCProgramIDs[INDEX_PROGRAM], mPNCProgramIDs[shaderIdx]);
 }
 
 MeshRenderer::~MeshRenderer()
@@ -137,13 +143,11 @@ void MeshRenderer::renderUploadedMeshes() const
 	const Camera3D *camera = Camera3D::getActiveCamera();
 	if (!camera)
 		return;
-
-	// compute matrix mapping from world space to clipping coordinates
+	
+	// compute & upload matrix mapping from world space to clipping coordinates
 	const Matrix4x4 &projection = camera->getProjectionMatrix();
 	const Matrix4x4 &viewMatrix = camera->getViewMatrix();
 	const Matrix4x4 VP = viewMatrix * projection;
-
-	// upload matrix
 	glUniformMatrix4rv(mUniformLocations[LOCATION_VP], 1, GL_FALSE, VP.getData());
 
 	// render each mesh
@@ -157,8 +161,6 @@ void MeshRenderer::renderUploadedMeshes() const
 		// define what data is drawn
 		glBindVertexArray(mesh.mIDs[MeshOnGPU::INDEX_VERTEX_ARRAY_OBJECT]);
 		glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
-		//glBindBuffer(GL_ARRAY_BUFFER, mesh.mIDs[MeshOnGPU::INDEX_VERTEX_BUFFER]);
-		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.mIDs[MeshOnGPU::INDEX_INDEX_BUFFER]);
 	}
 }
 
@@ -171,15 +173,16 @@ void MeshRenderer::uploadData(const Mesh &mesh)
 	const uint64 indexBytes = indexCount * sizeof(uint32);
 	const uint32 baseOffset = 0;
 	const GLbitfield flags = 0;
-
+	
 	// MeshOnGPU = access point to data on the GPU
-	MeshOnGPU meshOnGPU;
+	mMeshes.resize(mMeshes.size() + 1);
+	MeshOnGPU &meshOnGPU = mMeshes.back();
 	meshOnGPU.mMesh = &mesh;
 
 	// create data for vertex buffer in a format OpenGL can use
 	PNCVertex *vertexBuffer = createVertexBuffer(mesh);
 
-	// create and bind vertex buffer object
+	// create and bind parent object (vertex array object: VAO)
 	glCreateVertexArrays(1, meshOnGPU.mIDs + MeshOnGPU::INDEX_VERTEX_ARRAY_OBJECT);
 	glBindVertexArray(meshOnGPU.mIDs[MeshOnGPU::INDEX_VERTEX_ARRAY_OBJECT]);
 	defineVertexFormat();
@@ -189,12 +192,14 @@ void MeshRenderer::uploadData(const Mesh &mesh)
 
 	// create & upload vertex bufferGLuint baseOffset = 0;
 	glBindVertexBuffer(VERTEX_BUFFER_BINDING_INDEX, meshOnGPU.mIDs[MeshOnGPU::INDEX_VERTEX_BUFFER], baseOffset, sizeof(PNCVertex));
-	//glBindBuffer(GL_ARRAY_BUFFER, meshOnGPU.mBufferIndices[0]);
+	glBindBuffer(GL_ARRAY_BUFFER, meshOnGPU.mIDs[MeshOnGPU::INDEX_VERTEX_BUFFER]);
+	//glBufferData(GL_ARRAY_BUFFER, vertexBytes, vertexBuffer, GL_STATIC_DRAW);
 	glBufferStorage(GL_ARRAY_BUFFER, vertexBytes, vertexBuffer, flags);
 
 	// create & upload index buffer
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshOnGPU.mIDs[MeshOnGPU::INDEX_INDEX_BUFFER]);
-	glBufferStorage(GL_ELEMENT_ARRAY_BUFFER, indexBytes, mesh.getIndices(), flags);
+	//glBufferStorage(GL_ELEMENT_ARRAY_BUFFER, indexBytes, mesh.getIndices(), flags);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBytes, mesh.getIndices(), GL_STATIC_DRAW);
 
 	// free resources
 	delete [] vertexBuffer;
@@ -222,81 +227,14 @@ void MeshRenderer::defineVertexFormat()
 
 void MeshRenderer::checkProgramAndShaders() const
 {
+	const GraphicsManager &manager = GraphicsManager::getSingleton();
+	
 	// check shaders
 	for (IndexType indexType = INDEX_VERTEX_SHADER; indexType < INDEX_TYPE_COUNT; indexType = (IndexType) (indexType + 1))
-		checkShader(mPNCProgramIDs[indexType]);
+		manager.checkShader(mPNCProgramIDs[indexType]);
 
 	// check program
-	checkProgram();
-}
-
-void MeshRenderer::checkProgram() const
-{
-	// check program
-	glValidateProgram(mPNCProgramIDs[INDEX_PROGRAM]);
-
-	// valid program?
-	GLint valid = GL_FALSE;
-	glGetProgramiv(mPNCProgramIDs[INDEX_PROGRAM], GL_VALIDATE_STATUS, &valid);
-	if (GL_TRUE == valid)
-		return;
-
-	// get link status & log entry on failure
-	GLint linked = GL_FALSE;
-	glGetProgramiv(mPNCProgramIDs[INDEX_PROGRAM], GL_LINK_STATUS, &linked);
-	if (GL_TRUE != linked)
-	{
-		// todo log this properly
-		cerr << "Program could not be linked!" << endl;
-	}
-
-	// get program log length
-	GLint infoLogLength = 0;
-	glGetProgramiv(mPNCProgramIDs[INDEX_PROGRAM], GL_INFO_LOG_LENGTH, &infoLogLength);
-
-	// get program log
-	GLsizei actualLength;
-	char *log = new char[infoLogLength];
-	glGetProgramInfoLog(mPNCProgramIDs[INDEX_PROGRAM], infoLogLength, &actualLength, log);
-
-	// output log
-	// todo log this properly
-	cerr << "glGetProgramInfoLog:\n";
-	cerr << log << endl;
-	GraphicsException exception(log, mPNCProgramIDs[INDEX_PROGRAM]);
-
-	delete [] log;
-	log = NULL;
-
-	throw exception;
-}
-
-void MeshRenderer::checkShader(const uint32 shaderID)
-{
-	// compiled?
-	GLint compiled = GL_FALSE;
-	glGetShaderiv(shaderID, GL_COMPILE_STATUS, &compiled);
-	if (GL_TRUE == compiled)
-		return;
-
-	// get shader log length
-	GLint infoLogLength = 0;
-	glGetShaderiv(shaderID, GL_INFO_LOG_LENGTH, &infoLogLength);
-
-	// get shader log
-	GLsizei actualLength;
-	char *log = new char[infoLogLength];
-	glGetShaderInfoLog(shaderID, infoLogLength, &actualLength, log);
-
-	// output log
-	cerr << "glGetShaderInfoLog:\n";
-	cerr << log << endl;
-	GraphicsException exception(log, shaderID);
-
-	delete [] log;
-	log = NULL;
-
-	throw exception;
+	manager.checkProgram(mPNCProgramIDs[INDEX_PROGRAM]);
 }
 
 PNCVertex *MeshRenderer::createVertexBuffer(const Mesh &mesh)

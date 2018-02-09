@@ -1764,7 +1764,7 @@ void FlexibleMesh::fillHoles(const vector<vector<uint32>> &holeBorderRings)
 		Vector3 center;
 		for (uint32 i = 0; i < borderVertexCount; ++i)
 			center += mPositions[holeBorder[i]];
-		center /= borderVertexCount;
+		center /= (Real) borderVertexCount;
 
 		fillHole(holeBorder.data(), borderVertexCount, center);
 	}
@@ -2003,7 +2003,7 @@ Math::Vector3 FlexibleMesh::getCenterOfNeighbors(const uint32 vertexIdx) const
 	}
 
 	// average
-	center /= neighborCount;
+	center /= (Real) neighborCount;
 	return center;
 }
 
