@@ -131,7 +131,7 @@ FlexibleMesh *DepthImage::triangulate( vector<uint32> &tempPixelToVertexIndices,
 	const Matrix3x3 invProj = camera.computeInverseProjectionMatrix();
 	const Matrix3x3 invRot = camera.computeInverseRotationMatrix();
 	const Matrix3x3 pixelToViewSpace = invViewPort * invProj;
-	const Matrix3x3 hPSToNNRayDirWS = pixelToViewSpace * invRot;
+	const Matrix3x3 hPSToNNRayDirWS = pixelToViewSpace * invRot; //camera.computeHPSToNNRayDirWS(mSize, true);
 	const Vector4 &camPosHWS = camera.getPosition();
 	const Vector3 camPosWS(camPosHWS.x, camPosHWS.y, camPosHWS.z);
 
