@@ -9,16 +9,20 @@
 
  uniform mat4 VP;
 
- attribute vec4 inPosition;
- attribute vec3 inNormal;
+ attribute vec3 inPositionWS;
+ attribute vec3 inNormalWS;
  attribute vec3 inColor;
 
- varying vec3 outNormal;
- varying vec3 outColor;
+ varying vec3 positionWS;
+ varying vec3 normalWS;
+ varying vec3 color;
 
  void main()
  {
-	gl_Position = VP * inPosition;
-	outNormal = inNormal;
-	outColor = inColor;
+	gl_Position = VP * vec4(inPositionWS, 1.0);
+
+	// lerp for: position, normal and color
+	positionWS = inPositionWS;
+	normalWS = inNormalWS;
+	color = inColor;
  }

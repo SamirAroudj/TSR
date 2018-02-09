@@ -198,8 +198,8 @@ void MeshRenderer::uploadData(const Mesh &mesh)
 
 	// create & upload index buffer
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshOnGPU.mIDs[MeshOnGPU::INDEX_INDEX_BUFFER]);
-	//glBufferStorage(GL_ELEMENT_ARRAY_BUFFER, indexBytes, mesh.getIndices(), flags);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBytes, mesh.getIndices(), GL_STATIC_DRAW);
+	glBufferStorage(GL_ELEMENT_ARRAY_BUFFER, indexBytes, mesh.getIndices(), flags);
+	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBytes, mesh.getIndices(), GL_STATIC_DRAW);
 
 	// free resources
 	delete [] vertexBuffer;
