@@ -40,9 +40,6 @@ const char *Scene::PARAMETER_NAME_RELATIVE_CAMERAS_FILE = "relativeCamerasFileNa
 const char *Scene::PARAMETER_NAME_TRIANGLE_ISLE_SIZE_MINIMUM = "Scene::minimumTriangleIsleSize";
 const char *Scene::PARAMETER_NAME_SCENE_FOLDER = "sceneFolder";
 
-// default parameter values
-const char *Scene::PARAMETER_VALUE_RELATIVE_CAMERAS_FILE = "Cameras.txt";
-
 const uint32 Scene::PARAMETER_VALUE_REFINEMENT_VIA_PHOTOS_MESH_OUTPUT_FREQUENCY = 25;
 const uint32 Scene::PARAMETER_VALUE_TRIANGLE_ISLE_SIZE_MINIMUM = 2500;
 const uint32 Scene::VIEWS_FILE_VERSION = 0;
@@ -106,7 +103,7 @@ Scene::Scene(const vector<IReconstructorObserver *> &observers) :
 	mTree(NULL),
 	mRefinerObservers(observers),
 	mFolder(""),
-	mRelativeCamerasFile(PARAMETER_VALUE_RELATIVE_CAMERAS_FILE),
+	mRelativeCamerasFile(""),
 	mMinIsleSize(PARAMETER_VALUE_TRIANGLE_ISLE_SIZE_MINIMUM)
 {
 	for (uint32 meshIdx = 0; meshIdx < RECONSTRUCTION_TYPE_COUNT; ++meshIdx)
