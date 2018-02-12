@@ -38,10 +38,10 @@ namespace SurfaceReconstruction
 	public:
 		enum VertexAttributeIndices
 		{
-			VERTEX_ATTRIBUTE_POSITION,
-			VERTEX_ATTRIBUTE_NORMAL,
-			VERTEX_ATTRIBUTE_COLOR,
-			VERTEX_ATTRIBUTE_COUNT
+			VERTEX_ATTRIBUTE_INDEX_POSITION,
+			VERTEX_ATTRIBUTE_INDEX_NORMAL,
+			VERTEX_ATTRIBUTE_INDEX_COLOR,
+			VERTEX_ATTRIBUTE_INDEX_COUNT
 		};
 
 	public:
@@ -53,7 +53,7 @@ namespace SurfaceReconstruction
 	class MeshRenderer
 	{
 	public:
-		enum IndexType
+		enum Index
 		{
 			INDEX_PROGRAM,
 			INDEX_VERTEX_SHADER,
@@ -61,7 +61,7 @@ namespace SurfaceReconstruction
 			INDEX_TYPE_COUNT
 		};
 
-		enum LocationType
+		enum Location
 		{
 			LOCATION_VP,
 			LOCATION_TYPE_COUNT
@@ -82,7 +82,7 @@ namespace SurfaceReconstruction
 	private:
 		void checkProgramAndShaders() const;
 
-		void createShader(const Storage::Path &fileName, const IndexType shaderType);
+		void createShader(const Storage::Path &fileName, const Index shaderType);
 		PNCVertex *createVertexBuffer(const Mesh &mesh);
 		void defineVertexFormat();
 		void deleteUploadedMesh(const uint32 meshIdx);

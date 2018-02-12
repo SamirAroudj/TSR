@@ -26,6 +26,14 @@ namespace SurfaceReconstruction
 	class DepthImage : public Image
 	{
 	public:
+		enum DepthConvention
+		{
+			DEPTH_CONVENTION_ALONG_RAY,
+			DEPTH_CONVENTION_ALONG_Z_AXIS,
+			CONVENTION_COUNT
+		};
+
+	public:
 		static void convertDepthsToColor(uint8 *pixels, const Real *depths,
 			const uint32 elementCount, const uint32 channelCount, const Real minDepth, const Real maxDepth);
 		static void findExtrema(Real &minimum, Real &maximum, const Real *depths, const uint32 elementCount);
@@ -36,8 +44,11 @@ namespace SurfaceReconstruction
 		/** todo */
 		FlexibleMesh *triangulate(std::vector<uint32> &tempPixelToVertexIndices, std::vector<std::vector<uint32>> &tempVertexNeighbors, std::vector<uint32> &tempIndices,
 			const Graphics::PinholeCamera &camera, const ColorImage *image = NULL) const;	
+
 		void saveAsMVEFloatImage(const Storage::Path &fileName, 
 			const bool invertX = false, const bool invertY = true, float *temporaryStorage = NULL);
+		
+		void setDepthConvention(const Graphics::PinholeCamera &camera, const DepthConvention &targetConvention);
 
 	protected:
 		DepthImage(const std::string &resourceName, const Storage::Path &imageFileName);
@@ -57,7 +68,7 @@ namespace SurfaceReconstruction
 			const Math::Matrix3x3 &hPSToNNRayDirWS, const Math::Vector3 &centerOfProjection) const;
 
 		uint32 triangulateBlock(std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices, uint32 vertexCount,
-			const uint32 x, const uint32 y, const Math::Matrix3x3 &pixelToViewSpace) const;	
+			const uint32 x, const uint32 y, const Math::Matrix3x3 &hPSToNNRayDirVS) const;	
 	
 	public:
 		static const Real DEPTH_DIFFERENCE_FACTOR;
@@ -65,6 +76,7 @@ namespace SurfaceReconstruction
 
 	private:
 		Real *mDepths;
+		DepthConvention mDepthConvention;
 	};
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

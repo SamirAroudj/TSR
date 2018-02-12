@@ -51,9 +51,9 @@ void MeshRenderer::setupShaders()
 	createShader(fragmentShaderFileName, INDEX_FRAGMENT_SHADER);
 
 	// specify mapping of vertex attributes to shader variables
-	glBindAttribLocation(mPNCProgramIDs[INDEX_PROGRAM], PNCVertex::VERTEX_ATTRIBUTE_POSITION, "inPosition");
-	glBindAttribLocation(mPNCProgramIDs[INDEX_PROGRAM], PNCVertex::VERTEX_ATTRIBUTE_NORMAL, "inNormal");
-	glBindAttribLocation(mPNCProgramIDs[INDEX_PROGRAM], PNCVertex::VERTEX_ATTRIBUTE_COLOR, "inColor");
+	glBindAttribLocation(mPNCProgramIDs[INDEX_PROGRAM], PNCVertex::VERTEX_ATTRIBUTE_INDEX_POSITION, "inPosition");
+	glBindAttribLocation(mPNCProgramIDs[INDEX_PROGRAM], PNCVertex::VERTEX_ATTRIBUTE_INDEX_NORMAL, "inNormal");
+	glBindAttribLocation(mPNCProgramIDs[INDEX_PROGRAM], PNCVertex::VERTEX_ATTRIBUTE_INDEX_COLOR, "inColor");
 	
 	// link & use the program
 	glLinkProgram(mPNCProgramIDs[INDEX_PROGRAM]);
@@ -64,7 +64,7 @@ void MeshRenderer::setupShaders()
 	glUseProgram(mPNCProgramIDs[INDEX_PROGRAM]);
 }
 
-void MeshRenderer::createShader(const Path &fileName, const IndexType shaderIdx)
+void MeshRenderer::createShader(const Path &fileName, const Index shaderIdx)
 {
 	// load shader text from file
 	string shader;
@@ -210,19 +210,19 @@ void MeshRenderer::defineVertexFormat()
 {
 	// define vertex format according to PNCVertex vertices
 	// attribute 0: 3 x float for positions
-	glEnableVertexAttribArray(PNCVertex::VERTEX_ATTRIBUTE_POSITION);
-	glVertexAttribFormat(PNCVertex::VERTEX_ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, offsetof(PNCVertex, mPosition));
-	glVertexAttribBinding(PNCVertex::VERTEX_ATTRIBUTE_POSITION, VERTEX_BUFFER_BINDING_INDEX);
+	glEnableVertexAttribArray(PNCVertex::VERTEX_ATTRIBUTE_INDEX_POSITION);
+	glVertexAttribFormat(PNCVertex::VERTEX_ATTRIBUTE_INDEX_POSITION, 3, GL_FLOAT, GL_FALSE, offsetof(PNCVertex, mPosition));
+	glVertexAttribBinding(PNCVertex::VERTEX_ATTRIBUTE_INDEX_POSITION, VERTEX_BUFFER_BINDING_INDEX);
 	
 	// attribute 1: 3 x float for normals
-	glEnableVertexAttribArray(PNCVertex::VERTEX_ATTRIBUTE_NORMAL);
-	glVertexAttribFormat(PNCVertex::VERTEX_ATTRIBUTE_NORMAL, 3, GL_FLOAT, GL_FALSE, offsetof(PNCVertex, mNormal));
-	glVertexAttribBinding(PNCVertex::VERTEX_ATTRIBUTE_NORMAL, VERTEX_BUFFER_BINDING_INDEX);
+	glEnableVertexAttribArray(PNCVertex::VERTEX_ATTRIBUTE_INDEX_NORMAL);
+	glVertexAttribFormat(PNCVertex::VERTEX_ATTRIBUTE_INDEX_NORMAL, 3, GL_FLOAT, GL_FALSE, offsetof(PNCVertex, mNormal));
+	glVertexAttribBinding(PNCVertex::VERTEX_ATTRIBUTE_INDEX_NORMAL, VERTEX_BUFFER_BINDING_INDEX);
 
 	// attribute 2: 3 x float for colors
-	glEnableVertexAttribArray(PNCVertex::VERTEX_ATTRIBUTE_COLOR);
-	glVertexAttribFormat(PNCVertex::VERTEX_ATTRIBUTE_COLOR, 3, GL_FLOAT, GL_FALSE, offsetof(PNCVertex, mColor));
-	glVertexAttribBinding(PNCVertex::VERTEX_ATTRIBUTE_COLOR, VERTEX_BUFFER_BINDING_INDEX);
+	glEnableVertexAttribArray(PNCVertex::VERTEX_ATTRIBUTE_INDEX_COLOR);
+	glVertexAttribFormat(PNCVertex::VERTEX_ATTRIBUTE_INDEX_COLOR, 3, GL_FLOAT, GL_FALSE, offsetof(PNCVertex, mColor));
+	glVertexAttribBinding(PNCVertex::VERTEX_ATTRIBUTE_INDEX_COLOR, VERTEX_BUFFER_BINDING_INDEX);
 }
 
 void MeshRenderer::checkProgramAndShaders() const
@@ -230,8 +230,8 @@ void MeshRenderer::checkProgramAndShaders() const
 	const GraphicsManager &manager = GraphicsManager::getSingleton();
 	
 	// check shaders
-	for (IndexType indexType = INDEX_VERTEX_SHADER; indexType < INDEX_TYPE_COUNT; indexType = (IndexType) (indexType + 1))
-		manager.checkShader(mPNCProgramIDs[indexType]);
+	for (Index index = INDEX_VERTEX_SHADER; index < INDEX_TYPE_COUNT; index = (Index) (index + 1))
+		manager.checkShader(mPNCProgramIDs[index]);
 
 	// check program
 	manager.checkProgram(mPNCProgramIDs[INDEX_PROGRAM]);

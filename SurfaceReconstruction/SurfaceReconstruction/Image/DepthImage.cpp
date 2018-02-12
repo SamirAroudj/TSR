@@ -84,7 +84,7 @@ DepthImage *DepthImage::request(const string &resourceName, const Path &imageFil
 }
 
 DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
-	Image(ImgSize(0, 0), resourceName), mDepths(NULL)
+	Image(ImgSize(0, 0), resourceName), mDepths(NULL), mDepthConvention(DEPTH_CONVENTION_ALONG_RAY)
 {
 	// get complete file name
 	const Path viewsFolder(VolatileResource<Image>::getPathToResources());
@@ -99,23 +99,19 @@ DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
 	if (header.mChannelCount != 1)
 		throw FileException("Unsupported channel count for a depth map!", imageFileName);
 	if (MVEIHeader::MVE_FLOAT != header.mType && MVEIHeader::MVE_DOUBLE != header.mType)
-		throw FileException("Unsupported depth type. Only real numbers are supported!", imageFileName);
+		throw FileException("Unsupported depth type. Only floating point numbers (IEEE 754, single or double precision) are supported!", imageFileName);
 
-	// simply keep or convert the loaded data?
-	if (sizeof(Real) == header.getTypeSize())
-	{
-		mDepths = (Real *) data;
-		return;
-	}
-
-	// convert the data
+	// simply keep the data or do we need to convert the depths?
 	const uint32 pixelCount = header.mSize.getElementCount();
-	if (MVEIHeader::MVE_FLOAT == header.mType)
-		mDepths = Utilities::convert<Real, float>(data, pixelCount);
-	else if (MVEIHeader::MVE_DOUBLE == header.mType)
-		mDepths = Utilities::convert<Real, double>(data, pixelCount);
-	else
-		throw FileCorruptionException("MVE image for depth image creation! Only supported data types are float and double.", imageFileName);
+	mDepths = reinterpret_cast<Real *>(data);
+
+	#ifdef DOUBLE_PRECISION
+		if (MVEIHeader::MVE_FLOAT == header.mType)
+			mDepths = Utilities::convert<double, float>(data, pixelCount);
+	#else
+		if (MVEIHeader::MVE_DOUBLE == header.mType)
+			mDepths = Utilities::convert<float, double>(data, pixelCount);
+	#endif // DOUBLE_PRECISION
 }
 
 void DepthImage::saveAsMVEFloatImage(const Path &fileName, const bool invertX, const bool invertY, float *temporaryStorage)
@@ -130,8 +126,8 @@ FlexibleMesh *DepthImage::triangulate( vector<uint32> &tempPixelToVertexIndices,
 	const Matrix3x3 invViewPort = camera.computeInverseViewportMatrix(mSize, true);
 	const Matrix3x3 invProj = camera.computeInverseProjectionMatrix();
 	const Matrix3x3 invRot = camera.computeInverseRotationMatrix();
-	const Matrix3x3 pixelToViewSpace = invViewPort * invProj;
-	const Matrix3x3 hPSToNNRayDirWS = pixelToViewSpace * invRot; //camera.computeHPSToNNRayDirWS(mSize, true);
+	const Matrix3x3 hPSToNNRayDirVS = invViewPort * invProj;
+	const Matrix3x3 hPSToNNRayDirWS = hPSToNNRayDirVS * invRot; //camera.computeHPSToNNRayDirWS(mSize, true);
 	const Vector4 &camPosHWS = camera.getPosition();
 	const Vector3 camPosWS(camPosHWS.x, camPosHWS.y, camPosHWS.z);
 
@@ -145,7 +141,7 @@ FlexibleMesh *DepthImage::triangulate( vector<uint32> &tempPixelToVertexIndices,
 	uint32 vertexCount = 0;
 	for (uint32 y = 0; y < mSize[1] - 1; ++y)
 		for (uint32 x = 0; x < mSize[0] - 1; ++x)
-			vertexCount = triangulateBlock(tempIndices, tempPixelToVertexIndices, vertexCount, x, y, pixelToViewSpace);
+			vertexCount = triangulateBlock(tempIndices, tempPixelToVertexIndices, vertexCount, x, y, hPSToNNRayDirVS);
 	const uint32 indexCount = (uint32) tempIndices.size();
 
 	// recompute vertex neighbors
@@ -158,7 +154,7 @@ FlexibleMesh *DepthImage::triangulate( vector<uint32> &tempPixelToVertexIndices,
 }
 
 uint32 DepthImage::triangulateBlock(vector<uint32> &indices, vector<uint32> &pixelToVertexIndices, uint32 vertexCount,
-	const uint32 x, const uint32 y, const Matrix3x3 &pixelToViewSpace) const
+	const uint32 x, const uint32 y, const Matrix3x3 &hPSToNNRayDirVS) const
 {
 	// indices of 4 different, reasonable triangles within 2x2 rectangle of vertices
 	const uint32 blockTriangles[4][3] =
@@ -254,9 +250,9 @@ uint32 DepthImage::triangulateBlock(vector<uint32> &indices, vector<uint32> &pix
 		const uint32 neighborX = x + (localDepthIdx % 2);
 		const uint32 neighborY = y + (localDepthIdx / 2);
 		const Real &depth = blockDepths[localDepthIdx];
-		const Vector3 vVS = Vector3((Real) neighborX, (Real) neighborY, 1.0f) * pixelToViewSpace;
+		const Vector3 vVS = Vector3((Real) neighborX, (Real) neighborY, 1.0f) * hPSToNNRayDirVS;
 
-		footprints[localDepthIdx] = pixelToViewSpace.m00 * depth / vVS.getLength();
+		footprints[localDepthIdx] = hPSToNNRayDirVS.m00 * depth / vVS.getLength();
 	}
 
 	// try to avoid triangulating depth discontinuities
@@ -402,8 +398,43 @@ void DepthImage::setVertexColors(FlexibleMesh &viewMesh,
 	}
 }
 
+void DepthImage::setDepthConvention(const PinholeCamera &camera, const DepthConvention &targetConvention)
+{
+	// already wanted convention?
+	if (targetConvention == mDepthConvention)
+		return;
+
+	// homogenous pixel to non-normalized ray dir view space matrix
+	const Matrix3x3 invViewPort = camera.computeInverseViewportMatrix(mSize, true);
+	const Matrix3x3 invProjection = camera.computeInverseProjectionMatrix();
+	const Matrix3x3 hPSToNNRayDirVS = invViewPort * invProjection;
+
+	// convert all valid depths
+	for (uint32 y = 0, rowOffset = 0; y < mSize[1]; ++y, rowOffset += mSize[0])
+	{
+		for (uint32 x = 0; x < mSize[0]; ++x)
+		{
+			// valid depth?
+			Real &depth = mDepths[rowOffset + x];
+			if (depth <= 0.0f)
+				continue;
+
+			// ray direction in view space
+			const Vector3 hPS((Real) x, (Real) y, 1.0f);
+			Vector3 rayVS = hPS * hPSToNNRayDirVS;
+			rayVS.normalize();
+
+			// convert from depth along view space z-axis to depth along view space ray
+			const Real conversionFactor = (DEPTH_CONVENTION_ALONG_Z_AXIS == targetConvention ? fabsr(rayVS.z) : 1.0f / rayVS.z);
+			depth = depth * conversionFactor;
+		}
+	}
+
+	mDepthConvention = targetConvention;
+}
+
 DepthImage::DepthImage(Real *depths, const ImgSize &size, const string &resourceName) :
-	Image(size, resourceName), mDepths(NULL)
+	Image(size, resourceName), mDepths(NULL), mDepthConvention(DEPTH_CONVENTION_ALONG_RAY)
 {
 	// copy depths
 	const uint32 elementCount = size.getElementCount();
