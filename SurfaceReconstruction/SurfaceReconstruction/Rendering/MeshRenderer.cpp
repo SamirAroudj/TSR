@@ -111,18 +111,24 @@ void MeshRenderer::clear()
 
 void MeshRenderer::deleteUploadedMesh(const Mesh &mesh)
 {
-	// find the mesh & free it
+	// uploaded?
+	const uint32 meshIndex = getIndex(&mesh);
+	if ((uint32) -1 == meshIndex)
+		throw Exception("Mesh on the GPU to be deleted was not uploaded to the GPU or freed already.");
+
+	deleteUploadedMesh(meshIndex);
+}
+
+uint32 MeshRenderer::getIndex(const Mesh *mesh) const
+{
+	// try to find the mesh
 	const uint32 meshCount = (uint32) mMeshes.size();
 	for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
-	{
-		if (mMeshes[meshIdx].mMesh != &mesh)
-			continue;
-		
-		deleteUploadedMesh(meshIdx);
-		return;
-	}
-
-	throw Exception("Mesh on the GPU to be deleted was not uploaded to the GPU or freed already.");
+		if (mesh == mMeshes[meshIdx].mMesh)
+			return meshIdx;
+	
+	// not found
+	return -1;
 }
 
 void MeshRenderer::deleteUploadedMesh(const uint32 targetMeshIdx)

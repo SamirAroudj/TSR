@@ -23,10 +23,10 @@ namespace SurfaceReconstruction
 	public:
 		enum ReconstructionType
 		{
-			RECONSTRUCTION_VIA_OCCUPANCIES,			/// Reconstruction from free space and surface constraints (occupanccy scalar field of Occupancy object)
-			RECONSTRUCTION_VIA_PHOTOS,				/// Reconstruction which was improved by means of photos.
-			RECONSTRUCTION_VIA_SAMPLES,				/// Reconstruction from sample-based refinement of mCrust.
-			RECONSTRUCTION_TYPE_COUNT				/// Number of different reconstruction types.
+			RECONSTRUCTION_VIA_OCCUPANCIES,	/// Reconstruction from free space and surface constraints (occupanccy scalar field of Occupancy object)
+			RECONSTRUCTION_VIA_PCS,			/// Reconstruction which was improved by means of PCS.
+			RECONSTRUCTION_VIA_SAMPLES,		/// Reconstruction from sample-based refinement of mCrust.
+			RECONSTRUCTION_TYPE_COUNT		/// Number of different reconstruction types.
 		};
 
 	public:

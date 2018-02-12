@@ -370,18 +370,6 @@ void FlexibleMesh::updateVertexIndices(vector<vector<uint32>> &vertexSets, const
 	}
 }
 
-StaticMesh *FlexibleMesh::createStaticMesh() const
-{
-	// is there a result?
-	const uint32 vertexCount = getVertexCount();
-	const uint32 indexCount = (uint32) mIndices.size();
-	if (0 == vertexCount || 0 == indexCount)
-		return NULL;
-
-	return new StaticMesh(mColors.data(), mNormals.data(), mPositions.data(), mScales.data(), mIndices.data(),
-		getVertexCount(), getIndexCount());
-}
-
 void FlexibleMesh::mergeEdges(vector<uint32> &edgesWithNewIndices, const vector<uint32> &edgeMergeCandidates)
 {
 	const uint32 candidateCount = (uint32) edgeMergeCandidates.size();

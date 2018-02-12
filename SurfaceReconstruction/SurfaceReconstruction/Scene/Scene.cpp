@@ -222,16 +222,15 @@ bool Scene::reconstruct()
 	}
 	refine(RECONSTRUCTION_VIA_SAMPLES);
 
-	//// refinement via photos?
+	//// further refinement?
 	//if (!mPCSRefiner && mReconstructions[RECONSTRUCTION_VIA_SAMPLES])
 	//{
-	//	cout << "Mesh refinement using global photo consistency score." << endl;
 
 	//	mPCSRefiner = new PCSRefiner(*mReconstructions[RECONSTRUCTION_VIA_SAMPLES]);
 	//	mPCSRefiner->registerObserver(this);
 	//	if (observers)
 	//		mFSSFRefiner->registerObservers(*observers);
-	//	refine(RECONSTRUCTION_VIA_PHOTOS);
+	//	refine(RECONSTRUCTION_VIA_PCS);
 	//}
 
 	return true;
@@ -243,7 +242,7 @@ void Scene::refine(const ReconstructionType type)
 	if (RECONSTRUCTION_VIA_SAMPLES == type && mReconstructions[RECONSTRUCTION_VIA_OCCUPANCIES] && mFSSFRefiner)
 		mFSSFRefiner->refine();
 	#ifdef PCS_REFINEMENT
-		else if (RECONSTRUCTION_VIA_PHOTOS == type && mReconstructions[RECONSTRUCTION_VIA_SAMPLES] && mPCSRefiner)
+		else if (RECONSTRUCTION_VIA_PCS == type && mReconstructions[RECONSTRUCTION_VIA_SAMPLES] && mPCSRefiner)
 			mPCSRefiner->refine(REFINEMENT_VIA_PHOTOS_MESH_OUTPUT_FREQUENCY);
 	#endif // PCS_REFINEMENT
 	else
@@ -344,7 +343,7 @@ Path Scene::getFileBeginning() const
 
 const FlexibleMesh *Scene::getMostRefinedReconstruction() const
 {
-	const FlexibleMesh *mesh = getReconstruction(RECONSTRUCTION_VIA_PHOTOS);
+	const FlexibleMesh *mesh = getReconstruction(RECONSTRUCTION_VIA_PCS);
 	if (!mesh)
 		mesh = getReconstruction(RECONSTRUCTION_VIA_SAMPLES);
 	if (!mesh)
@@ -394,7 +393,9 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 	}	
 
 	// load the right sample set
-	const Path samplesPath = (mTree ? Path::extendLeafName(beginning, FileNaming::REORDERED_SAMPLES) : beginning);
+	string ending(mTree ? FileNaming::REORDERED_SAMPLES : "");
+	ending += FileNaming::ENDING_SAMPLES;
+	const Path samplesPath = Path::extendLeafName(beginning, ending);
 	mSamples = new Samples(samplesPath);
 
 	// try to load the free space

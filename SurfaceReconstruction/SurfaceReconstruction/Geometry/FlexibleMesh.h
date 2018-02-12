@@ -23,9 +23,6 @@
 
 namespace SurfaceReconstruction
 {
-	// forward declarations
-	class StaticMesh;
-
 	class EdgeConflict
 	{
 	public:
@@ -99,8 +96,6 @@ namespace SurfaceReconstruction
 		void computeScalesViaEdgeDistances();
 
 		Math::Vector3 computeUmbrellaSmoothingMovement(const uint32 vertexIdx, const Real lambda) const;
-
-		StaticMesh *createStaticMesh() const;
 
 		void deleteGeometry(const uint32 *vertexOffsets, const uint32 *edgeOffsets, const uint32 *triangleOffsets);
 		void deleteIsolatedGeometry(const uint32 triangleIslesMinSize);

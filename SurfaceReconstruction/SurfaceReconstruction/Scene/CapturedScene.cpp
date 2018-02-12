@@ -71,7 +71,7 @@ void CapturedScene::loadMetaData(vector<Path> &plyCloudFileNames, vector<uint32>
 	{
 		// get & check parameter parts: type name = value;
 		Utilities::split(parts, textLine, " \t");
-		if (parts.size() != 4)
+		if (parts.size() < 4)
 			continue;
 		if (parts[2] != "=")
 			continue;

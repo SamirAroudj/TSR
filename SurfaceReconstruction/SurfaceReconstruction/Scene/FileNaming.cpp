@@ -34,7 +34,7 @@ const char *FileNaming::FILTERED_SAMPLES = "Filtered";
 const char *FileNaming::RECONSTRUCTED_MESHES[IReconstructorObserver::RECONSTRUCTION_TYPE_COUNT] =
 {
 	"Crust", 
-	"ReconstructionViaPhotos",
+	"ReconstructionViaPCS",
 	"ReconstructionViaSamples"
 };
 const char *FileNaming::REORDERED_SAMPLES = "Reordered";

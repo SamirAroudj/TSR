@@ -1,8 +1,8 @@
 // scene root folder where all the data is
-string sceneFolder = C:\Dev\Scenes\Orchid;
+string sceneFolder = C:\Dev\Scenes\WedgeComplex;
 
 // defines sensors' data for captured real world scenes, e.g., contains sensor device positions, currently supported: MVE format, see https://github.com/SamirAroudj/mve
-string relativeCamerasFileName = Cameras.txt;
+string relativeCamerasFileName = Results\Cameras.txt;
 
 // preprocess: points are transformed into another "input" coordinate system with orientation R and origin p:
 // x' = R^t * (x - p) with R^t and R from extrinsic angles inputOrientation and p as inputOrigin
@@ -14,7 +14,7 @@ Vector3 inputOrientation = { 0.0f, 0.0f, 0.0f }; // rotation matrix R from extri
 Vector3 inputOrigin = { 0.0f, 0.0f, 0.0f }; // input points are shifted by -t (before rotation via extrinsic angles)
 
 // multiple input point clouds are possible, format: string plyFile = <absolute point cloud ply file name>;
-//string plyFile = C:\Dev\Scenes\Orchid\Samples\SceneSamples.ply; // view_id properties refer to camera file relativeCamerasFileName
-//string plyFile = C:\Dev\Scenes\WedgeComplex\Results\SceneSamples2.ply;
-uint32 imageScale = 1;
-uint32 imageScale = 2;
+string plyFile = C:\Dev\Scenes\WedgeComplex\Results\Scene.ply; // view_id properties refer to camera file relativeCamerasFileName
+//string plyFile = C:\Dev\Scenes\WedgeComplex\Results\Scene2.ply;
+//uint32 imageScale = 1; // specify this to load images of scale 1, e.g., undist-L1.png or depth-L1.mvei (not used / just for debugging)
+//uint32 imageScale = 2; // specify this to load images of scale 2, e.g., undist-L2.png or depth-L2.mvei (not used / just for debugging)

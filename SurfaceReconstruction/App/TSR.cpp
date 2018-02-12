@@ -16,6 +16,8 @@
 #include "Platform/ApplicationTimer.h"
 #include "Platform/Input/InputManager.h"
 #include "Platform/ParametersManager.h"
+#include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
+#include "SurfaceReconstruction/Geometry/StaticMesh.h"
 #include "SurfaceReconstruction/Refinement/FSSFRefiner.h"
 #ifdef PCS_REFINEMENT
 	#include "SurfaceReconstruction/Refinement/PCSRefiner.h"
@@ -225,11 +227,13 @@ void TSR::controlCamera()
 
 void TSR::controlRenderer()
 {
-	// keyboard & tree
+	// rendering at all?
+	if (!Platform::Window::exists())
+		return;
+
+	// keyboard, octree & reconstruction
 	const Keyboard &keyboard = InputManager::getSingleton().getKeyboard();
 	const Tree *tree = mScene->getTree();
-
-	// get reconstruction (ordered from most to least refined)
 	const FlexibleMesh *mesh = mScene->getMostRefinedReconstruction();
 	
 	// change visibility / rendering type of a particular thingy?
@@ -331,11 +335,10 @@ void TSR::controlRenderer()
 			mRenderer->showEdgeNeighbors(index);
 		}
 
-		// PCS refiner: photo consistency movements
+		// PCS refiner
 		if (keyboard.isKeyReleased(KEY_F11) && mScene->getPCSRefiner())
-			mRenderer->toggleMeshRefinerRendering(Renderer::MESH_REFINER_PHOTOCONSISTENCY_MOVEMENTS);
+			mRenderer->toggleMeshRefinerRendering(Renderer::MESH_REFINER_PCS_MOVEMENTS);
 
-		
 		//if (keyboard.isKeyReleased(KEY_F10))
 		//	mRenderer->showTriangleNeighborsOfNeighbor(0);
 		//else if (keyboard.isKeyReleased(KEY_F11))
@@ -346,10 +349,8 @@ void TSR::controlRenderer()
 	}
 
 	// other stuff
-	// no CONTROL key down
-	
-	// general rendering control
-	
+	// no CONTROL key down -> general rendering control
+
 	// backface culling
 	if (keyboard.isKeyReleased(KEY_BACKSLASH))
 		mRenderer->toggleBackfaceCulling();
@@ -357,13 +358,18 @@ void TSR::controlRenderer()
 	// sample rendering modes
 	if (keyboard.isKeyReleased(KEY_F1))
 		mRenderer->shiftSampleRendering();
+	
+	// show ground truth?
+	const Mesh *groundTruth = mScene->getGroundTruth();
+	if (keyboard.isKeyReleased(KEY_F2) && groundTruth)
+	{
+		if (mMeshRenderer->isUploaded(*groundTruth))
+			mMeshRenderer->deleteUploadedMesh(*groundTruth);
+		else
+			mMeshRenderer->uploadData(*groundTruth);
+		return;
+	}
 
-	// mesh rendering modes : ground truth & reconstruction
-	if (keyboard.isKeyReleased(KEY_F2))
-		mRenderer->showNextReconstruction();
-	if (keyboard.isKeyReleased(KEY_F3))
-		mRenderer->toggleGroundTruthVisibility();
-		
 	// occupancy rendering
 	if (keyboard.isKeyReleased(KEY_F4))
 		mRenderer->toggleOccupancyRenderingFlags(Renderer::OCCUPANCY_RENDERING_FLAGS_EMPTINESS);
@@ -390,27 +396,28 @@ bool TSR::controlScene()
 {
 	const Keyboard &keyboard = InputManager::getSingleton().getKeyboard();
 
-	// start reconstruction?
+	// nothing to do
+	if (!keyboard.isKeyReleased(KEY_RETURN) && !keyboard.isKeyReleased(KEY_F) && !keyboard.isKeyReleased(KEY_P))
+		return false;
+
+	// complete reconstruction?
 	if (keyboard.isKeyReleased(KEY_RETURN))
-	{
 		mScene->reconstruct();
-		return true;
-	}
 
-	// refine reconstruction once more?
+	// refinement via samples?
 	if (keyboard.isKeyReleased(KEY_F))
-	{
 		mScene->refine(IReconstructorObserver::RECONSTRUCTION_VIA_SAMPLES);
-		return true;
-	}
-
+		
+	// refinement via PCS?
 	if (keyboard.isKeyReleased(KEY_P))
-	{
-		mScene->refine(IReconstructorObserver::RECONSTRUCTION_VIA_PHOTOS);
-		return true;
-	}
+		mScene->refine(IReconstructorObserver::RECONSTRUCTION_VIA_PCS);
 
-	return false;
+	// show the reconstruction!
+	const FlexibleMesh *mesh = mScene->getMostRefinedReconstruction();
+	mMeshRenderer->clear();
+	if (mesh)
+		mMeshRenderer->uploadData(*mesh);
+	return true;
 }
 
 void TSR::createNewScene(const uint32 sceneCreationType, const vector<string> &arguments)
@@ -459,11 +466,16 @@ void TSR::createNewScene(const uint32 sceneCreationType, const vector<string> &a
 			assert(false);
 	}
 
-	// test: render all view meshes
-	const vector<FlexibleMesh *> &viewMeshes = mScene->getViewMeshes();
-	const uint32 meshCount = (uint32) viewMeshes.size();
-	for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
-		mMeshRenderer->uploadData(*viewMeshes[meshIdx]);
+	// render all view meshes from depth maps
+	#ifdef _DEBUG
+		if (Platform::Window::exists())
+		{
+			const vector<FlexibleMesh *> &viewMeshes = mScene->getViewMeshes();
+			const uint32 meshCount = (uint32) viewMeshes.size();
+			for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
+				mMeshRenderer->uploadData(*viewMeshes[meshIdx]);
+		}	
+#endif // _DEBUG
 }
 
 void TSR::resetCamera()

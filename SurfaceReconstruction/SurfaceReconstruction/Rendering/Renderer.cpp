@@ -387,7 +387,7 @@ void Renderer::renderMeshRefinementData()
 		if (pcsRefiner)
 		{
 			// render mesh refinement gradient field?
-			if (MESH_REFINER_PHOTOCONSISTENCY_MOVEMENTS & mMeshRefinerFlags)
+			if (MESH_REFINER_PCS_MOVEMENTS & mMeshRefinerFlags)
 			{
 				const vector<Vector3> &movementField = pcsRefiner->getVectorField();
 				const FlexibleMesh &flexibleMesh = pcsRefiner->getFlexibleMesh();

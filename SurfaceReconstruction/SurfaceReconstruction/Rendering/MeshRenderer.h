@@ -75,6 +75,8 @@ namespace SurfaceReconstruction
 
 		void deleteUploadedMesh(const Mesh &mesh);
 
+		inline bool isUploaded(const Mesh &mesh) const;
+
 		void renderUploadedMeshes() const;
 
 		void uploadData(const Mesh &mesh);
@@ -86,6 +88,9 @@ namespace SurfaceReconstruction
 		PNCVertex *createVertexBuffer(const Mesh &mesh);
 		void defineVertexFormat();
 		void deleteUploadedMesh(const uint32 meshIdx);
+
+		uint32 getIndex(const Mesh *mesh) const;
+
 		void setupShaders();
 
 	public:
@@ -97,6 +102,15 @@ namespace SurfaceReconstruction
 		uint32 mPNCProgramIDs[INDEX_TYPE_COUNT];		/// program, vertex and fragment shader IDs
 		uint32 mUniformLocations[LOCATION_TYPE_COUNT];	/// locations of uniform variables to be fed into vertex shaders
 	};
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///   inline function definitions   ////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	inline bool MeshRenderer::isUploaded(const Mesh &mesh) const
+	{
+		return ((uint32) -1 != getIndex(&mesh));
+	}
 }
 
 #endif // _MESH_RENDERER_H_

@@ -51,7 +51,7 @@ FSSFParameters::FSSFParameters()
 	ok &= m.get(mSmoothingUmbrellaLambdaHigh, "FSSF::Smoothing::umbrellaLambdaWeaklySupported");
 	ok &= m.get(mSmoothingUmbrellaLambdaLow, "FSSF::Smoothing::umbrellaLambdaWellSupported");
 	ok &= m.get(mSmoothingInitialIterCount, "FSSF::Smoothing::initialIterCount");
-	ok &= m.get(mSmoothingInitialIterCount, "FSSF::Smoothing::taubinIterCount");
+	ok &= m.get(mSmoothingTaubinIterCount, "FSSF::Smoothing::taubinIterCount");
 	
 	// rays per cone
 	ok &= m.get(mRaysPerViewSamplePair[0], "FSSF::raysPerViewSamplePairDim0");

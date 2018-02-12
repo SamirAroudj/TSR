@@ -60,7 +60,7 @@ namespace SurfaceReconstruction
 		// todo
 		enum MESH_REFINER_RENDERING
 		{
-			MESH_REFINER_PHOTOCONSISTENCY_MOVEMENTS = 0x1 << 0
+			MESH_REFINER_PCS_MOVEMENTS = 0x1 << 0
 		};
 
 		/** Enables switching between different ways to render surface samples. */
