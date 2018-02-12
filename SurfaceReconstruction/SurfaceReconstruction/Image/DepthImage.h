@@ -45,6 +45,8 @@ namespace SurfaceReconstruction
 		FlexibleMesh *triangulate(std::vector<uint32> &tempPixelToVertexIndices, std::vector<std::vector<uint32>> &tempVertexNeighbors, std::vector<uint32> &tempIndices,
 			const Graphics::PinholeCamera &camera, const ColorImage *image = NULL) const;	
 
+		inline DepthConvention getDepthConvention() const;
+
 		void saveAsMVEFloatImage(const Storage::Path &fileName, 
 			const bool invertX = false, const bool invertY = true, float *temporaryStorage = NULL);
 		
@@ -83,6 +85,10 @@ namespace SurfaceReconstruction
 	///   inline function definitions   ////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	inline DepthImage::DepthConvention DepthImage::getDepthConvention() const
+	{
+		return mDepthConvention;
+	}
 }
 
 #endif // _DEPTH_IMAGE_
