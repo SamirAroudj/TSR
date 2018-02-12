@@ -16,9 +16,9 @@
 #include "Graphics/MagicConstants.h"
 #include "Math/MathCore.h"
 #include "Math/MathHelper.h"
-#include "Platform/ApplicationTimer.h"
 #include "Platform/Input/InputManager.h"
-#include "Platform/ParametersManager.h"
+#include "Platform/Timing/ApplicationTimer.h"
+#include "Platform/Utilities/ParametersManager.h"
 #include "SurfaceKernelColoring/SurfaceKernelColoring.h"
 #include "SurfaceReconstruction/Refinement/MeshDijkstra.h"
 
@@ -29,6 +29,7 @@ using namespace Math;
 using namespace Platform;
 using namespace Storage;
 using namespace SurfaceReconstruction;
+using namespace Timing;
 using namespace Utilities;
 
 SurfaceKernelColoring::SurfaceKernelColoring

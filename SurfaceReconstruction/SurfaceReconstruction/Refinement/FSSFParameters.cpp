@@ -11,12 +11,11 @@
 #include <string>
 #include "Math/MathHelper.h"
 #include "Platform/FailureHandling/Exception.h"
-#include "Platform/ParametersManager.h"
+#include "Platform/Utilities/ParametersManager.h"
 #include "SurfaceReconstruction/Refinement/FSSFParameters.h"
 
 using namespace FailureHandling;
 using namespace Math;
-using namespace Platform;
 using namespace std;
 using namespace SurfaceReconstruction;
 using namespace Utilities;

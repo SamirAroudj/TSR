@@ -13,7 +13,7 @@
 #include "Math/Vector2.h"
 #include "Platform/ResourceManagement/VolatileResource.h"
 #include "Platform/Storage/Path.h"
-#include "Utilities/Size2.h"
+#include "Platform/Utilities/Size2.h"
 
 // todo comments
 

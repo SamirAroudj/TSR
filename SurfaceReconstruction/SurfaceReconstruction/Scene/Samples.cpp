@@ -12,19 +12,17 @@
 #include "Math/MathHelper.h"
 #include "Platform/FailureHandling/Exception.h"
 #include "Platform/Storage/File.h"
-#include "Platform/ParametersManager.h"
-#include "Platform/Platform.h"
+#include "Platform/Utilities/ParametersManager.h"
+#include "Platform/Utilities/PlyFile.h"
+#include "Platform/Utilities/RandomManager.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Scene/FileNaming.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 #include "SurfaceReconstruction/Scene/View/View.h"
-#include "Utilities/PlyFile.h"
-#include "Utilities/RandomManager.h"
 
 using namespace FailureHandling;
 using namespace Math;
-using namespace Platform;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;

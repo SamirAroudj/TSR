@@ -11,7 +11,7 @@
 #define _MVEI_HEADER_H_
 
 #include "Platform/Storage/File.h"
-#include "Utilities/Size2.h"
+#include "Platform/Utilities/Size2.h"
 
 namespace SurfaceReconstruction
 {

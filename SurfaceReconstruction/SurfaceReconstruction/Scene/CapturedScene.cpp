@@ -11,19 +11,17 @@
 	#include <iostream>
 #endif // _DEBUG
 #include "Platform/FailureHandling/FileCorruptionException.h"
-#include "Platform/MagicConstants.h"
-#include "Platform/ParametersManager.h"
+#include "Platform/Utilities/HelperFunctions.h"
+#include "Platform/Utilities/ParametersManager.h"
+#include "Platform/Utilities/PlyFile.h"
 #include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Image/DepthImage.h"
 #include "SurfaceReconstruction/Scene/CapturedScene.h"
 #include "SurfaceReconstruction/Scene/FileNaming.h"
 #include "SurfaceReconstruction/Scene/View/MVECameraIO.h"
 #include "SurfaceReconstruction/Scene/View/View.h"
-#include "Utilities/HelperFunctions.h"
-#include "Utilities/PlyFile.h"
 
 using namespace Math;
-using namespace Platform;
 using namespace FailureHandling;
 using namespace Graphics;
 using namespace std;

@@ -8,7 +8,7 @@
  */
 
 #include <GL/glew.h>
-#include <GL/gL.h>
+#include <GL/gl.h>
 #include "Graphics/Camera3D.h"
 #include "Graphics/GraphicsManager.h"
 #include "Math/Vector3.h"

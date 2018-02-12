@@ -12,7 +12,6 @@
 #include "SurfaceReconstruction/Scene/Tree/Leaves.h"
 #include "SurfaceReconstruction/Scene/Tree/Nodes.h"
 
-using namespace Platform;
 using namespace Storage;
 using namespace SurfaceReconstruction;
 using namespace std;

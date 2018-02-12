@@ -13,7 +13,7 @@
 #include "Graphics/PinholeCamera.h"
 #include "Math/Vector2.h"
 #include "SurfaceReconstruction/Image/Image.h"
-#include "Utilities/Size2.h"
+#include "Platform/Utilities/Size2.h"
 
 // todo comments
 

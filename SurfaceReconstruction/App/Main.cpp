@@ -8,7 +8,7 @@
  */
 #include "App/TSR.h"
 #include "Platform/ResourceManagement/MemoryManager.h"
-#include "Utilities/HelperFunctions.h"
+#include "Platform/Utilities/HelperFunctions.h"
 
 using namespace Platform;
 using namespace std;

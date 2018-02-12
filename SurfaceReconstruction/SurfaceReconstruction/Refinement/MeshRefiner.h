@@ -15,10 +15,10 @@
 #include <vector>
 #include "Math/Vector2.h"
 #include "Math/Vector3.h"
+#include "Platform/Utilities/Size2.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/RayTracer.h"
 #include "SurfaceReconstruction/Scene/IReconstructorObserver.h"
-#include "Utilities/Size2.h"
 
 namespace SurfaceReconstruction
 {

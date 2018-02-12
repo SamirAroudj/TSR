@@ -11,10 +11,11 @@
 #include "Graphics/ImageManager.h"
 #include "Platform/FailureHandling/Exception.h"
 #include "Platform/FailureHandling/FileException.h"
-#include "Platform/MagicConstants.h"
-#include "Platform/ParametersManager.h"
-#include "Platform/Platform.h"
 #include "Platform/Storage/Directory.h"
+#include "Platform/Utilities/ParametersManager.h"
+#include "Platform/Utilities/PlyFile.h"
+#include "Platform/Utilities/RandomManager.h"
+#include "Platform/Utilities/SVGLoader.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/RayTracer.h"
 #include "SurfaceReconstruction/Geometry/StaticMesh.h"
@@ -27,16 +28,12 @@
 #include "SurfaceReconstruction/Scene/View/MVECameraIO.h"
 #include "SurfaceReconstruction/Scene/View/View.h"
 #include "tinyxml2.h"
-#include "Utilities/PlyFile.h"
-#include "Utilities/RandomManager.h"
-#include "Utilities/SVGLoader.h"
 
 using namespace CollisionDetection;
 using namespace FailureHandling;
 using namespace Graphics;
 using namespace Math;
 using namespace std;
-using namespace Platform;
 using namespace Storage;
 using namespace SurfaceReconstruction;
 using namespace tinyxml2;
@@ -357,13 +354,16 @@ void SyntheticScene::saveColorImage(const vector<Real> &depthMap, const uint32 v
 {
 	// create file name
 	// file name with noise data inside?
-	char tagBuffer[File::READING_BUFFER_SIZE];
-	snprintf(tagBuffer, File::READING_BUFFER_SIZE, FileNaming::IMAGE_TAG_COLOR_S0);
+	string localName = FileNaming::IMAGE_TAG_COLOR_S0;
 	if (withNoise)
-		snprintf(tagBuffer + 5, File::READING_BUFFER_SIZE - 5, "Mean" REAL_IT "StdDev" REAL_IT, mDepthMapNoise[0], mDepthMapNoise[1]);
+	{
+		char buffer[File::READING_BUFFER_SIZE];
+		snprintf(buffer, File::READING_BUFFER_SIZE, "Mean" REAL_IT "StdDev" REAL_IT, mDepthMapNoise[0], mDepthMapNoise[1]);
+		localName += buffer;
+	}
 
 	// absolute file name via tag, view index and views folder
-	const Path relativeFileName = getRelativeImageFileName(viewIdx, tagBuffer, 0, true);
+	const Path relativeFileName = getRelativeImageFileName(viewIdx, localName, 0, true);
 	const Path viewsFolder = Scene::getSingleton().getViewsFolder();
 	const Path absoluteName = Path::appendChild(viewsFolder, relativeFileName);
 

@@ -10,14 +10,13 @@
 #include "Graphics/Color.h"
 #include "Math/MathHelper.h"
 #include "Platform/Storage/File.h"
+#include "Platform/Utilities/PlyFile.h"
 #include "SurfaceReconstruction/Geometry/Mesh.h"
 #include "SurfaceReconstruction/Scene/FileNaming.h"
-#include "Utilities/PlyFile.h"
 
 using namespace FailureHandling;
 using namespace Graphics;
 using namespace Math;
-using namespace Platform;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;

@@ -12,7 +12,7 @@
 #include <vector>
 #include "Math/Vector2.h"
 #include "Math/Vector3.h"
-#include "Utilities/PlyFile.h"
+#include "Platform/Utilities/PlyFile.h"
 #include "SurfaceReconstruction/Geometry/Vertex.h"
 
 // todo comments

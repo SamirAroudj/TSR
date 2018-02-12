@@ -12,8 +12,8 @@
 #include <map>
 #include <vector>
 #include "Graphics/VerticesDescription.h"
+#include "Platform/Utilities/PlyFile.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
-#include "Utilities/PlyFile.h"
 
 namespace SurfaceReconstruction
 {

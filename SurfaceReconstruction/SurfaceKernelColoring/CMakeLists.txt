@@ -53,8 +53,6 @@ set(requiredLibs ${requiredLibs}
 	embree
 	Graphics
 	Platform
-	Utilities
-	Utilities
 	CollisionDetection
 	${mathLibName}	
 	Patterns

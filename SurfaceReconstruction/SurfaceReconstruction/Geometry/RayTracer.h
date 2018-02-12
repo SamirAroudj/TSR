@@ -15,9 +15,9 @@
 #include "Graphics/PinholeCamera.h"
 #include "Math/Vector3.h"
 #include "Patterns/Subject.h"
+#include "Platform/Utilities/Size2.h"
 #include "SurfaceReconstruction/Geometry/Surfel.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
-#include "Utilities/Size2.h"
 
 // todo comments
 

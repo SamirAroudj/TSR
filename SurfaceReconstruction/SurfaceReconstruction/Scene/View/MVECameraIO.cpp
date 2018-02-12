@@ -25,19 +25,20 @@ using namespace SurfaceReconstruction;
 using namespace std;
 using namespace Storage;
 
-const char *MVECameraIO::BLOCK_IDENTIFIER_CAMERA = "[camera]";
-const char *MVECameraIO::BLOCK_IDENTIFIER_VIEW = "[view]";
-const char *MVECameraIO::CAMERA_COUNT_FORMAT = "camera_count = %d\n";
-const char *MVECameraIO::NAME_FORMAT_0 = "name = ";
-const char *MVECameraIO::NAME_FORMAT_1 = "\n";
-const char *MVECameraIO::DISTORTION_FORMAT = "camera_distortion = " REAL_IT " " REAL_IT "\n";
-const char *MVECameraIO::FOCAL_LENGTH_FORMAT = "focal_length = " REAL_IT "\n";
-const char *MVECameraIO::HEADER_SIGNATURE = "MVE camera infos 1.1\n";
-const char *MVECameraIO::PIXEL_ASPECT_RATIO_FORMAT = "pixel_aspect = " REAL_IT "\n";
-const char *MVECameraIO::PRINCIPAL_POINT_FORMAT = "principal_point = " REAL_IT " " REAL_IT "\n";
-const char *MVECameraIO::ROTATION_FORMAT = "rotation = " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT "\n";
-const char *MVECameraIO::TRANSLATION_FORMAT = "translation = " REAL_IT " " REAL_IT " " REAL_IT "\n";
-const char *MVECameraIO::VIEW_ID_FORMAT = "id = %d\n";
+
+#define BLOCK_IDENTIFIER_CAMERA "[camera]"
+#define BLOCK_IDENTIFIER_VIEW "[view]"
+#define CAMERA_COUNT_FORMAT "camera_count %d\n"
+#define NAME_FORMAT_0 "name"
+#define NAME_FORMAT_1 "\n"
+#define DISTORTION_FORMAT "camera_distortion " REAL_IT " " REAL_IT "\n"
+#define FOCAL_LENGTH_FORMAT "focal_length " REAL_IT "\n"
+#define HEADER_SIGNATURE "MVE camera infos 1.1\n"
+#define PIXEL_ASPECT_RATIO_FORMAT "pixel_aspect " REAL_IT "\n"
+#define PRINCIPAL_POINT_FORMAT "principal_point " REAL_IT " " REAL_IT "\n"
+#define ROTATION_FORMAT "rotation " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT "\n"
+#define TRANSLATION_FORMAT "translation " REAL_IT " " REAL_IT " " REAL_IT "\n"
+#define VIEW_ID_FORMAT "id %d\n"
 
 MVECameraIO::MVECameraIO(const Path &path) :
 	mPath(path)
@@ -351,9 +352,7 @@ int64 MVECameraIO::saveViewToMVECamerasFile(char *buffer, const int64 bufferSize
 	const uint32 &viewID = view.getID();
 	const string name = Scene::getIDString(viewID);
 	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, VIEW_ID_FORMAT, viewID);
-	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, NAME_FORMAT_0);
-	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, name.c_str());
-	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, NAME_FORMAT_1);
+	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, NAME_FORMAT_0 "%s" NAME_FORMAT_1, name.c_str());
 
 	return byteCount;
 }

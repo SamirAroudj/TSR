@@ -20,7 +20,6 @@
 
 using namespace FailureHandling;
 using namespace Math;
-using namespace Platform;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;

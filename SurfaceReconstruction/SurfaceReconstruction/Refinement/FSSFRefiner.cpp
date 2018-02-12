@@ -11,7 +11,8 @@
 #include <omp.h>
 #include "CollisionDetection/CollisionDetection.h"
 #include "Graphics/ColorMap.h"
-#include "Platform/Platform.h"
+#include "Platform/Utilities/HelperFunctions.h"
+#include "Platform/Utilities/RandomManager.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/IslesEraser.h"
 #include "SurfaceReconstruction/Geometry/StaticMesh.h"
@@ -24,13 +25,10 @@
 #include "SurfaceReconstruction/Scene/Tree/TriangleNodesChecker.h"
 #include "SurfaceReconstruction/Scene/View/View.h"
 #include "SurfaceReconstruction/SurfaceExtraction/Occupancy.h"
-#include "Utilities/HelperFunctions.h"
-#include "Utilities/RandomManager.h"
 
 using namespace CollisionDetection;
 using namespace Graphics;
 using namespace Math;
-using namespace Platform;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;

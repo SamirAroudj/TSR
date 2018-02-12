@@ -23,7 +23,7 @@ using namespace Utilities;
 
 // constants for resource management
 template <>
-Path Image::Resource<Image>::msResourcePath;
+Path Image::Resource<Image>::msResourcePath = Path();
 
 template <>
 vector<Image *> Image::Resource<Image>::msResources(0);

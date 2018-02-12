@@ -11,16 +11,14 @@
 #include "Graphics/Viewport.h"
 #include "Graphics/Camera3D.h"
 #include "Platform/FailureHandling/FileException.h"
-#include "Platform/Platform.h"
+#include "Platform/Utilities/RandomManager.h"
 #include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Scene/CapturedScene.h"
 #include "SurfaceReconstruction/Scene/View/View.h"
-#include "Utilities/RandomManager.h"
 
 using namespace FailureHandling;
 using namespace Graphics;
 using namespace Math;
-using namespace Platform;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;

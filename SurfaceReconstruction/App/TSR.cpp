@@ -13,9 +13,9 @@
 #include "Graphics/MagicConstants.h"
 #include "Math/MathCore.h"
 #include "Math/MathHelper.h"
-#include "Platform/ApplicationTimer.h"
 #include "Platform/Input/InputManager.h"
-#include "Platform/ParametersManager.h"
+#include "Platform/Timing/ApplicationTimer.h"
+#include "Platform/Utilities/ParametersManager.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/StaticMesh.h"
 #include "SurfaceReconstruction/Refinement/FSSFRefiner.h"
@@ -36,6 +36,7 @@ using namespace Math;
 using namespace Platform;
 using namespace ResourceManagement;
 using namespace SurfaceReconstruction;
+using namespace Timing;
 using namespace Utilities;
 
 TSR::TSR

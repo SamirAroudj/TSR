@@ -8,11 +8,11 @@
 */
 
 #include "Platform/FailureHandling/FileCorruptionException.h"
+#include "Platform/Utilities/HelperFunctions.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Image/DepthImage.h"
 #include "SurfaceReconstruction/Image/MVEIHeader.h"
-#include "Utilities/HelperFunctions.h"
 
 using namespace FailureHandling;
 using namespace Graphics;

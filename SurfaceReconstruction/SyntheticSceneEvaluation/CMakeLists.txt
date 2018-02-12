@@ -44,7 +44,6 @@ add_executable(${appName} ${sourceCode})
 set(requiredLibs ${requiredLibs}
 	SurfaceReconstruction
 	Graphics
-	Utilities	
 	Platform
 	CollisionDetection
 	${mathLibName}	

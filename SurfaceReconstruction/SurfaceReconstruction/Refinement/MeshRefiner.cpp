@@ -8,12 +8,12 @@
  */
 
 #include "Math/MathHelper.h"
+#include "Platform/Utilities/HelperFunctions.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/Triangle.h"
 #include "SurfaceReconstruction/Refinement/MeshRefiner.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 #include "SurfaceReconstruction/Scene/View/View.h"
-#include "Utilities/HelperFunctions.h"
 
 using namespace Graphics;
 using namespace FailureHandling;

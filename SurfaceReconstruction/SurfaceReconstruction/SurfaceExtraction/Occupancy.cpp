@@ -14,8 +14,9 @@
 #include "Math/MathCore.h"
 #include "Math/Vector4.h"
 #include "Platform/FailureHandling/FileCorruptionException.h"
-#include "Platform/ParametersManager.h"
 #include "Platform/Storage/File.h"
+#include "Platform/Utilities/HelperFunctions.h"
+#include "Platform/Utilities/ParametersManager.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 #include "SurfaceReconstruction/Scene/Tree/Leaves.h"
 #include "SurfaceReconstruction/Scene/Tree/LeavesIterator.h"
@@ -28,13 +29,11 @@
 #include "SurfaceReconstruction/SurfaceExtraction/LineChecker.h"
 #include "SurfaceReconstruction/SurfaceExtraction/Occupancy.h"
 #include "SurfaceReconstruction/SurfaceExtraction/SphereNodeStatesChecker.h"
-#include "Utilities/HelperFunctions.h"
 
 using namespace CollisionDetection;
 using namespace FailureHandling;
 using namespace Graphics;
 using namespace Math;
-using namespace Platform;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;

@@ -9,8 +9,8 @@
 #ifndef _SYNTHETIC_SCENE_H_
 #define _SYNTHETIC_SCENE_H_
 
+#include "Platform/Utilities/Size2.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
-#include "Utilities/Size2.h"
 
 namespace SurfaceReconstruction
 {

@@ -52,7 +52,6 @@ set(requiredLibs ${requiredLibs}
 	SurfaceReconstruction
 	embree
 	Graphics
-	Utilities	
 	Platform
 	CollisionDetection
 	${mathLibName}	

@@ -9,10 +9,8 @@
 #include "Platform/FailureHandling/Exception.h"
 #include "Platform/FailureHandling/FileAccessException.h"
 #include "Platform/Storage/File.h"
-#include "Platform/MagicConstants.h"
-#include "Platform/ParametersManager.h"
-#include "Platform/Platform.h"
 #include "Platform/Storage/Directory.h"
+#include "Platform/Utilities/ParametersManager.h"
 #include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Geometry/StaticMesh.h"
 #include "SurfaceReconstruction/Refinement/FSSFRefiner.h"
@@ -30,7 +28,6 @@
 using namespace FailureHandling;
 using namespace Math;
 using namespace std;
-using namespace Platform;
 using namespace Storage;
 using namespace SurfaceReconstruction;
 using namespace Utilities;

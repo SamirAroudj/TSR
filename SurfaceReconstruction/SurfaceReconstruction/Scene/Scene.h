@@ -13,7 +13,7 @@
 #include "SurfaceReconstruction/Scene/IReconstructorObserver.h"
 #include "Patterns/Singleton.h"
 #include "Platform/Storage/Path.h"
-#include "Utilities/Size2.h"
+#include "Platform/Utilities/Size2.h"
 
 namespace SurfaceReconstruction
 {

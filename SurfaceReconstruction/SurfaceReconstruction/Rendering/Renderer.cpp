@@ -15,7 +15,7 @@
 #include "Graphics/Color.h"
 #include "Graphics/GraphicsManager.h"
 #include "Math/MathCore.h"
-#include "Platform/ApplicationTimer.h"
+#include "Platform/Timing/ApplicationTimer.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/StaticMesh.h"
 #include "SurfaceReconstruction/Refinement/FSSFRefiner.h"
@@ -37,9 +37,9 @@
 
 using namespace Graphics;
 using namespace Math;
-using namespace Platform;
 using namespace SurfaceReconstruction;
 using namespace std;
+using namespace Timing;
 using namespace Utilities;
 
 // constants

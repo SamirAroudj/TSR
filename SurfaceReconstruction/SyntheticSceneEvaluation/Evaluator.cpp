@@ -9,13 +9,12 @@
 #include "CollisionDetection/CollisionDetection.h"
 #include "Evaluator.h"
 #include "Math/MathHelper.h"
+#include "Platform/Utilities/PlyFile.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/StaticMesh.h"
-#include "Utilities/PlyFile.h"
 
 using namespace CollisionDetection;
 using namespace Math;
-using namespace Platform;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;
