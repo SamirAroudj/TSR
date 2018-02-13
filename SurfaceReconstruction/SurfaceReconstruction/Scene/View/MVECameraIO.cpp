@@ -28,17 +28,17 @@ using namespace Storage;
 
 #define BLOCK_IDENTIFIER_CAMERA "[camera]"
 #define BLOCK_IDENTIFIER_VIEW "[view]"
-#define CAMERA_COUNT_FORMAT "camera_count %d\n"
-#define NAME_FORMAT_0 "name"
+#define CAMERA_COUNT_FORMAT "camera_count = %d\n"
+#define NAME_FORMAT_0 "name = "
 #define NAME_FORMAT_1 "\n"
-#define DISTORTION_FORMAT "camera_distortion " REAL_IT " " REAL_IT "\n"
-#define FOCAL_LENGTH_FORMAT "focal_length " REAL_IT "\n"
+#define DISTORTION_FORMAT "camera_distortion = " REAL_IT " " REAL_IT "\n"
+#define FOCAL_LENGTH_FORMAT "focal_length = " REAL_IT "\n"
 #define HEADER_SIGNATURE "MVE camera infos 1.1\n"
-#define PIXEL_ASPECT_RATIO_FORMAT "pixel_aspect " REAL_IT "\n"
-#define PRINCIPAL_POINT_FORMAT "principal_point " REAL_IT " " REAL_IT "\n"
-#define ROTATION_FORMAT "rotation " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT "\n"
-#define TRANSLATION_FORMAT "translation " REAL_IT " " REAL_IT " " REAL_IT "\n"
-#define VIEW_ID_FORMAT "id %d\n"
+#define PIXEL_ASPECT_RATIO_FORMAT "pixel_aspect = " REAL_IT "\n"
+#define PRINCIPAL_POINT_FORMAT "principal_point = " REAL_IT " " REAL_IT "\n"
+#define ROTATION_FORMAT "rotation = " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT "\n"
+#define TRANSLATION_FORMAT "translation = " REAL_IT " " REAL_IT " " REAL_IT "\n"
+#define VIEW_ID_FORMAT "id = %d\n"
 
 MVECameraIO::MVECameraIO(const Path &path) :
 	mPath(path)
