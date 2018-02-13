@@ -114,9 +114,71 @@ DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
 	#endif // DOUBLE_PRECISION
 }
 
-void DepthImage::saveAsMVEFloatImage(const Path &fileName, const bool invertX, const bool invertY, float *temporaryStorage)
+void DepthImage::erode(const uint32 &borderWidth)
 {
-	Image::saveAsMVEFloatImage(fileName, true, mSize, mDepths, invertX, invertY, temporaryStorage);
+	// memory for border pixel identification
+	const uint32 pixelCount = mSize.getElementCount();
+	const uint32 byteCount = sizeof(bool) * pixelCount;
+	bool *borderPixels = new bool[pixelCount];
+
+	// invalidate all borderWidth pixel borders
+	for (uint32 borderIdx = 0; borderIdx < borderWidth; ++borderIdx)
+	{
+		memset(borderPixels, false, byteCount);
+
+		// find 1-pixel border
+		for (uint32 y = 0, xOffset = 0; y < mSize[1]; ++y, xOffset += mSize[0])
+		{
+			for (uint32 x = 0; x < mSize[0]; ++x)
+			{
+				// border pixel?
+				const uint32 pixelIdx = x + xOffset;
+				const Real &depth = mDepths[pixelIdx];
+				if (depth > 0.0f)
+					borderPixels[pixelIdx] = hasInvalidNeighbor(x, y);			
+			}
+		}
+
+		// invalidate border
+		for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
+			if (borderPixels[pixelIdx])
+				mDepths[pixelIdx] = -REAL_MAX;
+	}
+
+	// free resources
+	delete [] borderPixels;
+	borderPixels = NULL;
+}
+
+bool DepthImage::hasInvalidNeighbor(const uint32 &x, const uint32 &y) const
+{
+	// go over the 8-neighborhood
+	for (int32 dY = -1; dY <= 1; ++dY)
+	{
+		// neighbor y within image?
+		const uint32 neighborY = y + dY;
+		if (neighborY >= mSize[1])
+			continue;
+
+		for (int32 dX = -1; dX <= 1; ++dX)
+		{
+			// no neighbor?
+			if (dX == 0 && dY == 0)
+				continue;
+
+			// neighbor x within image?
+			const uint32 neighborX = x + dX;
+			if (neighborX >= mSize[0])
+				continue;
+
+			// invalid neighbor
+			const uint32 neighborIdx = neighborY * mSize[0] + neighborX;
+			if (mDepths[neighborIdx] < 0.0f)
+				return true;
+		}
+	}
+
+	return false;
 }
 
 FlexibleMesh *DepthImage::triangulate( vector<uint32> &tempPixelToVertexIndices, vector<vector<uint32>> &tempVertexNeighbors, vector<uint32> &tempIndices,
@@ -396,6 +458,11 @@ void DepthImage::setVertexColors(FlexibleMesh &viewMesh,
 		image->get(color, pixelIdx % width, pixelIdx / width);
 		viewMesh.setColor(color, vertexIdx);
 	}
+}
+
+void DepthImage::saveAsMVEFloatImage(const Path &fileName, const bool invertX, const bool invertY, float *temporaryStorage)
+{
+	Image::saveAsMVEFloatImage(fileName, true, mSize, mDepths, invertX, invertY, temporaryStorage);
 }
 
 void DepthImage::setDepthConvention(const PinholeCamera &camera, const DepthConvention &targetConvention)

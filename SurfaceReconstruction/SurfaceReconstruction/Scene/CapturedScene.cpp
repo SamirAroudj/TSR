@@ -302,9 +302,10 @@ void CapturedScene::loadImages(const vector<uint32> &imageScales)
 			if (!colorImage)
 				continue;
 
-			const DepthImage *depthImage = DepthImage::request(depthImageName.getString(), depthImageName);
+			DepthImage *depthImage = DepthImage::request(depthImageName.getString(), depthImageName);
 			if (!depthImage)
 				continue;
+			depthImage->erode(5);
 
 			//const ViewsImage *viewsImage = ???;
 			//if (!viewsImage)

@@ -41,11 +41,20 @@ namespace SurfaceReconstruction
 		static DepthImage *request(const std::string &resourceName, const Storage::Path &imageFileName);
 
 	public:
+		/** Standard image erosion applied to depth images.
+			Removes estimated depths (invalidates them) at the border between pixels with valid and invalid values.
+			(Pixels with valid values are shrinked from outside towards inside by a border of width pixels.)
+		@param borderWidth Defines the number of outermost border rings of valid depth value pixels which are removed.
+			E.g. width = 1 -> remove a one pixel thick border. */
+		void erode(const uint32 &borderWidth);
+
+		inline DepthConvention getDepthConvention() const;
+
+		bool hasInvalidNeighbor(const uint32 &x, const uint32 &y) const;
+
 		/** todo */
 		FlexibleMesh *triangulate(std::vector<uint32> &tempPixelToVertexIndices, std::vector<std::vector<uint32>> &tempVertexNeighbors, std::vector<uint32> &tempIndices,
 			const Graphics::PinholeCamera &camera, const ColorImage *image = NULL) const;	
-
-		inline DepthConvention getDepthConvention() const;
 
 		void saveAsMVEFloatImage(const Storage::Path &fileName, 
 			const bool invertX = false, const bool invertY = true, float *temporaryStorage = NULL);
