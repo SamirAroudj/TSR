@@ -12,13 +12,13 @@
 #include <map>
 #include <vector>
 #include "Platform/Storage/File.h"
-#include "SurfaceReconstruction/Scene/View/CameraData.h"
+#include "SurfaceReconstruction/Scene/Camera/CameraData.h"
 
 // todo comments
 
 namespace SurfaceReconstruction
 {
-	class View;
+	class Cameras;
 
 	class MVECameraIO
 	{
@@ -26,20 +26,20 @@ namespace SurfaceReconstruction
 		MVECameraIO(const Storage::Path &path);
 
 		/** todo */
-		void loadFromCamerasFile(std::vector<View *> &views, std::map<uint32, uint32> &oldToNewViewIDs,
+		void loadFromCamerasFile(Cameras &cameras, std::map<uint32, uint32> &viewToCameraIndices,
 			const Math::Matrix3x3 &inverseInputRotation, const Math::Vector3 &inverseInputTranslation);
 
 		/** todo */
-		void loadFromMetaIniFiles(std::vector<View *> &views, std::map<uint32, uint32> &oldToNewViewIDs,
+		void loadFromMetaIniFiles(Cameras &cameras, std::map<uint32, uint32> &viewToCameraIndices,
 			const Math::Matrix3x3 &inverseInputRotation, const Math::Vector3 &inverseInputTranslation);
 
-		void saveCamerasToFile(const std::vector<View *> &views) const;
+		void saveCamerasToFile(const Cameras &cameras) const;
 
 	private:
-		void clear(std::vector<View*>& views, std::map<uint32, uint32>& oldToNewViewIDs);
+		void clear(Cameras &cameras, std::map<uint32, uint32>& viewToCameraIndices);
 
 		/** todo */
-		void loadFromMetaIniFile(std::vector<View *> &views, std::map<uint32, uint32> &oldToNewViewIDs, Storage::File &file,
+		void loadFromMetaIniFile(Cameras &cameras, std::map<uint32, uint32> &viewToCameraIndices, Storage::File &file,
 			const Math::Matrix3x3 &inverseInputRotation, const Math::Vector3 &inverseInputTranslation);
 
 		void readCamerasFileHeader(Storage::File &file);
@@ -49,10 +49,9 @@ namespace SurfaceReconstruction
 		void readFocalLength(CameraData &data, Storage::File &file);
 		void readPixelAspectRatio(CameraData &data, Storage::File& file);
 		void readPrincipalPoint(CameraData &data, Storage::File &file);
-		void readViewData(std::map<uint32, uint32> &oldToNewViewIDs, CameraData &data, Storage::File &file,
-			const uint32 newViewID);
+		void readViewData(std::map<uint32, uint32> &viewToCameraIndices, CameraData &data, Storage::File &file);
 
-		int64 saveViewToMVECamerasFile(char *buffer, const int64 bufferSize, const View &view) const;
+		int64 saveCameraToCamerasFile(char *buffer, const int64 bufferSize, const Cameras &cameras, const uint32 cameraIdx) const;
 
 	private:
 		const Storage::Path mPath;

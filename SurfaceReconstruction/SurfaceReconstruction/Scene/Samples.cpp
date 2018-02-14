@@ -16,10 +16,10 @@
 #include "Platform/Utilities/PlyFile.h"
 #include "Platform/Utilities/RandomManager.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
 #include "SurfaceReconstruction/Scene/FileNaming.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
-#include "SurfaceReconstruction/Scene/View/View.h"
 
 using namespace FailureHandling;
 using namespace Math;
@@ -194,7 +194,7 @@ void Samples::compact(const uint32 *sampleOffsets)
 		vector<uint32> newParentViews(newSampleCount * mViewsPerSample);
 		FlexibleMesh::filterData<uint32>(newParentViews.data(), mParentViews.data(), sampleOffsets, oldSampleCount, mViewsPerSample);
 		mParentViews.swap(newParentViews);
-		computeParentViewCount();
+		computeParentCameraCount();
 	}
 
 
@@ -275,15 +275,14 @@ bool Samples::computeViewDirection(Vector3 &viewDirection, const uint32 parentVi
 		throw Exception("Invalid parentViewIdx for a sample.");
 
 	// valid parent view?
-	Scene					&scene	= Scene::getSingleton();
-	const vector<View *>	&views	= scene.getViews();
-	const uint32			viewIdx	= getViewIdx(parentViewIdx, sampleIdx);
-	if (!scene.isValidView(viewIdx))
+	const Scene &scene = Scene::getSingleton();
+	const Cameras &cameras = *scene.getCameras();
+	const uint32 cameraIdx = getCameraIdx(parentViewIdx, sampleIdx);
+	if (!cameras.isValid(cameraIdx))
 		return false;
 
 	// compute view direction
-	const View		*view	= views[viewIdx];
-	const Vector4	&camWS	= view->getCamera().getPosition();
+	const Vector3 &camWS = cameras.getPositionWS(cameraIdx);
 	viewDirection = mPositions[sampleIdx] - Vector3(camWS.x, camWS.y, camWS.z);
 	viewDirection.normalize();
 	return true;
@@ -315,10 +314,10 @@ void Samples::erase(const vector<uint32> theDoomed, const uint32 doomedCount)
 	}
 
 	resize(getCount() - doomedCount);
-	computeParentViewCount();
+	computeParentCameraCount();
 }
 
-void Samples::computeParentViewCount()
+void Samples::computeParentCameraCount()
 {
 	// get & check parent link count
 	uint64 linkCount = mViewsPerSample * mNormals.size();
@@ -329,7 +328,7 @@ void Samples::computeParentViewCount()
 	// count number of valid parent links
 	uint32 invalidCount = 0;
 	for (uint32 parentIdx = 0; parentIdx < parentCount; ++parentIdx)
-		if (View::INVALID_ID == mParentViews[parentIdx])
+		if (Cameras::INVALID_ID == mParentViews[parentIdx])
 			++invalidCount;
 	mViewConeCount = parentCount - invalidCount;
 
@@ -639,10 +638,10 @@ void Samples::swap(const uint32 i, const uint32 j)
 	const uint32 offsetI = i * mViewsPerSample;
 	const uint32 offsetJ = j * mViewsPerSample;
 
-	for (uint32 viewIdx = 0; viewIdx < mViewsPerSample; ++viewIdx)
+	for (uint32 cameraIdx = 0; cameraIdx < mViewsPerSample; ++cameraIdx)
 	{
-		const uint32 viewI = offsetI + viewIdx;
-		const uint32 viewJ = offsetJ + viewIdx;
+		const uint32 viewI = offsetI + cameraIdx;
+		const uint32 viewJ = offsetJ + cameraIdx;
 
 		const uint32 temp = mParentViews[viewI];
 		mParentViews[viewI] = mParentViews[viewJ];
@@ -694,7 +693,7 @@ void Samples::loadFromFile(const Path &fileName)
 	file.read(mScales.data(), sizeof(Real) * sampleCount, sizeof(Real), sampleCount);
 	file.read(mParentViews.data(), sizeof(uint32) * parentCount, sizeof(uint32), parentCount);
 	
-	computeParentViewCount();
+	computeParentCameraCount();
 
 	cout << "Loaded " << getCount() << " samples." << endl;
 }
@@ -773,7 +772,7 @@ void Samples::unifyInvalidParentViewIDs()
 	}
 }
 
-void Samples::updateParentViews(const map<uint32, uint32> &oldToNewViewIDs)
+void Samples::updateParentViews(const map<uint32, uint32> &viewToCameraIndices)
 {
 	// update each link
 	const int64 linkCount = mPositions.size() * mViewsPerSample;
@@ -781,8 +780,8 @@ void Samples::updateParentViews(const map<uint32, uint32> &oldToNewViewIDs)
 	for (int64 linkIdx = 0; linkIdx < linkCount; ++linkIdx)
 	{
 		const uint32 oldParentID = mParentViews[linkIdx];
-		map<uint32, uint32>::const_iterator it = oldToNewViewIDs.find(oldParentID);
-		if (oldToNewViewIDs.end() != it)
+		map<uint32, uint32>::const_iterator it = viewToCameraIndices.find(oldParentID);
+		if (viewToCameraIndices.end() != it)
 			mParentViews[linkIdx] = it->second;
 		else
 			mParentViews[linkIdx] = View::INVALID_ID;

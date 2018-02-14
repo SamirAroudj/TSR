@@ -24,11 +24,11 @@ namespace SurfaceReconstruction
 	class Cameras
 	{
 	public:
-		///** todo
-		//@param x
-		//@param y
-		//@param pixelToRayDir Transforms normalized homogenous pixel coordinates to  non-normalized ray directions. */
-		//static Math::Vector3 getRay(const uint32 x, const uint32 y, const Math::Matrix3x3 &pixelToRayDir);
+		/** todo
+		@param x
+		@param y
+		@param pixelToRayDir Transforms normalized homogenous pixel coordinates to  non-normalized ray directions. */
+		static Math::Vector3 getRay(const uint32 x, const uint32 y, const Math::Matrix3x3 &pixelToRayDir);
 
 	public:
 		inline Cameras();
@@ -54,6 +54,8 @@ namespace SurfaceReconstruction
 		todo */
 		void addCamera(const uint32 viewID, const Math::Quaternion &orientation, const Math::Vector3 &position,
 			 const Real focalLength, const Math::Vector2 &principalPoint, const Real pixelAspectRatio, const Real distortion[2]);
+
+		void clear();
 
 		/** Computes and returns the matrix which transforms coordinates relative to the world space coordinate system into the pixel coordinate system of this view and its current image. 
 		The pixel coordinates are not normalized! You must perform the perspective division after the matrix has been applied.

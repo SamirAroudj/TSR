@@ -94,21 +94,17 @@ namespace SurfaceReconstruction
 		/** todo */
 		inline const Samples &getSamples() const;
 
-		/** Returns the number of exisitng View objects belonging to this Scene instance.
-		@return Returns the number of exisitng View objects belonging to this Scene instance. */
-		inline uint32 getViewCount() const;
-
 		inline Storage::Path getViewFolder(const uint32 viewID) const;
 
 		inline const std::vector<FlexibleMesh *> getViewMeshes() const;
 
-		/** Provides access to existing View objects.
-		@return Returns all exisiting View objects of this Scene object.*/
-		inline std::vector<View *> &getViews();
-
 		/** Returns the path pointing to the directory containing all views folders of this scene. 
 		@return Returns the folder which contains all view folders view0000, view0001, ... etc.*/
 		inline Storage::Path getViewsFolder() const;
+
+		/** Provides access to existing View objects.
+		@return Returns all exisiting View objects of this Scene object.*/
+		inline Cameras *getCameras();
 
 		/** Provides access to existing camera objects (cameras of all registered views).
 		@return Returns all exisiting View objects of this Scene object.*/

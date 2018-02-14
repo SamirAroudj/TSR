@@ -14,9 +14,10 @@
 #include "Platform/FailureHandling/FileCorruptionException.h"
 #include "Platform/Storage/Directory.h"
 #include "Platform/Storage/Path.h"
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
+#include "SurfaceReconstruction/Scene/Camera/MVECameraIO.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
-#include "SurfaceReconstruction/Scene/View/MVECameraIO.h"
-#include "SurfaceReconstruction/Scene/View/View.h"
+#include "Platform/Utilities/Conversions.h"
 
 using namespace FailureHandling;
 using namespace Graphics;
@@ -24,7 +25,7 @@ using namespace Math;
 using namespace SurfaceReconstruction;
 using namespace std;
 using namespace Storage;
-
+using namespace Utilities;
 
 #define BLOCK_IDENTIFIER_CAMERA "[camera]"
 #define BLOCK_IDENTIFIER_VIEW "[view]"
@@ -46,15 +47,15 @@ MVECameraIO::MVECameraIO(const Path &path) :
 
 }
 
-void MVECameraIO::loadFromCamerasFile(vector<View *> &views, map<uint32, uint32> &oldToNewViewIDs,
+void MVECameraIO::loadFromCamerasFile(Cameras &cameras, map<uint32, uint32> &viewToCameraIndices,
 	const Matrix3x3 &inverseInputRotation, const Vector3 &inverseInputTranslation)
 {
-	clear(views, oldToNewViewIDs);
+	clear(cameras, viewToCameraIndices);
 
 	// read header & reserve memory
 	File file(mPath, File::OPEN_READING, false);
 	readCamerasFileHeader(file);
-	views.reserve(mCameraCount);
+	cameras.reserve(mCameraCount);
 
 	// read each camera
 	uint32 newViewID = 0;
@@ -68,14 +69,14 @@ void MVECameraIO::loadFromCamerasFile(vector<View *> &views, map<uint32, uint32>
 		readPrincipalPoint(cameraData, file);
 		readDistortion(cameraData, file);
 		readExtrinsics(cameraData, file, inverseInputRotation, inverseInputTranslation);
-		readViewData(oldToNewViewIDs, cameraData, file, newViewID);
+		readViewData(viewToCameraIndices, cameraData, file, newViewID);
 
 		// check parameters
 		if (EPSILON >= cameraData.mFocalLength)
 			continue;
 
 		// create view
-		views.push_back(new View(cameraData));
+		cameras.push_back(new View(cameraData));
 		++newViewID;
 
 		// debug output
@@ -103,15 +104,15 @@ void MVECameraIO::readCamerasFileHeader(File &file)
 		throw FileCorruptionException("Camera count isn't provided in correct camera file format.", file.getName());
 }
 
-void MVECameraIO::loadFromMetaIniFiles(vector<View *> &views, map<uint32, uint32> &oldToNewViewIDs,
+void MVECameraIO::loadFromMetaIniFiles(Cameras &cameras, map<uint32, uint32> &viewToCameraIndices,
 	const Matrix3x3 &inverseInputRotation, const Vector3 &inverseInputTranslation)
 {
-	clear(views, oldToNewViewIDs);
+	clear(cameras, viewToCameraIndices);
 
 	// assume MVE file structure -> one folder per view and each folder contains a meta.ini file describing the camera for that view
-	// does the views folder exist?
+	// does the cameras folder exist?
 	if (!Directory::exists(mPath))
-		throw FileException("Cannot open views folder for loading cameras!", mPath);
+		throw FileException("Cannot open cameras folder for loading cameras!", mPath);
 
 	// find its children - each should contain a camera file called meta.ini
 	vector<string> children;
@@ -134,7 +135,7 @@ void MVECameraIO::loadFromMetaIniFiles(vector<View *> &views, map<uint32, uint32
 		try
 		{
 			File cameraFile(metaFileName, File::OPEN_READING, false);
-			loadFromMetaIniFile(views, oldToNewViewIDs, cameraFile, inverseInputRotation, inverseInputTranslation);
+			loadFromMetaIniFile(cameras, viewToCameraIndices, cameraFile, inverseInputRotation, inverseInputTranslation);
 		}
 		catch (Exception &exception)
 		{
@@ -144,10 +145,9 @@ void MVECameraIO::loadFromMetaIniFiles(vector<View *> &views, map<uint32, uint32
 	}
 }
 
-void MVECameraIO::loadFromMetaIniFile(vector<View *> &views, map<uint32, uint32> &oldToNewViewIDs, File &file,
+void MVECameraIO::loadFromMetaIniFile(Cameras &cameras, map<uint32, uint32> &viewToCameraIndices, File &file,
 	const Matrix3x3 &inverseInputRotation, const Vector3 &inverseInputTranslation)
 {
-	const uint32 newViewID = (uint32) views.size();
 	CameraData cameraData;
 	string line;
 	
@@ -178,7 +178,7 @@ void MVECameraIO::loadFromMetaIniFile(vector<View *> &views, map<uint32, uint32>
 		// view block start?
 		if (string::npos != line.find(BLOCK_IDENTIFIER_VIEW))
 		{
-			readViewData(oldToNewViewIDs, cameraData, file, newViewID);
+			readViewData(viewToCameraIndices, cameraData, file);
 			continue;
 		}
 
@@ -188,7 +188,7 @@ void MVECameraIO::loadFromMetaIniFile(vector<View *> &views, map<uint32, uint32>
 
 	// create view if it's valid
 	if (cameraData.mFocalLength > 0.0f)
-		views.push_back(new View(cameraData));
+		cameras.addCamera(cameraData);
 }
 
 void MVECameraIO::readDistortion(CameraData &data, File &file)
@@ -253,39 +253,39 @@ void MVECameraIO::readPrincipalPoint(CameraData &data, File &file)
 		throw FileCorruptionException("Principal point isn't provided in correct camera file format.", file.getName());
 }
 
-void MVECameraIO::readViewData(map<uint32, uint32> &oldToNewViewIDs, CameraData &data, File &file, const uint32 newViewID)
+void MVECameraIO::readViewData(map<uint32, uint32> &viewToCameraIndices, CameraData &data, File &file)
 {
 	char nameBuffer[File::READING_BUFFER_SIZE];
-	uint32 oldViewID;
+	uint32 viewID;
 
 	// get old view ID (MVE view IDs are not necessarily compact)
-	if (1 != file.scanf(VIEW_ID_FORMAT, &oldViewID))
+	if (1 != file.scanf(VIEW_ID_FORMAT, &viewID))
 		throw FileCorruptionException("View ID isn't provided in correct camera file format.", file.getName());
 
 	// link old to new view ID & set new view ID
-	if (oldToNewViewIDs.end() != oldToNewViewIDs.find(oldViewID))
+	if (viewToCameraIndices.end() != viewToCameraIndices.find(viewID))
 		throw FileCorruptionException("Duplicate view ID. All view IDs in MVE camera files must be unique!", file.getName());
-	oldToNewViewIDs[oldViewID] = newViewID;
-	data.mViewID = newViewID;
+	viewToCameraIndices[viewID] = cameraIdx;
+	data.mViewID = viewID;
 
-	// set view name
+	// read view name
 	if (1 != file.scanfString(NAME_FORMAT_0, NAME_FORMAT_1, nameBuffer, File::READING_BUFFER_SIZE))
 		throw FileCorruptionException("Camera name isn't provided in correct camera file format.", file.getName());
-	data.mName = nameBuffer;
+	//data.mName = nameBuffer;
 }
 
-void MVECameraIO::clear(vector<View *> &views, map<uint32, uint32> &oldToNewViewIDs)
+void MVECameraIO::clear(Cameras &cameras, map<uint32, uint32> &viewToCameraIndices)
 {
-	assert(views.empty());
-	if (!views.empty())
+	assert(cameras.empty());
+	if (!cameras.empty())
 		throw Exception("Views loading must always start from scratch!");
-	oldToNewViewIDs.clear();
+	viewToCameraIndices.clear();
 }
 
-void MVECameraIO::saveCamerasToFile(const vector<View *> &views) const
+void MVECameraIO::saveCamerasToFile(const Cameras &cameras) const
 {
 	// view count & allocate memory for output
-	const uint32 viewCount = (uint32) views.size();
+	const uint32 viewCount = cameras.getCount();
 	const uint32 lineCount = 2 + viewCount * 8;
 	const int64 bufferSize = File::READING_BUFFER_SIZE * lineCount;
 	char *buffer = new char[bufferSize];
@@ -297,10 +297,10 @@ void MVECameraIO::saveCamerasToFile(const vector<View *> &views) const
 
 	// body = cameras' data
 	// write all cameras infos to the file
-	for (size_t viewIdx = 0; viewIdx < viewCount && byteCount < bufferSize; ++viewIdx)
+	for (size_t cameraIdx = 0; cameraIdx < viewCount && byteCount < bufferSize; ++cameraIdx)
 	{
 		buffer[byteCount++] = '\n';
-		byteCount += saveViewToMVECamerasFile(buffer + byteCount, bufferSize - byteCount, *views[viewIdx]);
+		byteCount += saveCameraToCamerasFile(buffer + byteCount, bufferSize - byteCount, cameras, cameraIdx);
 	}
 
 	// todo log this
@@ -314,11 +314,11 @@ void MVECameraIO::saveCamerasToFile(const vector<View *> &views) const
 	buffer = NULL;
 }
 
-int64 MVECameraIO::saveViewToMVECamerasFile(char *buffer, const int64 bufferSize, const View &view) const
+int64 MVECameraIO::saveCameraToCamerasFile(char *buffer, const int64 bufferSize, const Cameras &cameras, const uint32 cameraIdx) const
 {
 	// get camera data
-	const PinholeCamera &camera = view.getCamera();
-	const Vector3 &viewDirection = view.getViewDirection();
+	const PinholeCamera &camera = cameras.getCamera(cameraIdx);
+	const Vector3 &viewDirection = cameras.getViewDirection(cameraIdx);
 	const Vector3 pWS(camera.getPosition().x, camera.getPosition().y, camera.getPosition().z);
 	const Vector2 &principalPoint = camera.getPrincipalPoint();
 
@@ -351,8 +351,8 @@ int64 MVECameraIO::saveViewToMVECamerasFile(char *buffer, const int64 bufferSize
 	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, TRANSLATION_FORMAT, translation.x, translation.y, translation.z);
 
 	// view ID & name
-	const uint32 &viewID = view.getID();
-	const string name = Scene::getIDString(viewID);
+	const uint32 &viewID = cameras.getViewID(cameraIdx);
+	const string name = Converter::from(viewID, 4);
 	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, VIEW_ID_FORMAT, viewID);
 	byteCount += snprintf(buffer + byteCount, bufferSize - byteCount, NAME_FORMAT_0 "%s" NAME_FORMAT_1, name.c_str());
 

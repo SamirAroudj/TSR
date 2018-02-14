@@ -14,8 +14,8 @@
 #include "SurfaceReconstruction/Geometry/Mesh.h"
 #include "SurfaceReconstruction/Geometry/RayTracer.h" 
 #include "SurfaceReconstruction/Geometry/Triangle.h"
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
-#include "SurfaceReconstruction/Scene/View/View.h"
 
 using namespace FailureHandling;
 using namespace Graphics;
@@ -213,7 +213,7 @@ void RayTracer::renderFromView(GeometryMap *geometryMap, const ImgSize &size, co
 		// ray direction
 		const uint32 x = (uint32) (rayIdx % size[0]);
 		const uint32 y = (uint32) (rayIdx / size[0]);
-		Vector3 rayDir = View::getRay(x, y, HPSToNNRayDirWS);
+		Vector3 rayDir = Cameras::getRay(x, y, HPSToNNRayDirWS);
 		ray.dir[0] = (float) rayDir.x;
 		ray.dir[1] = (float) rayDir.y;
 		ray.dir[2] = (float) -rayDir.z; // conversion: left-handed to right-handed system
@@ -377,7 +377,7 @@ void RayTracer::findIntersectionsForViewSamplePairs(
 	// get scene data
 	const Scene &scene = Scene::getSingleton();
 	const Samples &samples = scene.getSamples();
-	const vector<View *> &views = scene.getViews();
+	const Cameras &cameras = *scene.getCameras();
 
 	// configure ray tracer
 	const uint32 pairCount = endPairIdx - startPairIdx;
@@ -396,11 +396,11 @@ void RayTracer::findIntersectionsForViewSamplePairs(
 		const uint32 localPairIdx = rayIdx / raysPerPair;
 		const uint32 globalPairIdx = localPairIdx + startPairIdx;
 		const uint32 sampleIdx = samples.getSampleIdx(globalPairIdx);
-		const uint32 viewIdx = samples.getViewIdx(globalPairIdx);
+		const uint32 cameraIdx = samples.getViewIdx(globalPairIdx);
 		
 		// valid ray?
 		RTCRay &ray = initializeRay(rayIdx, rayIdx);
-		if (!scene.isValidView(viewIdx))
+		if (!cameras.isValid(cameraIdx))
 		{
 			ray.geomID = RTC_INVALID_GEOMETRY_ID;
 			ray.tnear = FLT_MAX;
@@ -409,7 +409,7 @@ void RayTracer::findIntersectionsForViewSamplePairs(
 		}
 
 		// ray start position = camera center
-		const View &view = *(views[viewIdx]);
+		const View &view = *(views[cameraIdx]);
 		const Vector3 startPosWS = view.getPositionWS();
 
 		ray.org[0] = (float)  startPosWS.x;

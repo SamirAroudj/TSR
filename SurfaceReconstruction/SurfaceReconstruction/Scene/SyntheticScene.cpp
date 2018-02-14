@@ -274,7 +274,7 @@ void SyntheticScene::createAndSaveSamples()
 	}
 	
 	mSamples->check();
-	mSamples->computeParentViewCount();
+	mSamples->computeParentCameraCount();
 	mSamples->computeAABB();
 }
 

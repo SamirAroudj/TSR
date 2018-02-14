@@ -107,10 +107,10 @@ DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
 
 	#ifdef DOUBLE_PRECISION
 		if (MVEIHeader::MVE_FLOAT == header.mType)
-			mDepths = Utilities::convert<double, float>(data, pixelCount);
+			mDepths = Converter::toFirstFromSecond<double, float>(data, pixelCount);
 	#else
 		if (MVEIHeader::MVE_DOUBLE == header.mType)
-			mDepths = Utilities::convert<float, double>(data, pixelCount);
+			mDepths = Converter::toFirstFromSecond<float, double>(data, pixelCount);
 	#endif // DOUBLE_PRECISION
 }
 

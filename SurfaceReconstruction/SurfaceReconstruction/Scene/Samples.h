@@ -167,7 +167,7 @@ namespace SurfaceReconstruction
 		@see getParentViewIndices */
 		inline uint32 getViewConeCount() const;
 
-		inline uint32 getViewIdx(const uint32 viewConeIdx) const;
+		inline uint32 getCameraIdx(const uint32 viewConeIdx) const;
 
 		/** Each sample has up to getViewsPerSample parent views which were used to create the specified Sample.
 			The global indices of these views can be accessed by this function.
@@ -175,7 +175,7 @@ namespace SurfaceReconstruction
 		@param sampleIdx Identifies the sample. Must be a global index relative to the list of all scene samples.
 		@return Returns the global index of the specified parent view whereas the index is relative to Scene::getViews().
 		@see getViewsPerSample, Scene::getViews() */
-		uint32 getViewIdx(const uint32 parentViewIdx, const uint32 sampleIdx) const;
+		uint32 getCameraIdx(const uint32 parentViewIdx, const uint32 sampleIdx) const;
 
 		/** todo */
 		inline uint32 getViewsPerSample() const;
@@ -223,7 +223,7 @@ namespace SurfaceReconstruction
 		void clear();
 
 		/** Computes the number of valid sample to parent view links stored in mParentViews. */
-		void computeParentViewCount();
+		void computeParentCameraCount();
 
 		/** todo */
 		void deleteSample(const uint32 sampleIdx);
@@ -256,7 +256,7 @@ namespace SurfaceReconstruction
 		void unifyInvalidParentViewIDs();
 		
 		/** todo */
-		void updateParentViews(const std::map<uint32, uint32> &oldToNewViewIDs);
+		void updateParentViews(const std::map<uint32, uint32> &viewToCameraIndices);
 
 	public:
 		static const uint32	FILE_VERSION;		/// Defines the current file version / current code version which is stored in .Samples files
@@ -407,9 +407,9 @@ namespace SurfaceReconstruction
 		return mViewConeCount;
 	}
 	
-	inline uint32 Samples::getViewIdx(const uint32 viewConeIdx) const
+	inline uint32 Samples::getCameraIdx(const uint32 viewConeIdx) const
 	{
-		return getViewIdx(getParentViewIdx(viewConeIdx), getSampleIdx(viewConeIdx));
+		return getCameraIdx(getParentViewIdx(viewConeIdx), getSampleIdx(viewConeIdx));
 	}
 
 	inline uint32 Samples::getViewsPerSample() const

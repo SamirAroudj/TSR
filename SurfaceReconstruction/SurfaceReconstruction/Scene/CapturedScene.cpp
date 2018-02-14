@@ -16,10 +16,10 @@
 #include "Platform/Utilities/PlyFile.h"
 #include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Image/DepthImage.h"
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
+#include "SurfaceReconstruction/Scene/Camera/MVECameraIO.h"
 #include "SurfaceReconstruction/Scene/CapturedScene.h"
 #include "SurfaceReconstruction/Scene/FileNaming.h"
-#include "SurfaceReconstruction/Scene/View/MVECameraIO.h"
-#include "SurfaceReconstruction/Scene/View/View.h"
 
 using namespace Math;
 using namespace FailureHandling;
@@ -43,11 +43,11 @@ CapturedScene::CapturedScene(const Path &metaFileName, const vector<IReconstruct
 	loadMetaData(plyCloudFileNames, imageScales, metaFileName);
 
 	// load cameras & create views
-	map<uint32, uint32> oldToNewViewIDs;
-	loadCameras(oldToNewViewIDs);
+	map<uint32, uint32> viewToCameraIndices;
+	loadCameras(viewToCameraIndices);
 
 	// load samples
-	loadSampleClouds(plyCloudFileNames, oldToNewViewIDs);
+	loadSampleClouds(plyCloudFileNames, viewToCameraIndices);
 
 	// load images
 	loadImages(imageScales);
@@ -83,7 +83,7 @@ void CapturedScene::loadMetaData(vector<Path> &plyCloudFileNames, vector<uint32>
 		}
 		else if (parts[0] == "uint32" && parts[1] == PARAMETER_NAME_IMAGE_SCALE)
 		{
-			const uint32 scale = Utilities::convert<uint32>(value);
+			const uint32 scale = Converter::to<uint32>(value);
 			imageScales.push_back(scale);
 		}
 		else
@@ -115,7 +115,7 @@ bool CapturedScene::getParameters(const Path &fileName)
 	return true;
 }
 
-void CapturedScene::loadCameras(map<uint32, uint32> &oldToNewViewIDs)
+void CapturedScene::loadCameras(map<uint32, uint32> &viewToCameraIndices)
 {
 	Matrix3x3 inverseRotation(mInputOrientation);
 	inverseRotation.transpose();
@@ -129,7 +129,7 @@ void CapturedScene::loadCameras(map<uint32, uint32> &oldToNewViewIDs)
 			// load views from some cameras file containing all cameras
 			const Path camFile = Path::appendChild(mFolder, mRelativeCamerasFile);
 			MVECameraIO loader(camFile);
-			loader.loadFromCamerasFile(mViews, oldToNewViewIDs, inverseRotation, translation);
+			loader.loadFromCamerasFile(mCameras, viewToCameraIndices, inverseRotation, translation);
 			return;
 		}
 	}
@@ -141,10 +141,10 @@ void CapturedScene::loadCameras(map<uint32, uint32> &oldToNewViewIDs)
 
 	// load views from folders within MVE views folder?
 	MVECameraIO loader(getViewsFolder());
-	loader.loadFromMetaIniFiles(mViews, oldToNewViewIDs, inverseRotation, translation);
+	loader.loadFromMetaIniFiles(mCameras, viewToCameraIndices, inverseRotation, translation);
 }
 
-void CapturedScene::loadSampleClouds(const vector<Path> &plyCloudFileNames, const map<uint32, uint32> &oldToNewViewIDs)
+void CapturedScene::loadSampleClouds(const vector<Path> &plyCloudFileNames, const map<uint32, uint32> &viewToCameraIndices)
 {
 	// load each point cloud
 	const uint32 fileCount = (uint32) plyCloudFileNames.size();
@@ -167,8 +167,8 @@ void CapturedScene::loadSampleClouds(const vector<Path> &plyCloudFileNames, cons
 		mSamples->transform((uint32) sampleIdx, inverseRotation, translation);
 
 	// update and count parent view links
-	mSamples->updateParentViews(oldToNewViewIDs);
-	mSamples->computeParentViewCount();
+	mSamples->updateParentViews(viewToCameraIndices);
+	mSamples->computeParentCameraCount();
 
 	// world space AABB of all samples
 	mSamples->computeAABB();
@@ -277,16 +277,16 @@ void CapturedScene::loadImages(const vector<uint32> &imageScales)
 {
 	// load the corresponding images for all views at all scales
 	const uint32 scaleCount = (uint32) imageScales.size();
-	const uint32 viewCount = (uint32) mViews.size();
+	const uint32 cameraCount = mCameras->getCount();
 	vector<vector<uint32>> vertexNeighbors;
 	vector<uint32> indices;
 	vector<uint32> pixelToVertexIndices;
 
-	for (uint32 viewIdx = 0; viewIdx < viewCount; ++viewIdx)
+	for (uint32 cameraIdx = 0; cameraIdx < cameraCount; ++cameraIdx)
 	{
 		// get camera data
-		const View &view = *mViews[viewIdx];
-		const PinholeCamera &camera = view.getCamera();
+		const PinholeCamera &camera = mCameras->getCamera(cameraIdx);
+		const uint32 viewIdx = mCameras->getViewID(cameraIdx);
 
 		for (uint32 scaleIdx = 0; scaleIdx < scaleCount; ++scaleIdx)
 		{

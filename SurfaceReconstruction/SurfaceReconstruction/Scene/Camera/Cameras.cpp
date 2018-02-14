@@ -28,14 +28,26 @@ using namespace Utilities;
 const uint32 Cameras::FILE_VERSION = 1;
 const uint32 Cameras::INVALID_ID = (uint32) -1;
 
+Vector3 Cameras::getRay(const uint32 x, const uint32 y, const Matrix3x3 &pixelToRay)
+{
+	const Vector3 ray = Vector3((Real) x, (Real) y, 1.0f) * pixelToRay;
+	return ray;
+}
+
 Cameras::~Cameras()
 {
-	// free memory
-	mCameras.clear();
-	mCameras.shrink_to_fit();
+	clear();
 
-	mViewIDs.clear();
+	// free memory
+	mCameras.shrink_to_fit();
 	mViewIDs.shrink_to_fit();
+}
+
+void Cameras::clear()
+{
+	// no cameras & IDs
+	mCameras.clear();
+	mViewIDs.clear();
 }
 
 void Cameras::addCamera(const uint32 viewID, const Vector3 AABB[2], const Real minSampleDistance, const Real maxSampleDistance,
@@ -88,12 +100,6 @@ const ColorImage *Cameras::getColorImage(const string &tag, const uint32 scale, 
 
 	return ColorImage::request(relativeFileName.getString(), relativeFileName);
 }
-//
-//Vector3 Cameras::getRay(const uint32 x, const uint32 y, const Matrix3x3 &pixelToRay)
-//{
-//	const Vector3 ray = Vector3((Real) x, (Real) y, 1.0f) * pixelToRay;
-//	return ray;
-//}
 
 const Vector3 Cameras::getViewDirection(const uint32 cameraIdx) const
 {
