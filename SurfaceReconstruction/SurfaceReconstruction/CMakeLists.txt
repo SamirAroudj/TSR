@@ -17,8 +17,8 @@ set(geometryPath ${componentPath}/Geometry)
 set(refinementPath ${componentPath}/Refinement)
 set(renderingPath ${componentPath}/Rendering)
 set(scenePath ${componentPath}/Scene)
+set(sceneCameraPath ${scenePath}/Camera)
 set(sceneTreePath ${scenePath}/Tree)
-set(sceneViewPath ${scenePath}/View)
 set(surfaceExtractionPath ${componentPath}/SurfaceExtraction)
 
 
@@ -93,6 +93,13 @@ set(sceneHeaderFiles
 	${scenePath}/SyntheticScene.h
 )
 
+# Scene/Camera sub namespace header files
+set (sceneViewHeaderFiles
+	${sceneCameraPath}/Cameras.h
+	${sceneCameraPath}/CameraData.h
+	${sceneCameraPath}/MVECameraIO.h
+)
+
 # scene/tree sub namespace header files
 set (sceneTreeHeaderFiles
 	${sceneTreePath}/DualCells.h
@@ -105,13 +112,6 @@ set (sceneTreeHeaderFiles
 	${sceneTreePath}/SphereNodesChecker.h
 	${sceneTreePath}/Tree.h
 	${sceneTreePath}/TriangleNodesChecker.h
-)
-
-# scene/view sub namespace header files
-set (sceneViewHeaderFiles
-	${sceneViewPath}/CameraData.h
-	${sceneViewPath}/MVECameraIO.h
-	${sceneViewPath}/View.h
 )
 
 # surface extraction sub namespace header files
@@ -184,6 +184,13 @@ set(sceneSourceFiles
 	${scenePath}/SyntheticScene.cpp
 )
 
+# Scene/Camera sub namespace ource files
+set (sceneViewSourceFiles
+	${sceneCameraPath}/Cameras.cpp
+	${sceneCameraPath}/CameraData.cpp
+	${sceneCameraPath}/MVECameraIO.cpp
+)
+
 # scene/tree sub namespace source files
 set (sceneTreeSourceFiles
 	${sceneTreePath}/DualCells.cpp
@@ -195,13 +202,6 @@ set (sceneTreeSourceFiles
 	${sceneTreePath}/SphereNodesChecker.cpp
 	${sceneTreePath}/Tree.cpp
 	${sceneTreePath}/TriangleNodesChecker.cpp
-)
-
-# scene/view sub namespace ource files
-set (sceneViewSourceFiles
-	${sceneViewPath}/CameraData.cpp
-	${sceneViewPath}/MVECameraIO.cpp
-	${sceneViewPath}/View.cpp
 )
 
 # surface extraction sub namespace source files
@@ -256,6 +256,6 @@ source_group("Image" FILES ${imageHeaderFiles} ${imageSourceFiles})
 source_group("Refinement" FILES ${refinementHeaderFiles} ${refinementSourceFiles})
 source_group("Rendering" FILES ${renderingHeaderFiles} ${renderingSourceFiles})
 source_group("Scene" FILES ${sceneHeaderFiles} ${sceneSourceFiles})
+source_group("Scene\\Camera" FILES ${sceneViewHeaderFiles} ${sceneViewSourceFiles})
 source_group("Scene\\Tree" FILES ${sceneTreeHeaderFiles} ${sceneTreeSourceFiles})
-source_group("Scene\\View" FILES ${sceneViewHeaderFiles} ${sceneViewSourceFiles})
 source_group("SurfaceExtraction" FILES ${surfaceExtractionHeaderFiles} ${surfaceExtractionSourceFiles})

@@ -22,6 +22,7 @@ namespace SurfaceReconstruction
 		static const char *BEGINNING_VIEW_FOLDER;
 
 		// file endings
+		static const char *ENDING_CAMERAS;
 		static const char *ENDING_COLOR_IMAGE;
 		static const char *ENDING_DUAL_CELLS;
 		static const char *ENDING_LEAVES;
@@ -32,7 +33,6 @@ namespace SurfaceReconstruction
 		static const char *ENDING_OCTREE;
 		static const char *ENDING_PLY;
 		static const char *ENDING_SAMPLES;
-		static const char *ENDING_VIEWS;
 		static const char *ENDING_VIEW_FOLDER;
 		
 		// file name parts

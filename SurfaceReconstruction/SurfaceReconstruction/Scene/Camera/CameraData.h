@@ -13,6 +13,7 @@
 #include "Math/Quaternion.h"
 #include "Math/Vector3.h"
 #include "Math/Vector2.h"
+#include "Graphics/PinholeCamera.h"
 #include "Platform/DataTypes.h"
 
 namespace SurfaceReconstruction
@@ -22,8 +23,9 @@ namespace SurfaceReconstruction
 	public:
 		CameraData();
 
+		void set(const uint32 &viewID, const Graphics::PinholeCamera &camera);
+
 	public:
-		std::string mName;
 		Math::Quaternion mOrientation;
 		Math::Vector3 mPosition;
 		Math::Vector2 mDistortion;

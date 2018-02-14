@@ -32,12 +32,6 @@ namespace SurfaceReconstruction
 		friend class SyntheticScene;
 
 	public:
-		static inline Real getDistanceConfidence(const Real distanceSquared);
-
-		//static inline Real getDistanceCosts(const Math::Vector3 &n0, const Math::Vector3 &p0, const Real supportRange0,
-		//							const Math::Vector3 &n1, const Math::Vector3 &p1, const Real supportRange1);
-
-	public:
 		/** todo */
 		explicit Samples(const Storage::Path &fileName);
 

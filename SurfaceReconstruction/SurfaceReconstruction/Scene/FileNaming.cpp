@@ -16,6 +16,7 @@ const char *FileNaming::BEGINNING_RESULTS = "Scene";
 const char *FileNaming::BEGINNING_VIEW_FOLDER = "view_";
 
 // file endings
+const char *FileNaming::ENDING_CAMERAS = ".cameras";
 const char *FileNaming::ENDING_COLOR_IMAGE = ".png";
 const char *FileNaming::ENDING_DUAL_CELLS = ".dualCells";
 const char *FileNaming::ENDING_LEAVES = ".leaves";
@@ -26,7 +27,6 @@ const char *FileNaming::ENDING_OCCUPANCY = ".occupancy";
 const char *FileNaming::ENDING_OCTREE = ".octree";
 const char *FileNaming::ENDING_PLY = ".ply";
 const char *FileNaming::ENDING_SAMPLES = ".samples";
-const char *FileNaming::ENDING_VIEWS = ".views";
 const char *FileNaming::ENDING_VIEW_FOLDER = ".mve";
 
 // other file names

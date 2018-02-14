@@ -25,15 +25,12 @@ namespace SurfaceReconstruction
 	class Samples;
 	class StaticMesh;
 	class Tree;
-	class View;
+	class Cameras;
 
 	/// Represents a complete scene with its object, camera, noise descriptions and so on.
 	class Scene : public IReconstructorObserver, public Patterns::Singleton<Scene>
 	{
 	public:
-		/** todo */
-		static std::string getIDString(const uint32 identifier);
-
 		/** Returns the name of the image without any parent folders, e.g., depth-L2.mvei. */
 		static const std::string getLocalImageName(const std::string &tag, const uint32 scale, const bool colorImage);
 
@@ -43,22 +40,13 @@ namespace SurfaceReconstruction
 		/** todo
 		@return Returned file name starts with views folder.
 		(For example: "view_0000.mve/undist-L2.png") */
-		inline static Storage::Path getRelativeImageFileName(const uint32 viewID, 
+		inline static Storage::Path getRelativeImageFileName(const uint32 &viewID, 
 			const std::string &tag, const uint32 scale, const bool colorImage);
-		
-		/** todo
-		@return Returned file name starts with views folder.
-		(For example: "view_0000.mve/depth-L1.mvei") */
-		static Storage::Path getRelativeImageFileName(const std::string &viewID, 
-			const std::string &tag, const uint32 scale, const bool colorImage);
-
-		inline static Storage::Path getRelativeViewFolder(const uint32 viewIdx); 
 
 		/** Returns the name of the folder in the getViewsFolder for the view viewID.
 		@param viewID Identifies the view for which the relative folder is returned.
-		@return Returns a relative path pointing to the folder for the view viewID.
-		@see getIDString(); */
-		static Storage::Path getRelativeViewFolder(const std::string &viewId); 
+		@return Returns a relative path pointing to the folder for the view viewID. */
+		static Storage::Path getRelativeViewFolder(const uint32 &viewId); 
 
 	public:
 		/** Loads a scene from file from already processed and created data, such as views, reordered samples and Tree object.
@@ -110,7 +98,7 @@ namespace SurfaceReconstruction
 		@return Returns the number of exisitng View objects belonging to this Scene instance. */
 		inline uint32 getViewCount() const;
 
-		inline Storage::Path getViewFolder(const std::string &viewIDString) const;
+		inline Storage::Path getViewFolder(const uint32 viewID) const;
 
 		inline const std::vector<FlexibleMesh *> getViewMeshes() const;
 
@@ -122,12 +110,9 @@ namespace SurfaceReconstruction
 		@return Returns the folder which contains all view folders view0000, view0001, ... etc.*/
 		inline Storage::Path getViewsFolder() const;
 
-		/** Provides access to existing View objects.
+		/** Provides access to existing camera objects (cameras of all registered views).
 		@return Returns all exisiting View objects of this Scene object.*/
-		inline const std::vector<View *> &getViews() const;
-		
-		/** todo */
-		inline bool isValidView(const uint32 viewIdx) const;
+		inline const Cameras *getCameras() const;
 		
 		/** todo */
 		void refine(const ReconstructionType type);
@@ -135,9 +120,6 @@ namespace SurfaceReconstruction
 		/** todo */
 		void saveReconstructionToFiles(const ReconstructionType type, const std::string &nameAppendix,
 			const bool saveAsPly, const bool saveAsMesh) const;
-
-		///** todo */
-		//void saveToFile() const;
 		
 		/** todo */
 		void swapSamples(const uint32 index0, const uint32 index1);
@@ -167,12 +149,6 @@ namespace SurfaceReconstruction
 		void loadFromFile(const Storage::Path &rootFolder, const Storage::Path &FSSFReconstruction);
 
 		/** todo */
-		void loadViewsFromFile(const Storage::Path &fileName);
-
-		/** todo */
-		void saveViewsToFile(const Storage::Path &fileName) const;
-
-		/** todo */
 		void setRootFolder(const Storage::Path &rootFolder);
 
 		void takeReconstructionFromOccupancy();
@@ -194,12 +170,11 @@ namespace SurfaceReconstruction
 		static const uint32 PARAMETER_VALUE_TRIANGLE_ISLE_SIZE_MINIMUM;
 		static const uint32 PARAMETER_VALUE_REFINEMENT_VIA_PHOTOS_MESH_OUTPUT_FREQUENCY;	/// todo
 
-		static const uint32 VIEWS_FILE_VERSION;	/// Identifies the version of implementation of saving and loading of views for persistent storage.
-
 	protected:
 		StaticMesh *mGroundTruth;															/// Contains ground truth surfaces to be reconstructed.
 		FlexibleMesh *mReconstructions[IReconstructorObserver::RECONSTRUCTION_TYPE_COUNT];	/// Contains different reconstruction types, see SurfaceReconstruction::MeshObserver::ReconstructionType.
 
+		Cameras *mCameras;					/// Contains all the camera data for all registered views. They represent projective capturing views measuring surfaces and creating samples.
 		FSSFRefiner *mFSSFRefiner;			/// Does variational surface mesh refinement starting with an initial mesh to get a reconstruction which "fits to" input images (high photo consistency score).
 		Occupancy *mOccupancy;				/// Represents how empty and full the space is.
 		PCSRefiner *mPCSRefiner;			/// Refines a coarse extracted crust to fit to the scene input samples.
@@ -207,7 +182,6 @@ namespace SurfaceReconstruction
 		Tree *mTree;						/// This tree partitions this scene spatially and defines sampling positions for the implicit function used for reconstruction.
 
 		std::vector<IReconstructorObserver *> mRefinerObservers;	/// get updates from mesh refiners
-		std::vector<View *> mViews;									/// These represent projective capturing views measuring surfaces and creating samples.
 		std::vector<FlexibleMesh *> mViewMeshes;					/// Triangulated depth maps - one mesh per registered view.
 
 		Storage::Path mFolder;				/// Defines the root scene folder. Contains scene data and is the parent folder of the folders like views containing sub folders for each view with their images. 
@@ -219,15 +193,14 @@ namespace SurfaceReconstruction
 	///   inline function definitions   ////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	inline Scene::Scene(const Scene &other)
+	inline Cameras *Scene::getCameras()
 	{
-		assert(false);
+		return mCameras;
 	}
 
-	inline Scene &Scene::operator =(const Scene &rhs)
+	inline const Cameras *Scene::getCameras() const
 	{
-		assert(false);
-		return *this;
+		return mCameras;
 	}
 
 	inline const FSSFRefiner *Scene::getFSSFRefiner() const
@@ -263,17 +236,6 @@ namespace SurfaceReconstruction
 		return mReconstructions[type];
 	}
 
-	inline Storage::Path Scene::getRelativeImageFileName(const uint32 viewID,
-		const std::string &tag, const uint32 scale, const bool colorImage)
-	{
-		return getRelativeImageFileName(getIDString(viewID), tag, scale, colorImage);
-	}
-
-	inline Storage::Path Scene::getRelativeViewFolder(const uint32 viewIdx)
-	{
-		return Scene::getRelativeViewFolder(getIDString(viewIdx));
-	}
-
 	inline const Samples &Scene::getSamples() const
 	{
 		return *mSamples;
@@ -284,24 +246,9 @@ namespace SurfaceReconstruction
 		return Scene::getSingleton().mTree;
 	}
 
-	inline uint32 Scene::getViewCount() const
-	{
-		return (uint32) mViews.size();
-	}
-
-	inline Storage::Path Scene::getViewFolder(const std::string &viewIDString) const
-	{
-		return Storage::Path::appendChild(getViewsFolder(), getRelativeViewFolder(viewIDString));
-	}
-
 	inline const std::vector<FlexibleMesh *> Scene::getViewMeshes() const
 	{
 		return mViewMeshes;
-	}
-
-	inline std::vector<View *> &Scene::getViews()
-	{
-		return mViews;
 	}
 
 	inline Storage::Path Scene::getViewsFolder() const
@@ -309,14 +256,15 @@ namespace SurfaceReconstruction
 		return Storage::Path::appendChild(mFolder, "views");
 	}
 
-	inline const std::vector<View *> &Scene::getViews() const
+	inline Scene::Scene(const Scene &other)
 	{
-		return mViews;
+		assert(false);
 	}
 
-	inline bool Scene::isValidView(const uint32 viewIdx) const
+	inline Scene &Scene::operator =(const Scene &rhs)
 	{
-		return (viewIdx < mViews.size() && mViews[viewIdx]);
+		assert(false);
+		return *this;
 	}
 }
 

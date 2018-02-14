@@ -17,11 +17,11 @@
 #ifdef PCS_REFINEMENT
 	#include "SurfaceReconstruction/Refinement/PCSRefiner.h"
 #endif // PCS_REFINEMENT
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
 #include "SurfaceReconstruction/Scene/FileNaming.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 #include "SurfaceReconstruction/Scene/Tree/Tree.h"
-#include "SurfaceReconstruction/Scene/View/View.h"
 #include "SurfaceReconstruction/SurfaceExtraction/DualMarchingCells.h"
 #include "SurfaceReconstruction/SurfaceExtraction/Occupancy.h"
 
@@ -39,18 +39,8 @@ const char *Scene::PARAMETER_NAME_SCENE_FOLDER = "sceneFolder";
 
 const uint32 Scene::PARAMETER_VALUE_REFINEMENT_VIA_PHOTOS_MESH_OUTPUT_FREQUENCY = 25;
 const uint32 Scene::PARAMETER_VALUE_TRIANGLE_ISLE_SIZE_MINIMUM = 2500;
-const uint32 Scene::VIEWS_FILE_VERSION = 0;
 
-string Scene::getIDString(const uint32 viewID)
-{
-	// viewID to at least 4 digits string
-	char buffer[File::READING_BUFFER_SIZE];
-	snprintf(buffer, File::READING_BUFFER_SIZE, "%.4u", viewID);
-
-	return string(buffer);
-}
-
-Path Scene::getRelativeImageFileName(const string &viewID, const string &tag, const uint32 scale, const bool colorImage)
+Path Scene::getRelativeImageFileName(const uint32 &viewID, const string &tag, const uint32 scale, const bool colorImage)
 {
 	// complete image file name
 	const Path viewFolder = Scene::getRelativeViewFolder(viewID);
@@ -59,7 +49,7 @@ Path Scene::getRelativeImageFileName(const string &viewID, const string &tag, co
 	return Path::appendChild(viewFolder, fileName);
 }
 
-Path Scene::getRelativeViewFolder(const string &viewID)
+Path Scene::getRelativeViewFolder(const uint32 &viewID)
 {
 	string temp(FileNaming::BEGINNING_VIEW_FOLDER);
 	temp += viewID;
@@ -128,14 +118,12 @@ Scene::~Scene()
 
 bool Scene::reconstruct()
 {
-	// no views/samples for tree creation?
-	if (mViews.empty())
+	// nothing to reconstruct without cameras or samples
+	if (!mCameras)
 	{
 		cout << "Stopping early. No views available for reconstruction ." << endl;
 		return false;
 	}
-
-	// valid scene?
 	if (!mSamples)
 	{
 		cout << "Stopping early. No samples available for reconstruction ." << endl;
@@ -143,9 +131,9 @@ bool Scene::reconstruct()
 	}
 
 	// view and sample count
-	const uint32 viewCount = (uint32) mViews.size();
+	const uint32 cameraCount = mCameras->getCount();
 	const uint32 sampleCount = mSamples->getCount();
-	cout << "Starting reconstruction with " << mViews.size() << " views and " << sampleCount << " samples.\n";
+	cout << "Starting reconstruction with " << cameraCount << " views and " << sampleCount << " samples.\n";
 
 	// create results folder
 	if (!Directory::createDirectory(getResultsFolder()))
@@ -155,9 +143,14 @@ bool Scene::reconstruct()
 		return false;
 	}
 
-	// save mata data & views
+	// check & save cameras
+	if (0 == cameraCount)
+	{
+		cout << "Stopping early. No registered views available for reconstruction ." << endl;
+		return false;
+	}
 	const Path beginning = getFileBeginning();
-	saveViewsToFile(Path::extendLeafName(beginning, FileNaming::ENDING_VIEWS));
+	mCameras->saveToFile(Path::extendLeafName(beginning, FileNaming::ENDING_CAMERAS));
 
 	// check samples
 	if (0 == sampleCount)
@@ -366,11 +359,12 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 	// there must be a valid meta, views and samples file otherwise the scene is useless
 	try
 	{
-		loadViewsFromFile(Path::extendLeafName(beginning, FileNaming::ENDING_VIEWS));
+		mCameras = new Cameras(Path::extendLeafName(beginning, FileNaming::ENDING_CAMERAS));
 	}
 	catch (Exception &exception)
 	{
-		mViews.clear();
+		delete mCameras;
+		mCameras = NULL;
 
 		cerr << exception;
 		cerr << "Exception! Could not load views." << endl;
@@ -552,66 +546,6 @@ void Scene::saveReconstructionToFiles(const ReconstructionType type, const strin
 	mesh->saveToFile(name, saveAsPly, saveAsMesh);
 }
 
-void Scene::loadViewsFromFile(const Path &fileName)
-{
-	cout << "Loading views from file \"" << fileName << "\"." << endl;
-	
-	// open file
-	File file(fileName, File::OPEN_READING, true, VIEWS_FILE_VERSION);
-
-	// load #views & reserve memory
-	uint32 viewCount;
-	file.read(&viewCount, sizeof(uint32), sizeof(uint32), 1);
-	mViews.resize(viewCount);
-	memset(mViews.data(), 0, sizeof(View *) * viewCount);
-
-	// load every view
-	uint32 viewIdx;
-	for (uint32 i = 0; i < viewCount; ++i)
-	{
-		// valid camera?
-		file.read(&viewIdx, sizeof(uint32), sizeof(uint32), 1);
-		if (viewIdx >= viewCount)
-		{
-			cout << "View " << i << " has the invalid ID " << viewIdx << "( view count = " << viewCount << ")." << endl;
-			continue;
-		}
-
-		mViews[viewIdx] = new View(viewIdx, file, fileName);
-	}
-	
-	cout << "Loaded " << viewCount << " views." << endl;
-}
-
-void Scene::saveViewsToFile(const Path &fileName) const
-{
-	// is there anything to save?
-	if (mViews.empty())
-		return;
-
-	// create file
-	File file(fileName, File::CREATE_WRITING, true, VIEWS_FILE_VERSION);
-
-	// write version & view count
-	const uint32 viewCount = (uint32) mViews.size();
-	file.write(&viewCount, sizeof(uint32), 1);
-
-	// write every view
-	for (uint32 viewIdx = 0; viewIdx < viewCount; ++viewIdx)
-	{
-		const View *view = mViews[viewIdx];
-		if (!view)
-		{
-			file.write(&View::INVALID_ID, sizeof(uint32), 1);
-			continue;
-		}
-
-		const uint32 viewID = view->getID();
-		file.write(&viewID, sizeof(uint32), 1);
-		view->saveToFile(file);
-	}
-}
-
 void Scene::swapSamples(const uint32 index0, const uint32 index1)
 {
 	if (mTree)
@@ -638,12 +572,14 @@ void Scene::clear()
 		delete mPCSRefiner;
 		mPCSRefiner = NULL;
 	#endif // PCS_REFINEMENT
-
+		
+	delete mCameras;
 	delete mFSSFRefiner;
 	delete mOccupancy;
 	delete mTree;
 	delete mSamples;
-
+	
+	mCameras = NULL;
 	mFSSFRefiner = NULL;
 	mOccupancy = NULL;
 	mSamples = NULL;
@@ -655,13 +591,6 @@ void Scene::clear()
 		delete mViewMeshes[meshIdx];
 	mViewMeshes.clear();
 	mViewMeshes.shrink_to_fit();
-
-	// free views
-	const uint32 viewCount = (uint32) mViews.size();
-	for (uint32 viewIdx = 0; viewIdx < viewCount; ++viewIdx)
-		delete mViews[viewIdx];
-	mViews.clear();
-	mViews.shrink_to_fit();
 
 	// free volatile resources
 	// free cached images

@@ -171,6 +171,7 @@ void MVECameraIO::loadFromMetaIniFile(vector<View *> &views, map<uint32, uint32>
 			readPixelAspectRatio(cameraData, file);
 			readPrincipalPoint(cameraData, file);
 			readExtrinsics(cameraData, file, inverseInputRotation, inverseInputTranslation);
+
 			continue;
 		}
 
@@ -185,8 +186,9 @@ void MVECameraIO::loadFromMetaIniFile(vector<View *> &views, map<uint32, uint32>
 		// todo log this
 	}
 
-	// create view
-	views.push_back(new View(cameraData));
+	// create view if it's valid
+	if (cameraData.mFocalLength > 0.0f)
+		views.push_back(new View(cameraData));
 }
 
 void MVECameraIO::readDistortion(CameraData &data, File &file)
