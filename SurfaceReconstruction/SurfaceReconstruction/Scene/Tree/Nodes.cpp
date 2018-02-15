@@ -10,10 +10,10 @@
 #include "CollisionDetection/CollisionDetection.h"
 #include "Platform/FailureHandling/Exception.h"
 #include "Platform/Storage/File.h"
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 #include "SurfaceReconstruction/Scene/Tree/Nodes.h"
-#include "SurfaceReconstruction/Scene/View/View.h"
 #include "SurfaceReconstruction/SurfaceExtraction/Occupancy.h"
 
 // todo comments
@@ -181,14 +181,14 @@ uint32 Nodes::getNode(Scope &scope,	const Vector3 &queryPosWS, const uint32 maxD
 	}
 }
 
-Nodes::Nodes(Samples *&reorderedSamples, const Scope &rootScope)
+Nodes::Nodes(const Scope &rootScope)
 {
 	clear();
 
 	createNodes(rootScope);
 	balance(rootScope); // have at maximum 1 depth level difference for each pair of adjacent leaf nodes
 	reorder();
-	reorderedSamples = reorderSamplesAndFillNodes(rootScope);
+	reorderSamplesAndFillNodes(rootScope);
 }
 
 void Nodes::createNodes(const Scope &rootScope)
@@ -585,17 +585,17 @@ void Nodes::reorder(const vector<uint32> &newOrder)
 	}
 }
 
-Samples *Nodes::reorderSamplesAndFillNodes(const Scope &rootScope)
+void Nodes::reorderSamplesAndFillNodes(const Scope &rootScope)
 {
 	// even all samples must follow the NEW ORDER
 	// (remember that NEW ORDER must be read with a dark and low voice)
 	Scene &scene = Scene::getSingleton();
-	const Samples &oldSamples = scene.getSamples();
-	const uint32 sampleCount = oldSamples.getCount();
+	Samples &samples = scene.getSamples();
+	const uint32 sampleCount = samples.getCount();
+	uint32 *sampleTargetIndices = new uint32[sampleCount];
 
+	// get new order for samples in sampleTargetIndices
 	// the samples within a single node are moved so that they are all within a single memory block
-	Samples *newSamples = new Samples(oldSamples.getViewsPerSample(), sampleCount, oldSamples.getAABBWS());
-	
 	#pragma omp parallel for
 	for (int64 sampleIdx = 0; sampleIdx < sampleCount; ++sampleIdx)
 	{
@@ -609,19 +609,24 @@ Samples *Nodes::reorderSamplesAndFillNodes(const Scope &rootScope)
 		if (!found)
 			throw Exception("There is a sample which was not inserted into the Tree object!");
 		
-		// update tree & newSamples
+		// update tree
 		uint32 offset = Samples::INVALID_INDEX;
 		uint32 &samplesInNode = mSamplesPerNodes[nodeIdx];
 		#pragma omp critical (reorderedSamplesTargetIndex)
 			offset = samplesInNode++;
 
+		// update new samples
 		const uint32 targetIdx = mSampleStartIndices[nodeIdx] + offset;
-		newSamples->set(targetIdx, oldSamples, oldSampleIdx);
+		sampleTargetIndices[oldSampleIdx] = targetIdx;
 	}
-	
+
+	// reorder samples
+	samples.reorder(sampleTargetIndices);
+	delete [] sampleTargetIndices;
+	sampleTargetIndices = NULL;
+
 	// All samples follow the NEW ORDER!
 	checkSampleIndicesOfNodes();
-	return newSamples;
 }
 
 uint32 Nodes::getSamples(uint32 &sampleCount, const uint32 nodeIdx) const

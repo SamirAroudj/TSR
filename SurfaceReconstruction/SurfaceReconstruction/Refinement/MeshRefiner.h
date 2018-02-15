@@ -23,7 +23,6 @@
 namespace SurfaceReconstruction
 {
 	class Mesh;
-	class View;
 
 	class MeshRefiner : public Patterns::Subject<IReconstructorObserver>, public IFlexibleMeshObserver
 	{

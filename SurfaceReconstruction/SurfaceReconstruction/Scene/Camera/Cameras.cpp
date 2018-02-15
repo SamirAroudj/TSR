@@ -37,7 +37,11 @@ Vector3 Cameras::getRay(const uint32 x, const uint32 y, const Matrix3x3 &pixelTo
 Cameras::~Cameras()
 {
 	clear();
+	shrinkToFit();
+}
 
+void Cameras::shrinkToFit()
+{
 	// free memory
 	mCameras.shrink_to_fit();
 	mViewIDs.shrink_to_fit();
@@ -110,6 +114,7 @@ const Vector3 Cameras::getViewDirection(const uint32 cameraIdx) const
 
 void Cameras::loadFromFile(const Path &fileName)
 {
+	clear();
 	cout << "Loading views from file \"" << fileName << "\"." << endl;
 	
 	// first store the data in rawCams for fast loading

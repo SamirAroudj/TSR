@@ -381,14 +381,15 @@ void TSR::controlRenderer()
 	if (keyboard.isKeyReleased(KEY_F7))
 		mRenderer->toggleOccupancyRenderingFlags(Renderer::OCCUPANCY_RENDERING_FLAGS_LOG_SCALE);
 	
-	// views & camera
-	// highlighted view
+	// pinhole cameras
+	// highlighted camera
 	if (keyboard.isKeyReleased(KEY_F10))
-		mRenderer->highlightNextView(mScene->getViewCount());
-	// view rendering mode
+		mRenderer->highlightNextCamera(mScene->getCameras().getCount());
+	// camera rendering mode
 	if (keyboard.isKeyReleased(KEY_F11))
-		mRenderer->shiftViewRendering();
-	// camera
+		mRenderer->shiftCameraRendering();
+
+	// rendering camera
 	if (keyboard.isKeyReleased(KEY_F12))
 		resetCamera();
 }
@@ -471,10 +472,10 @@ void TSR::createNewScene(const uint32 sceneCreationType, const vector<string> &a
 	//#ifdef _DEBUG
 		if (Platform::Window::exists())
 		{
-			const vector<FlexibleMesh *> &viewMeshes = mScene->getViewMeshes();
-			const uint32 meshCount = (uint32) viewMeshes.size();
+			const vector<FlexibleMesh *> &meshes = mScene->getViewMeshes();
+			const uint32 meshCount = (uint32) meshes.size();
 			for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
-				mMeshRenderer->uploadData(*viewMeshes[meshIdx]);
+				mMeshRenderer->uploadData(*meshes[meshIdx]);
 		}	
 	//#endif // _DEBUG
 }

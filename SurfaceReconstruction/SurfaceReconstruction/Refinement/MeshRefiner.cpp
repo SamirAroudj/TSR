@@ -12,8 +12,8 @@
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/Triangle.h"
 #include "SurfaceReconstruction/Refinement/MeshRefiner.h"
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
-#include "SurfaceReconstruction/Scene/View/View.h"
 
 using namespace Graphics;
 using namespace FailureHandling;
@@ -93,8 +93,8 @@ void MeshRefiner::onFilterData(
 	const uint32 *edgeOffsets, const uint32 edgeCount,
 	const uint32 *triangleOffsets, const uint32 triangleCount)
 {
-	FlexibleMesh::filterData<Vector3>(mVectorField, vertexOffsets);
-	FlexibleMesh::filterData<Real>(mWeightField, vertexOffsets);
+	Array<Vector3>::compaction(mVectorField, vertexOffsets);
+	Array<Real>::compaction(mWeightField, vertexOffsets);
 }
 
 void MeshRefiner::onNewElements(

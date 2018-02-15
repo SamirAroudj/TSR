@@ -8,6 +8,7 @@
  */
 #include <cstring>
 #include "Platform/FailureHandling/Exception.h"
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
 #include "SurfaceReconstruction/Scene/FileNaming.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
@@ -15,7 +16,6 @@
 #include "SurfaceReconstruction/Scene/Tree/Leaves.h"
 #include "SurfaceReconstruction/Scene/Tree/Nodes.h"
 #include "SurfaceReconstruction/Scene/Tree/Tree.h"
-#include "SurfaceReconstruction/Scene/View/View.h"
 
 using namespace FailureHandling;
 using namespace Math;
@@ -23,29 +23,23 @@ using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;
 
-Tree::Tree(Samples *&reorderedCopy) :
-	Tree()
+Tree::Tree() :
+	mNodes(NULL), mLeaves(NULL), mDualCells(NULL)
 {
 	cout << "Creating scene tree." << endl;
 	clear();
 
 	const Scope rootScope = getRootScope();
 
-	mNodes = new Nodes(reorderedCopy, rootScope);
+	mNodes = new Nodes(rootScope);
 	mLeaves = new Leaves(*mNodes, rootScope);
 	mDualCells = new DualCells(*mNodes, *mLeaves);
 }
 
 Tree::Tree(const Path &filesBeginning) :
-	Tree()
-{
-	loadFromFile(filesBeginning);
-}
-
-Tree::Tree() :
 	mNodes(NULL), mLeaves(NULL), mDualCells(NULL)
 {
-		
+	loadFromFile(filesBeginning);
 }
 
 Tree::~Tree()

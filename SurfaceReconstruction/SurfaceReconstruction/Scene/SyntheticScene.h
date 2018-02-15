@@ -38,13 +38,12 @@ namespace SurfaceReconstruction
 		/** todo */
 		void addNoise(std::vector<Math::Vector3> &positionsWSMap, std::vector<Real> &depthMap, const Math::Vector3 &camPosWS);
 		
-		void addToSamples(std::vector<std::vector<uint32>> &vertexNeighbors, std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices,
+		void createAndSaveSamples();
+		void createSyntheticCamera();
+		
+		void createMeshFromDepthMap(std::vector<std::vector<uint32>> &vertexNeighbors, std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices,
 			const Storage::Path &depthMapName, const std::vector<Math::Vector3> &positionsWSMap,
 			const uint32 validDepthCount, const uint32 viewIdx);
-
-		/** todo */
-		View *createSyntheticView(const uint32 viewIdx);
-		void createAndSaveSamples();
 
 		/** todo */
 		bool fill(std::vector<Real> &depthMap, std::vector<Math::Vector3> &positionsMap, RayTracer &rayTracer, uint32 &validDepthCount,
@@ -61,24 +60,24 @@ namespace SurfaceReconstruction
 		static const uint32 RANDOM_SEED;
 
 	private:
-		Storage::Path mGroundTruthName;		// file name of ground truth object
-		Real mDepthMapNoise[2];				// mean and standard deviation
-		Math::Vector3 mAABB[2];				/// This is the axis aligned bounding box which contains mViews and mGroundTruth. ([0] -> min, [1] -> max)
+		Storage::Path mGroundTruthName;			/// file name of ground truth object
+		Real mDepthMapNoise[2];					/// mean and standard deviation
+		Math::Vector3 mAABB[2];					/// This is the axis aligned bounding box which contains mCameras and mGroundTruth. ([0] -> min, [1] -> max)
 		Math::Vector3 mMeshAABB[2];
-		Math::Vector3 mRelativeSceneBorder;	/// The tight AABB (mMeshAABB) of all test input surfaces (mGroundTruth) is enlarged at all sides by these relative factors to get
-											/// a complete scene AABB (mAABB) in which capturing views are placed.
-		Utilities::ImgSize mViewResolution;	/// Defines how many surface samples are created per View object at maximum. This is the resolution of the view image planes in pixels. (width x height)
-
+		Math::Vector3 mRelativeSceneBorder;		/// The tight AABB (mMeshAABB) of all test input surfaces (mGroundTruth) is enlarged at all sides by these relative factors to get
+												/// a complete scene AABB (mAABB) in which capturing views are placed.
+		Utilities::ImgSize mImageResolution;	/// Defines how many surface samples are created per capture at maximum. This is the resolution of the image planes in pixels. (width x height)
+		
+		Real mCameraBalance;
 		Real mMaxFocalLength;
 		Real mMinFocalLength;
-		Real mViewBalance;
 
 		// loaded view creation parameters
 
 		Real mMinSampleViewAngle;			/// Defines the minimum angle between sample tangent and view vector that is required for Sample object creation.
 		Real mMinSampleDistance;			/// Defines the mininum distance between a surface and a camera that is required for Sample creation (per sample).
+		uint32 mMaxCameraCount;				/// Defines how many projectice capture devices are created for sample point generation at maximum.
 		uint32 mSeed;						/// Defines what random numbers are generated to produce the sample noise.
-		uint32 mMaxViewCount;				/// Defines how many projectice capturing views are created for sample point generation at maximum.
 	};
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

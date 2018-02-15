@@ -53,9 +53,9 @@ FSSFParameters::FSSFParameters()
 	ok &= m.get(mSmoothingTaubinIterCount, "FSSF::Smoothing::taubinIterCount");
 	
 	// rays per cone
-	ok &= m.get(mRaysPerViewSamplePair[0], "FSSF::raysPerViewSamplePairDim0");
-	ok &= m.get(mRaysPerViewSamplePair[1], "FSSF::raysPerViewSamplePairDim1");
-	ok &= m.get(mOrientSamplingPatternLikeView, "FSSF::orientSamplingPatternLikeView");
+	ok &= m.get(mRaysPerLinkedPair[0], "FSSF::raysPerLinkedPairDim0");
+	ok &= m.get(mRaysPerLinkedPair[1], "FSSF::raysPerLinkedPairDim1");
+	ok &= m.get(mOrientSamplingPattern, "FSSF::orientSamplingPattern");
 
 	// outlier removal stuff
 	ok &= m.get(mOutlierIsleMinKeepingSize, "FSSF::outlierIsleMinKeepingSize");

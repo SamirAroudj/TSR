@@ -81,6 +81,7 @@ Scene::Scene(const Path &rootFolder, const Path &FSSFReconstruction,
 
 Scene::Scene(const vector<IReconstructorObserver *> &observers) : 
 	mGroundTruth(NULL),
+	mCameras(NULL),
 	mFSSFRefiner(NULL),
 	mOccupancy(NULL),
 	#ifdef PCS_REFINEMENT
@@ -119,9 +120,10 @@ Scene::~Scene()
 bool Scene::reconstruct()
 {
 	// nothing to reconstruct without cameras or samples
-	if (!mCameras)
+	const uint32 cameraCount = mCameras.getCount();
+	if (0 == cameraCount)
 	{
-		cout << "Stopping early. No views available for reconstruction ." << endl;
+		cout << "Stopping early. No registered views available for reconstruction ." << endl;
 		return false;
 	}
 	if (!mSamples)
@@ -131,7 +133,6 @@ bool Scene::reconstruct()
 	}
 
 	// view and sample count
-	const uint32 cameraCount = mCameras->getCount();
 	const uint32 sampleCount = mSamples->getCount();
 	cout << "Starting reconstruction with " << cameraCount << " views and " << sampleCount << " samples.\n";
 
@@ -143,14 +144,9 @@ bool Scene::reconstruct()
 		return false;
 	}
 
-	// check & save cameras
-	if (0 == cameraCount)
-	{
-		cout << "Stopping early. No registered views available for reconstruction ." << endl;
-		return false;
-	}
+	// save cameras in binary format
 	const Path beginning = getFileBeginning();
-	mCameras->saveToFile(Path::extendLeafName(beginning, FileNaming::ENDING_CAMERAS));
+	mCameras.saveToFile(Path::extendLeafName(beginning, FileNaming::ENDING_CAMERAS));
 
 	// check samples
 	if (0 == sampleCount)
@@ -158,7 +154,7 @@ bool Scene::reconstruct()
 		cout << "Stopping early. No surface samples available for reconstruction ." << endl;
 		return false;
 	}
-	if (0 == mSamples->getViewConeCount())
+	if (0 == mSamples->getValidParentLinkCount())
 	{
 		cout << "Stopping early. No valid links between surface samples and views available for reconstruction." << endl;
 		return false;
@@ -170,14 +166,8 @@ bool Scene::reconstruct()
 		
 	if (!mTree)
 	{
-		// scene tree & reordered samples
-		Samples *reorderedSamples = NULL;
-		mTree = new Tree(reorderedSamples);
-
-		// replace unordered samples
-		delete mSamples;
-		mSamples = reorderedSamples;
-		reorderedSamples = NULL;
+		// scene tree reorders samples in memory
+		mTree = new Tree();
 		mTree->getNodes().checkSamplesOrder(mTree->getRootScope());
 
 		// save tree & samples
@@ -359,13 +349,10 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 	// there must be a valid meta, views and samples file otherwise the scene is useless
 	try
 	{
-		mCameras = new Cameras(Path::extendLeafName(beginning, FileNaming::ENDING_CAMERAS));
+		mCameras.loadFromFile(Path::extendLeafName(beginning, FileNaming::ENDING_CAMERAS));
 	}
 	catch (Exception &exception)
 	{
-		delete mCameras;
-		mCameras = NULL;
-
 		cerr << exception;
 		cerr << "Exception! Could not load views." << endl;
 		// todo log this?
@@ -546,14 +533,6 @@ void Scene::saveReconstructionToFiles(const ReconstructionType type, const strin
 	mesh->saveToFile(name, saveAsPly, saveAsMesh);
 }
 
-void Scene::swapSamples(const uint32 index0, const uint32 index1)
-{
-	if (mTree)
-		throw Exception("Cannot change sample memory layout after scene tree construction" \
-						"as the scene tree assumes a specific sample ordering according to its tree structure.");
-	mSamples->swap(index0, index1);
-}
-
 void Scene::clear()
 {
 	// free resources
@@ -573,21 +552,19 @@ void Scene::clear()
 		mPCSRefiner = NULL;
 	#endif // PCS_REFINEMENT
 		
-	delete mCameras;
 	delete mFSSFRefiner;
 	delete mOccupancy;
 	delete mTree;
 	delete mSamples;
 	
-	mCameras = NULL;
 	mFSSFRefiner = NULL;
 	mOccupancy = NULL;
 	mSamples = NULL;
 	mTree = NULL;
 
 	// free view meshes
-	const uint32 viewMeshCount = (uint32) mViewMeshes.size();
-	for (uint32 meshIdx = 0; meshIdx < viewMeshCount; ++meshIdx)
+	const uint32 meshCount = (uint32) mViewMeshes.size();
+	for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
 		delete mViewMeshes[meshIdx];
 	mViewMeshes.clear();
 	mViewMeshes.shrink_to_fit();

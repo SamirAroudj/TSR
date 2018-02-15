@@ -8,6 +8,7 @@
  */
 
 #include "Math/MathHelper.h"
+#include "Platform/Utilities/Array.h"
 #include "SurfaceReconstruction/Geometry/Edge.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/IslesEraser.h"
@@ -19,6 +20,7 @@ using namespace Math;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;
+using namespace Utilities;
 
 void FlexibleMesh::computeOffsetsForFiltering(uint32 *vertexOffsets, uint32 *edgeOffsets, uint32 *triangleOffsets,
 	const uint32 vertexCount, const uint32 edgeCount, const uint32 triangleCount,
@@ -820,7 +822,7 @@ void FlexibleMesh::subdivideTriangles(vector<uint32> &doomedOnes, vector<uint32>
 			if (Triangle::INVALID_IDX == oldNeighborTriangles[i])
 				continue;
 
-			Utilities::deleteFirstBySwapWithBack(doomedOnes, oldNeighborTriangles[i]);
+			Array<uint32>::deleteFirstBySwapWithBack(doomedOnes, oldNeighborTriangles[i]);
 		}
 	}
 	cout << "subdivideTriangles" << endl;
@@ -996,7 +998,7 @@ void FlexibleMesh::reassignOldEdges(const uint32 newVertexIndices[3], const uint
 void FlexibleMesh::removeVertexToEdgeLink(const uint32 vertexIdx, const uint32 globalEdgeIdx)
 {
 	std::vector<uint32> &edges = mVerticesToEdges[vertexIdx];
-	const size_t idx = Utilities::deleteFirstBySwapWithBack(edges, globalEdgeIdx);
+	const size_t idx = Array<uint32>::deleteFirstBySwapWithBack(edges, globalEdgeIdx);
 	if ((size_t) -1 != idx)
 		return;
 
@@ -1454,11 +1456,11 @@ void FlexibleMesh::updateVertexData(const uint32 *vertexOffsets)
 	const uint32 newVertexCount = oldVertexCount - vertexOffsets[oldVertexCount];
 
 	// filter vertex data
-	FlexibleMesh::filterData<vector<uint32>>(mVerticesToEdges, vertexOffsets);
-	FlexibleMesh::filterData<Vector3>(mColors, vertexOffsets);
-	FlexibleMesh::filterData<Vector3>(mNormals, vertexOffsets);
-	FlexibleMesh::filterData<Vector3>(mPositions, vertexOffsets);
-	FlexibleMesh::filterData<Real>(mScales, vertexOffsets);
+	Array<vector<uint32>>::compaction(mVerticesToEdges, vertexOffsets);
+	Array<Vector3>::compaction(mColors, vertexOffsets);
+	Array<Vector3>::compaction(mNormals, vertexOffsets);
+	Array<Vector3>::compaction(mPositions, vertexOffsets);
+	Array<Real>::compaction(mScales, vertexOffsets);
 }
 
 void FlexibleMesh::updateVertexToEdgeLinks(const uint32 *edgeOffsets)
@@ -1498,7 +1500,7 @@ void FlexibleMesh::updateEdges(const uint32 *vertexOffsets, const uint32 *edgeOf
 void FlexibleMesh::updateEdgeData(const uint32 *edgeOffsets)
 {
 	// remove deleted geometry
-	FlexibleMesh::filterData<Edge>(mEdges, edgeOffsets);
+	Array<Edge>::compaction(mEdges, edgeOffsets);
 }
 
 void FlexibleMesh::updateEdgeLinks(const uint32 *vertexOffsets, const uint32 *triangleOffsets)

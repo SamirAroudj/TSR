@@ -42,15 +42,13 @@ CapturedScene::CapturedScene(const Path &metaFileName, const vector<IReconstruct
 	vector<uint32> imageScales;
 	loadMetaData(plyCloudFileNames, imageScales, metaFileName);
 
-	// load cameras & create views
-	map<uint32, uint32> viewToCameraIndices;
-	loadCameras(viewToCameraIndices);
-
-	// load samples
-	loadSampleClouds(plyCloudFileNames, viewToCameraIndices);
-
-	// load images
+	// load data
+	loadCameras();
 	loadImages(imageScales);
+	if (mViewMeshes.empty())
+		mSamples->loadClouds(plyCloudFileNames, mViewToCameraIndices, mInputOrientation, mInputOrigin);
+	else
+		mSamples->addSamplesFromMeshes(mViewMeshes);
 }
 
 void CapturedScene::loadMetaData(vector<Path> &plyCloudFileNames, vector<uint32> &imageScales,
@@ -115,8 +113,9 @@ bool CapturedScene::getParameters(const Path &fileName)
 	return true;
 }
 
-void CapturedScene::loadCameras(map<uint32, uint32> &viewToCameraIndices)
+void CapturedScene::loadCameras()
 {
+	// input transformation
 	Matrix3x3 inverseRotation(mInputOrientation);
 	inverseRotation.transpose();
 	const Vector3 translation = -mInputOrigin * inverseRotation;
@@ -129,7 +128,7 @@ void CapturedScene::loadCameras(map<uint32, uint32> &viewToCameraIndices)
 			// load views from some cameras file containing all cameras
 			const Path camFile = Path::appendChild(mFolder, mRelativeCamerasFile);
 			MVECameraIO loader(camFile);
-			loader.loadFromCamerasFile(mCameras, viewToCameraIndices, inverseRotation, translation);
+			loader.loadFromCamerasFile(mCameras, mViewToCameraIndices, inverseRotation, translation);
 			return;
 		}
 	}
@@ -141,143 +140,14 @@ void CapturedScene::loadCameras(map<uint32, uint32> &viewToCameraIndices)
 
 	// load views from folders within MVE views folder?
 	MVECameraIO loader(getViewsFolder());
-	loader.loadFromMetaIniFiles(mCameras, viewToCameraIndices, inverseRotation, translation);
-}
-
-void CapturedScene::loadSampleClouds(const vector<Path> &plyCloudFileNames, const map<uint32, uint32> &viewToCameraIndices)
-{
-	// load each point cloud
-	const uint32 fileCount = (uint32) plyCloudFileNames.size();
-	for (uint32 fileIdx = 0; fileIdx < fileCount; ++fileIdx)
-		loadSampleCloud(plyCloudFileNames[fileIdx]);
-
-	// no samples?
-	if (!mSamples)
-		return;
-	mSamples->check();
-
-	// transform samples
-	Matrix3x3 inverseRotation(mInputOrientation);
-	inverseRotation.transpose();
-	const Vector3 translation = -mInputOrigin * inverseRotation;
-	const uint32 sampleCount = mSamples->getCount();
-
-	#pragma omp parallel for
-	for (int64 sampleIdx = 0; sampleIdx < sampleCount; ++sampleIdx)
-		mSamples->transform((uint32) sampleIdx, inverseRotation, translation);
-
-	// update and count parent view links
-	mSamples->updateParentViews(viewToCameraIndices);
-	mSamples->computeParentCameraCount();
-
-	// world space AABB of all samples
-	mSamples->computeAABB();
-}
-
-void CapturedScene::loadSampleCloud(const Path &plyCloudFileName)
-{
-	// open the file
-	#ifdef _DEBUG
-		cout << "\nStarting loading of ply sample cloud: " << plyCloudFileName << endl;
-	#endif // _DEBUG
-
-	PlyFile file(plyCloudFileName, File::OPEN_READING, true);
-
-	// process ply header
-	VerticesDescription verticesFormat;
-	file.loadHeader(verticesFormat);
-
-	// process ply body
-	const uint32 existingSamplesCount = (mSamples ? mSamples->getCount() : 0);
-	const uint32 maxNewSampleCount = ((uint32) -1) -1 - existingSamplesCount;
-	const uint32 loadedSamplesCount = loadSamples(file, plyCloudFileName, verticesFormat, maxNewSampleCount);
-
-	#ifdef _DEBUG
-		cout << "\nFinished loading ply sample cloud, sample count: " << loadedSamplesCount << endl;
-	#endif // _DEBUG
-}
-
-uint32 CapturedScene::loadSamples(PlyFile &file, const Path &fileName, const VerticesDescription &verticesFormat,	const uint32 maxNewSampleCount)
-{
-	cout << "Loading samples from " << fileName << "." << endl;
-	
-	// get access to vertex structure & samples
-	const ElementsSyntax &types = verticesFormat.getTypeStructure();
-	const ElementsSemantics &semantics = verticesFormat.getSemantics();
-	const uint32 propertyCount = (uint32) types.size();
-
-	// get #parents per sample & create samples container
-	uint32 viewsPerSample = 0;
-	for (uint32 propertyIdx = 0; propertyIdx < propertyCount; ++propertyIdx)
-		if (semantics[propertyIdx] >= VerticesDescription::SEMANTIC_VIEWID0)
-			++viewsPerSample;
-	if (!mSamples)
-		mSamples = new Samples(viewsPerSample);
-
-	// reserve memory for the samples to be loaded
-	const uint32 vertexCount = verticesFormat.getElementCount();
-	const uint32 oldSampleCount = mSamples->getCount();
-	const size_t newTotalSampleCount = oldSampleCount + vertexCount;
-	mSamples->reserve(newTotalSampleCount);
-
-	// read each sample / vertex
-	uint32 sampleIdx = oldSampleCount;
-	for (uint32 fileSampleIdx = 0;
-		fileSampleIdx < vertexCount && fileSampleIdx < maxNewSampleCount;
-		++fileSampleIdx)
-	{
-		if (!file.hasLeftData())
-			throw FileCorruptionException("Could not read all vertices which were defined by the ply header.", fileName);
-
-		// create sample
-		mSamples->addSample();
-
-		// load data for current sample
-		for (uint32 propertyIdx = 0; propertyIdx < propertyCount; ++propertyIdx)
-			readSampleProperty(file, sampleIdx, types[propertyIdx], (VerticesDescription::SEMANTICS) semantics[propertyIdx]);
-		
-		// ignore zero confidence samples
-		if (Math::EPSILON >= mSamples->getConfidence(sampleIdx))
-		{
-			mSamples->popBackSample();
-			continue;
-		}
-
-		// ignore samples with invalid scale
-		if (Math::EPSILON >= mSamples->getScale(sampleIdx))
-		{
-			mSamples->popBackSample();
-			continue;
-		}
-
-		++sampleIdx;
-	}
-	
-	const uint32 sampleCount = sampleIdx - oldSampleCount;
-	cout << "Loaded " << sampleCount << " samples from " << fileName << "." << endl;
-	
-	return sampleCount;
-}
-
-void CapturedScene::readSampleProperty(PlyFile &file, const uint32 sampleIdx,
-	const ElementsDescription::TYPES type, const VerticesDescription::SEMANTICS semantic)
-{
-	// get sample data destinations
-	Vector3 *color = mSamples->mColors.data() + sampleIdx;
-	Vector3 *normal = mSamples->mNormals.data() + sampleIdx;
-	Vector3 &position = mSamples->mPositions[sampleIdx];
-	Real *confidence = mSamples->mConfidences.data() + sampleIdx;
-	Real *scale = mSamples->mScales.data() + sampleIdx;
-	uint32 *viewIDs = mSamples->mParentViews.data() + mSamples->mViewsPerSample * sampleIdx;
-
-	file.readVertexProperty(color, normal, position, NULL, confidence, scale, viewIDs, type, semantic);
+	loader.loadFromMetaIniFiles(mCameras, mViewToCameraIndices, inverseRotation, translation);
 }
 
 void CapturedScene::loadImages(const vector<uint32> &imageScales)
 {
 	// load the corresponding images for all views at all scales
 	const uint32 scaleCount = (uint32) imageScales.size();
-	const uint32 cameraCount = mCameras->getCount();
+	const uint32 cameraCount = mCameras.getCount();
 	vector<vector<uint32>> vertexNeighbors;
 	vector<uint32> indices;
 	vector<uint32> pixelToVertexIndices;
@@ -285,8 +155,8 @@ void CapturedScene::loadImages(const vector<uint32> &imageScales)
 	for (uint32 cameraIdx = 0; cameraIdx < cameraCount; ++cameraIdx)
 	{
 		// get camera data
-		const PinholeCamera &camera = mCameras->getCamera(cameraIdx);
-		const uint32 viewIdx = mCameras->getViewID(cameraIdx);
+		const PinholeCamera &camera = mCameras.getCamera(cameraIdx);
+		const uint32 viewIdx = mCameras.getViewID(cameraIdx);
 
 		for (uint32 scaleIdx = 0; scaleIdx < scaleCount; ++scaleIdx)
 		{
@@ -304,15 +174,15 @@ void CapturedScene::loadImages(const vector<uint32> &imageScales)
 			DepthImage *depthImage = DepthImage::request(depthImageName.getString(), depthImageName);
 			if (!depthImage)
 				continue;
-			depthImage->erode(5);
+			//depthImage->erode(5);
 
 			//const ViewsImage *viewsImage = ???;
 			//if (!viewsImage)
 			//	continue;
 
 
-			FlexibleMesh *viewMesh = depthImage->triangulate(pixelToVertexIndices, vertexNeighbors, indices, camera, colorImage);
-			mViewMeshes.push_back(viewMesh);
+			FlexibleMesh *mesh = depthImage->triangulate(pixelToVertexIndices, vertexNeighbors, indices, camera, colorImage);
+			mViewMeshes.push_back(mesh);
 		}
 	}
 }

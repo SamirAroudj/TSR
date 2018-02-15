@@ -20,14 +20,13 @@ namespace SurfaceReconstruction
 	class DualCells;
 	class Leaves;
 	class Nodes;
-	class Samples;
 	class Scope;
 
 	/// This tree data structure subdivides the scene spatially and recursively.
 	class Tree
 	{
 	public:
-		Tree(Samples *&reorderedCopys);
+		Tree();
 		Tree(const Storage::Path &filesBeginning);
 
 		~Tree();
@@ -42,9 +41,6 @@ namespace SurfaceReconstruction
 		
 		/** todo */
 		Math::Vector3 getCenter() const;
-
-		/** todo */
-		inline const uint32 getDualCellCount() const;
 
 		/** todo */
 		inline const DualCells &getDualCells() const;
@@ -79,8 +75,6 @@ namespace SurfaceReconstruction
 		void saveToFiles(const Storage::Path &fileName) const;
 
 	private:
-		Tree();
-
 		/** Copy constructor is forbidden. Don't use it. */
 		inline Tree(const Tree &other);
 

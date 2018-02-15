@@ -9,10 +9,7 @@
 #ifndef _CAPTURED_SCENE_H_
 #define _CAPTURED_SCENE_H_
 
-#include <map>
 #include <vector>
-#include "Graphics/VerticesDescription.h"
-#include "Platform/Utilities/PlyFile.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 
 namespace SurfaceReconstruction
@@ -40,28 +37,13 @@ namespace SurfaceReconstruction
 		/** Assignment operator is forbidden. Don't use it.*/
 		inline CapturedScene &operator =(const CapturedScene &rhs);
 
-		void loadCameras(std::map<uint32, uint32> &viewToCameraIndices);
+		void loadCameras();
 
 		void loadImages(const std::vector<uint32> &imagesScales);
 
 		/** todo */
 		void loadMetaData(std::vector<Storage::Path> &plyCloudFileNames, std::vector<uint32> &imageScales,
 			const Storage::Path &fileName);
-
-		/** todo */
-		void loadSampleCloud(const Storage::Path &plyCloudFileName);
-
-		/** todo */
-		void loadSampleClouds(const std::vector<Storage::Path> &plyCloudFileNames, const std::map<uint32, uint32> &viewToCameraIndices);
-
-		/** todo
-		@return Returns the number of loaded samples. */
-		uint32 loadSamples(Utilities::PlyFile &file, const Storage::Path &fileName, const Graphics::VerticesDescription &verticesFormat,
-			const uint32 maxNewSampleCount);
-
-		/** todo */
-		void readSampleProperty(Utilities::PlyFile &file, const uint32 sampleIdx,
-			const Graphics::ElementsDescription::TYPES type, const Graphics::VerticesDescription::SEMANTICS semantic);
 
 	public:
 		static const char *PARAMETER_NAME_IMAGE_SCALE;

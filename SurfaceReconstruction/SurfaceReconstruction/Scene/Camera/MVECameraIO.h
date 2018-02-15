@@ -26,20 +26,20 @@ namespace SurfaceReconstruction
 		MVECameraIO(const Storage::Path &path);
 
 		/** todo */
-		void loadFromCamerasFile(Cameras &cameras, std::map<uint32, uint32> &viewToCameraIndices,
+		void loadFromCamerasFile(Cameras &cameras, std::vector<uint32> &viewToCameraIndices,
 			const Math::Matrix3x3 &inverseInputRotation, const Math::Vector3 &inverseInputTranslation);
 
 		/** todo */
-		void loadFromMetaIniFiles(Cameras &cameras, std::map<uint32, uint32> &viewToCameraIndices,
+		void loadFromMetaIniFiles(Cameras &cameras, std::vector<uint32> &viewToCameraIndices,
 			const Math::Matrix3x3 &inverseInputRotation, const Math::Vector3 &inverseInputTranslation);
 
 		void saveCamerasToFile(const Cameras &cameras) const;
 
 	private:
-		void clear(Cameras &cameras, std::map<uint32, uint32>& viewToCameraIndices);
+		void clear(Cameras &cameras, std::vector<uint32>& viewToCameraIndices);
 
 		/** todo */
-		void loadFromMetaIniFile(Cameras &cameras, std::map<uint32, uint32> &viewToCameraIndices, Storage::File &file,
+		void loadFromMetaIniFile(Cameras &cameras, std::vector<uint32> &viewToCameraIndices, Storage::File &file,
 			const Math::Matrix3x3 &inverseInputRotation, const Math::Vector3 &inverseInputTranslation);
 
 		void readCamerasFileHeader(Storage::File &file);
@@ -49,7 +49,8 @@ namespace SurfaceReconstruction
 		void readFocalLength(CameraData &data, Storage::File &file);
 		void readPixelAspectRatio(CameraData &data, Storage::File& file);
 		void readPrincipalPoint(CameraData &data, Storage::File &file);
-		void readViewData(std::map<uint32, uint32> &viewToCameraIndices, CameraData &data, Storage::File &file);
+		void readViewData(CameraData &data, Storage::File &file,
+			std::vector<uint32> &viewToCameraIndices, const uint32 cameraIdx);
 
 		int64 saveCameraToCamerasFile(char *buffer, const int64 bufferSize, const Cameras &cameras, const uint32 cameraIdx) const;
 

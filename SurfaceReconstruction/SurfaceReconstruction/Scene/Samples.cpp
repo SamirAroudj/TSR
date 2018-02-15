@@ -12,6 +12,7 @@
 #include "Math/MathHelper.h"
 #include "Platform/FailureHandling/Exception.h"
 #include "Platform/Storage/File.h"
+#include "Platform/Utilities/Array.h"
 #include "Platform/Utilities/ParametersManager.h"
 #include "Platform/Utilities/PlyFile.h"
 #include "Platform/Utilities/RandomManager.h"
@@ -22,17 +23,22 @@
 #include "SurfaceReconstruction/Scene/Scene.h"
 
 using namespace FailureHandling;
+using namespace Graphics;
 using namespace Math;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;
 using namespace Utilities;
 
+const char *Samples::MAX_RELATIVE_SAMPLING_DISTANCE = "Samples::maxRelativeSamplingDistance";
+
 const uint32 Samples::FILE_VERSION = 0;
 const uint32 Samples::INVALID_INDEX = (uint32) -1;
 
-Samples::Samples(const uint32 viewsPerSample, const uint32 sampleCount, const Vector3 *AABBWS) :
-	Samples()
+Samples::Samples(const uint32 camsPerSample, const uint32 sampleCount, const Vector3 *AABBWS) :
+	mAABBWS{Vector3(REAL_MAX, REAL_MAX, REAL_MAX), Vector3(-REAL_MAX, -REAL_MAX, -REAL_MAX)},
+	mMaxRelativeSamplingDistance(1.0f),
+	mMaxCamsPerSample(camsPerSample), mValidParentLinkCount(0)
 {
 	if (sampleCount > 0)
 		resize(sampleCount);
@@ -43,26 +49,9 @@ Samples::Samples(const uint32 viewsPerSample, const uint32 sampleCount, const Ve
 		mAABBWS[1] = AABBWS[1];
 	}
 
-	mViewsPerSample = viewsPerSample;
-}
-
-Samples::Samples(const Path &fileName) :
-	Samples()
-{
-	loadFromFile(fileName);
-}
-
-Samples::Samples() :
-	mAABBWS{Vector3(REAL_MAX, REAL_MAX, REAL_MAX), Vector3(-REAL_MAX, -REAL_MAX, -REAL_MAX)},
-	mMaxRelativeSamplingDistance(1.0f),
-	mViewConeCount(0), mViewsPerSample(-1)
-{
-	// required user parameters
-	const string samplingDistanceName = "Samples::maxRelativeSamplingDistance";
-
-	// get parameters
+	// load parameters
 	const ParametersManager &manager = ParametersManager::getSingleton();
-	bool samplingDistanceLoaded = manager.get(mMaxRelativeSamplingDistance, samplingDistanceName);
+	bool samplingDistanceLoaded = manager.get(mMaxRelativeSamplingDistance, MAX_RELATIVE_SAMPLING_DISTANCE);
 	if (samplingDistanceLoaded)
 		return;
 
@@ -70,43 +59,52 @@ Samples::Samples() :
 	string message = "Scene: Could not load parameters:\n";
 	if (!samplingDistanceLoaded)
 	{
-		message += samplingDistanceName;
+		message += "Samples::maxRelativeSamplingDistance";
 		message += ", choosing 1.0\n";
 	}
 
 	cerr << message << endl;
 }
 
+Samples::Samples(const Path &fileName) :
+	Samples((uint32) -1, 0, NULL)
+{
+	loadFromFile(fileName);
+}
+
 Samples::~Samples()
 {
 	clear();
+	shrinkToFit();
 }
 
 void Samples::clear()
 {
-	// release all samples
-	mColors.clear();
-	mColors.shrink_to_fit();
-
-	mNormals.clear();
-	mNormals.shrink_to_fit();
-
-	mPositions.clear();
-	mPositions.shrink_to_fit();
-
-	mConfidences.clear();
-	mConfidences.shrink_to_fit();
-
-	mScales.clear();
-	mScales.shrink_to_fit();
-
-	mParentViews.clear();
-	mParentViews.shrink_to_fit();
-	
+	// invalidate members
 	mAABBWS[0] = Vector3(REAL_MAX, REAL_MAX, REAL_MAX);
 	mAABBWS[1] = Vector3(-REAL_MAX, -REAL_MAX, -REAL_MAX);
-	mViewConeCount = 0;
-	mViewsPerSample = 0;
+	mValidParentLinkCount = 0;
+	mMaxCamsPerSample = 0;
+	
+	// clear vectors
+	mColors.clear();
+	mNormals.clear();
+	mPositions.clear();
+	mConfidences.clear();
+	mScales.clear();
+
+	mParentCameras.clear();
+}
+
+void Samples::shrinkToFit()
+{
+	mColors.shrink_to_fit();
+	mNormals.shrink_to_fit();
+	mPositions.shrink_to_fit();
+	mConfidences.shrink_to_fit();
+	mScales.shrink_to_fit();
+
+	mParentCameras.shrink_to_fit();
 }
 
 void Samples::addToAABB(Vector3 AABB[2], const uint32 sampleIdx) const
@@ -120,7 +118,52 @@ void Samples::addToAABB(Vector3 AABB[2], const uint32 sampleIdx) const
 	AABB[1] = AABB[1].maximum(sampleMax);
 }
 
-void Samples::check()
+void Samples::addSamplesFromMeshes(const vector<FlexibleMesh *> &meshes)
+{
+	// compute number of new samples
+	uint32 additionalSampleCount = 0;
+	const uint32 meshCount = (uint32) meshes.size();
+	for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
+		additionalSampleCount += meshes[meshIdx]->getVertexCount();
+
+	// check new sample count
+	const uint32 oldSampleCount = getCount();
+	int64 newCount = (int64) oldSampleCount + (int64) additionalSampleCount;
+	if (newCount >= (uint32) -1)
+		throw Exception("Invalid sample count. Up to 2^32 - 1 samples are supported.");
+
+	// reserve memory for the new samples
+	const uint32 newSampleCount = (uint32) newCount;
+	reserve(newSampleCount);
+
+	// create and add samples for each mesh
+	for (uint32 meshIdx = 0, nextSampleIdx = oldSampleCount; meshIdx < meshCount; ++meshIdx)
+	{
+		// add view mesh / triangulated depth map to all other samples
+		const FlexibleMesh &mesh = *meshes[meshIdx];
+		const Vector3 *colors = mesh.getColors();
+		const Vector3 *normals = mesh.getNormals();
+		const Vector3 *positions = mesh.getPositions();
+		const Real *scales = mesh.getScales();
+		const Real confidence = 1.0f; // todo: how to get reasonable confidence values?
+		const uint32 parentCameras[1] = { meshIdx };
+
+		const uint32 vertexCount = mesh.getVertexCount();
+		for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx, ++nextSampleIdx)
+		{
+			addSample();
+			setSample(nextSampleIdx,
+				colors[vertexIdx], normals[vertexIdx], positions[vertexIdx], 
+				confidence, scales[vertexIdx], parentCameras);
+		}
+	}
+	
+	check();
+	computeValidParentCameraCount();
+	computeAABB();
+}
+
+void Samples::check() const
 {
 	const int64 sampleCount = getCount();
 
@@ -153,51 +196,16 @@ void Samples::compact(const uint32 *sampleOffsets)
 	const uint32 newSampleCount = oldSampleCount - doomedSampleCount;
 	
 	cout << "Deleting " << doomedSampleCount << " of " << oldSampleCount << " samples, remaining: " << newSampleCount << " samples." << endl;
-
-	// filter colors
-	{
-		vector<Vector3> newColors(newSampleCount);
-		FlexibleMesh::filterData<Vector3>(newColors.data(), mColors.data(), sampleOffsets, oldSampleCount);
-		mColors.swap(newColors);
-	}
-
-	// filter normals
-	{
-		vector<Vector3> newNormals(newSampleCount);
-		FlexibleMesh::filterData<Vector3>(newNormals.data(), mNormals.data(), sampleOffsets, oldSampleCount);
-		mNormals.swap(newNormals);
-	}
-
-	// filter positions
-	{
-		vector<Vector3> newPositions(newSampleCount);
-		FlexibleMesh::filterData<Vector3>(newPositions.data(), mPositions.data(), sampleOffsets, oldSampleCount);
-		mPositions.swap(newPositions);
-	}
-
-	// filter confidences
-	{
-		vector<Real> newConfidences(newSampleCount);
-		FlexibleMesh::filterData<Real>(newConfidences.data(), mConfidences.data(), sampleOffsets, oldSampleCount);
-		mConfidences.swap(newConfidences);
-	}
-
-	// filter scales
-	{
-		vector<Real> newScales(newSampleCount);
-		FlexibleMesh::filterData<Real>(newScales.data(), mScales.data(), sampleOffsets, oldSampleCount);
-		mScales.swap(newScales);
-	}
-
-	// filter parent views
-	{
-		vector<uint32> newParentViews(newSampleCount * mViewsPerSample);
-		FlexibleMesh::filterData<uint32>(newParentViews.data(), mParentViews.data(), sampleOffsets, oldSampleCount, mViewsPerSample);
-		mParentViews.swap(newParentViews);
-		computeParentCameraCount();
-	}
-
-
+	
+	Array<Vector3>::compaction(mColors, sampleOffsets);
+	Array<Vector3>::compaction(mNormals, sampleOffsets);
+	Array<Vector3>::compaction(mPositions, sampleOffsets);
+	Array<Real>::compaction(mConfidences, sampleOffsets);
+	Array<Real>::compaction(mScales, sampleOffsets);
+	Array<uint32>::compaction(mParentCameras, sampleOffsets, mMaxCamsPerSample);
+	computeValidParentCameraCount();
+	
+	computeAABB();
 	cout << "Finished deletion of samples. " << endl;
 }
 
@@ -250,34 +258,34 @@ bool Samples::computeMeans(Vector3 &meanColor, Vector3 &meanNormal, Vector3 &mea
 	return (lengthSq >= MIN_LENGTH_NORMALS * MIN_LENGTH_NORMALS); // todo magic number
 }
 
-bool Samples::computeViewAngles(Real &azimuthAngle, Real &polarAngle, const uint32 parentViewIdx, const uint32 sampleIdx) const
+bool Samples::computeViewAngles(Real &azimuthAngle, Real &polarAngle, const uint32 parentCameraIdx, const uint32 sampleIdx) const
 {
 	// bad default values if something goes wrong
 	azimuthAngle = -REAL_MAX;
 	polarAngle	 = -REAL_MAX;
 
 	Vector3 viewDirection;
-	if (!computeViewDirection(viewDirection, parentViewIdx, sampleIdx))
+	if (!computeViewDirection(viewDirection, parentCameraIdx, sampleIdx))
 		return false;
 
 	Math::transformCartesianToSpherical(azimuthAngle, polarAngle, viewDirection);
 	return true;
 }
 
-bool Samples::computeViewDirection(Vector3 &viewDirection, const uint32 parentViewIdx, const uint32 sampleIdx) const
+bool Samples::computeViewDirection(Vector3 &viewDirection, const uint32 parentCameraIdx, const uint32 sampleIdx) const
 {
 	// bad default values if something goes wrong
 	viewDirection.set(-REAL_MAX, -REAL_MAX, REAL_MAX);
 
 	// check parent view index
-	assert(parentViewIdx < mViewsPerSample);
-	if (parentViewIdx >= mViewsPerSample)
-		throw Exception("Invalid parentViewIdx for a sample.");
+	assert(parentCameraIdx < mMaxCamsPerSample);
+	if (parentCameraIdx >= mMaxCamsPerSample)
+		throw Exception("Invalid parentCameraIdx for a sample.");
 
 	// valid parent view?
 	const Scene &scene = Scene::getSingleton();
-	const Cameras &cameras = *scene.getCameras();
-	const uint32 cameraIdx = getCameraIdx(parentViewIdx, sampleIdx);
+	const Cameras &cameras = scene.getCameras();
+	const uint32 cameraIdx = getCameraIdx(parentCameraIdx, sampleIdx);
 	if (!cameras.isValid(cameraIdx))
 		return false;
 
@@ -308,32 +316,14 @@ void Samples::erase(const vector<uint32> theDoomed, const uint32 doomedCount)
 		memcpy(&mConfidences[targetIdx], &mConfidences[sourceIdx], sizeof(Real) * moveCount);
 		memcpy(&mScales[targetIdx], &mScales[sourceIdx], sizeof(Real) * moveCount);
 
-		memcpy(&mParentViews[targetIdx * mViewsPerSample], &mParentViews[sourceIdx * mViewsPerSample], sizeof(uint32) * mViewsPerSample * moveCount);
+		memcpy(&mParentCameras[targetIdx * mMaxCamsPerSample], &mParentCameras[sourceIdx * mMaxCamsPerSample], sizeof(uint32) * mMaxCamsPerSample * moveCount);
 
 		numRemovedSamples += doomedCount;
 	}
 
 	resize(getCount() - doomedCount);
-	computeParentCameraCount();
-}
-
-void Samples::computeParentCameraCount()
-{
-	// get & check parent link count
-	uint64 linkCount = mViewsPerSample * mNormals.size();
-	if (linkCount >= (uint32) -1)
-		throw Exception("Number of sample to parent view links exceeds supported maximum = 2^32 - 2.");
-	const uint32 parentCount = (uint32) linkCount;
-
-	// count number of valid parent links
-	uint32 invalidCount = 0;
-	for (uint32 parentIdx = 0; parentIdx < parentCount; ++parentIdx)
-		if (Cameras::INVALID_ID == mParentViews[parentIdx])
-			++invalidCount;
-	mViewConeCount = parentCount - invalidCount;
-
-	cout << "Computed number of valid parent views for all samples.\n";
-	cout << "Parent view count: " << mViewConeCount << "; invalid view link count: " << invalidCount << "; parent view link count: " << getCount() * mViewsPerSample << endl;
+	computeValidParentCameraCount();
+	computeAABB();
 }
 
 void Samples::getAABBWS(Vector3 &minWS, Vector3 &maxWS, const uint32 sampleIdx) const
@@ -447,35 +437,35 @@ Real Samples::getFSSRWeight(const Math::Vector3 &pWS, const uint32 sampleIdx) co
 	return weight;
 }
 
-Real Samples::getMeasureDistanceSquared(const uint32 sampleIdx, const uint32 parentViewIdx) const
+Real Samples::getMeasureDistanceSquared(const uint32 sampleIdx, const uint32 parentCameraIdx) const
 {
-	// get parent view position
-	const vector<View *> &views = Scene::getSingleton().getViews();
-	const uint32 globalViewIdx = getParentViewIndices(sampleIdx)[parentViewIdx];
-	const Vector3 &viewPosWS = views[globalViewIdx]->getPositionWS();
+	// get parent camera position
+	const uint32 globalCameraIdx = getCameraIdx(parentCameraIdx, sampleIdx);
+	const Cameras &cameras = Scene::getSingleton().getCameras();
+	const Vector3 &camPosWS = cameras.getPositionWS(globalCameraIdx);
 	
 	// measurement distance / sample depth
-	const Vector3 viewToSample = getPositionWS(sampleIdx) - viewPosWS;
-	const Real distanceSq = viewToSample.getLengthSquared();
+	const Vector3 camToSample = getPositionWS(sampleIdx) - camPosWS;
+	const Real distanceSq = camToSample.getLengthSquared();
 
 	return distanceSq;
 }
 
-uint32 Samples::getViewIdx(const uint32 parentViewIdx, const uint32 sampleIdx) const
+uint32 Samples::getCameraIdx(const uint32 parentCameraIdx, const uint32 sampleIdx) const
 {
 	// sanity checks
 	const uint32 sampleCount = getCount();
-	assert(parentViewIdx < mViewsPerSample);
+	assert(parentCameraIdx < mMaxCamsPerSample);
 	assert(sampleIdx < sampleCount);
 
-	if (parentViewIdx >= mViewsPerSample || sampleIdx >= sampleCount)
-		return View::INVALID_ID;
+	if (parentCameraIdx >= mMaxCamsPerSample || sampleIdx >= sampleCount)
+		return Cameras::INVALID_ID;
 	else
-		return mParentViews[sampleIdx * mViewsPerSample + parentViewIdx];
+		return mParentCameras[sampleIdx * mMaxCamsPerSample + parentCameraIdx];
 }
 
 void Samples::setSample(const uint32 targetIdx, const Vector3 &color, const Vector3 &normal, const Vector3 &positionWS,
-	const Real confidence, const Real scale, const uint32 *parentViewIDs)
+	const Real confidence, const Real scale, const uint32 *parentCameraIDs)
 {
 	// update simple sample attributes
 	mColors[targetIdx] = color;
@@ -484,22 +474,22 @@ void Samples::setSample(const uint32 targetIdx, const Vector3 &color, const Vect
 	mConfidences[targetIdx] = confidence;
 	mScales[targetIdx] = scale;
 
-	// update parent views and parent veiw count
-	int32 parentViewCountChange = 0;
-	uint32 *parentViews = mParentViews.data() + targetIdx * mViewsPerSample;
+	// update parent cameras and parent veiw count
+	int32 parentCameraCountChange = 0;
+	uint32 *parentCameras = mParentCameras.data() + targetIdx * mMaxCamsPerSample;
 
-	for (uint32 i = 0; i < mViewsPerSample; ++i)
+	for (uint32 i = 0; i < mMaxCamsPerSample; ++i)
 	{
-		// is a parent view added or erased?
-		if (View::INVALID_ID == parentViews[i] && View::INVALID_ID != parentViewIDs[i])
-			++parentViewCountChange;
-		else if (View::INVALID_ID != parentViews[i] && View::INVALID_ID == parentViewIDs[i])
-			--parentViewCountChange;
+		// is a parent camera added or erased?
+		if (Cameras::INVALID_ID == parentCameras[i] && Cameras::INVALID_ID != parentCameraIDs[i])
+			++parentCameraCountChange;
+		else if (Cameras::INVALID_ID != parentCameras[i] && Cameras::INVALID_ID == parentCameraIDs[i])
+			--parentCameraCountChange;
 
-		parentViews[i] = parentViewIDs[i];
+		parentCameras[i] = parentCameraIDs[i];
 	}
 
-	mViewConeCount += parentViewCountChange;
+	mValidParentLinkCount += parentCameraCountChange;
 }
 
 void Samples::makeNoisy(normal_distribution<Real> noise[3], const uint32 sampleIdx)
@@ -550,17 +540,17 @@ uint32 Samples::addSample()
 	mPositions.resize(count);
 	mConfidences.resize(count, 1.0f);
 	mScales.resize(count);
-	mParentViews.resize(count * mViewsPerSample);
+	mParentCameras.resize(count * mMaxCamsPerSample);
 
-	invalidateViews(sampleIdx);
+	invalidateParentCameras(sampleIdx);
 	return sampleIdx;
 }
 
-void Samples::invalidateViews(const uint32 sampleIdx)
+void Samples::invalidateParentCameras(const uint32 sampleIdx)
 {
-	const uint32 offset = sampleIdx * mViewsPerSample;
-	for (uint32 i = 0; i < mViewsPerSample; ++i)
-		mParentViews[offset + i] = View::INVALID_ID;
+	const uint32 offset = sampleIdx * mMaxCamsPerSample;
+	for (uint32 i = 0; i < mMaxCamsPerSample; ++i)
+		mParentCameras[offset + i] = Cameras::INVALID_ID;
 }
 
 void Samples::deleteSample(const uint32 sampleIdx)
@@ -580,15 +570,15 @@ void Samples::popBackSample()
 	mConfidences.pop_back();
 	mScales.pop_back();
 
-	// erase parent views & reduce the number of parent views accordingly
-	const uint32 vectorSize = (uint32) mParentViews.size();
+	// erase parent cameras & reduce the number of parent cameras accordingly
+	const uint32 vectorSize = (uint32) mParentCameras.size();
 	uint32 erasedParentViewsCount = 0;
-	for (uint32 parentViewIdx = vectorSize - mViewsPerSample; parentViewIdx < vectorSize; ++parentViewIdx)
-		if (View::INVALID_ID != mParentViews[parentViewIdx])
+	for (uint32 parentCameraIdx = vectorSize - mMaxCamsPerSample; parentCameraIdx < vectorSize; ++parentCameraIdx)
+		if (Cameras::INVALID_ID != mParentCameras[parentCameraIdx])
 			++erasedParentViewsCount;
 
-	mParentViews.resize(mParentViews.size() - mViewsPerSample);
-	mViewConeCount -= erasedParentViewsCount;
+	mParentCameras.resize(mParentCameras.size() - mMaxCamsPerSample);
+	mValidParentLinkCount -= erasedParentViewsCount;
 }
 
 void Samples::reserve(const size_t sampleCount)
@@ -601,7 +591,7 @@ void Samples::reserve(const size_t sampleCount)
 	mPositions.reserve(sampleCount);
 	mConfidences.reserve(sampleCount);
 	mScales.reserve(sampleCount);
-	mParentViews.reserve(sampleCount * mViewsPerSample);
+	mParentCameras.reserve(sampleCount * mMaxCamsPerSample);
 }
 
 void Samples::swap(const uint32 i, const uint32 j)
@@ -634,18 +624,18 @@ void Samples::swap(const uint32 i, const uint32 j)
 	mScales[i]	= mScales[j];
 	mScales[j]	= temp;
 
-	// update view indices
-	const uint32 offsetI = i * mViewsPerSample;
-	const uint32 offsetJ = j * mViewsPerSample;
+	// update camera indices
+	const uint32 offsetI = i * mMaxCamsPerSample;
+	const uint32 offsetJ = j * mMaxCamsPerSample;
 
-	for (uint32 cameraIdx = 0; cameraIdx < mViewsPerSample; ++cameraIdx)
+	for (uint32 cameraIdx = 0; cameraIdx < mMaxCamsPerSample; ++cameraIdx)
 	{
-		const uint32 viewI = offsetI + cameraIdx;
-		const uint32 viewJ = offsetJ + cameraIdx;
+		const uint32 cameraI = offsetI + cameraIdx;
+		const uint32 cameraJ = offsetJ + cameraIdx;
 
-		const uint32 temp = mParentViews[viewI];
-		mParentViews[viewI] = mParentViews[viewJ];
-		mParentViews[viewJ] = temp;
+		const uint32 temp = mParentCameras[cameraI];
+		mParentCameras[cameraI] = mParentCameras[cameraJ];
+		mParentCameras[cameraJ] = temp;
 	}
 }
 
@@ -668,32 +658,156 @@ void Samples::transform(const uint32 sampleIdx, const Matrix3x3 &transformation,
 	mPositions[sampleIdx] = (mPositions[sampleIdx] * transformation + translation);
 }
 
+void Samples::loadClouds(const vector<Path> &plyCloudFileNames, const vector<uint32> &viewToCameraIndices,
+	const Matrix3x3 &inputOrientation, const Vector3 &inputOrigin)
+{
+	// load each point cloud
+	const uint32 fileCount = (uint32) plyCloudFileNames.size();
+	for (uint32 fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+		loadCloud(plyCloudFileNames[fileIdx]);
+
+	// no samples?
+	check();
+
+	// transform samples
+	Matrix3x3 inverseRotation(inputOrientation);
+	inverseRotation.transpose();
+	const Vector3 translation = -inputOrigin * inverseRotation;
+	const uint32 sampleCount = getCount();
+
+	#pragma omp parallel for
+	for (int64 sampleIdx = 0; sampleIdx < sampleCount; ++sampleIdx)
+		transform((uint32) sampleIdx, inverseRotation, translation);
+
+	// update and count sample to parent camera links
+	tansformViewToParentCameraLinks(viewToCameraIndices);
+	check();
+	computeValidParentCameraCount();
+	computeAABB();
+}
+
+void Samples::loadCloud(const Path &plyCloudFileName)
+{
+	// open the file
+	#ifdef _DEBUG
+		cout << "\nStarting loading of ply sample cloud: " << plyCloudFileName << endl;
+	#endif // _DEBUG
+
+	PlyFile file(plyCloudFileName, File::OPEN_READING, true);
+
+	// process ply header
+	VerticesDescription verticesFormat;
+	file.loadHeader(verticesFormat);
+
+	// process ply body
+	const uint32 existingSamplesCount = getCount();
+	const uint32 maxNewSampleCount = ((uint32) -1) - 1 - existingSamplesCount;
+	const uint32 loadedSamplesCount = loadCloud(file, plyCloudFileName, verticesFormat, maxNewSampleCount);
+
+	#ifdef _DEBUG
+		cout << "\nFinished loading ply sample cloud, sample count: " << loadedSamplesCount << endl;
+	#endif // _DEBUG
+}
+
+
+uint32 Samples::loadCloud(PlyFile &file, const Path &fileName, const VerticesDescription &verticesFormat, const uint32 maxAdditionalCount)
+{
+	cout << "Loading samples from " << fileName << "." << endl;
+	
+	// get access to vertex structure & samples
+	const ElementsSyntax &types = verticesFormat.getTypeStructure();
+	const ElementsSemantics &semantics = verticesFormat.getSemantics();
+	const uint32 propertyCount = (uint32) types.size();
+
+	// get #parents per sample if its the first loadCloud call
+	if (!empty())
+	{
+		mMaxCamsPerSample = 0;
+		for (uint32 propertyIdx = 0; propertyIdx < propertyCount; ++propertyIdx)
+			if (semantics[propertyIdx] >= VerticesDescription::SEMANTIC_VIEWID0)
+				++mMaxCamsPerSample;
+	}
+
+	// reserve memory for the samples to be loaded
+	const uint32 vertexCount = verticesFormat.getElementCount();
+	const uint32 oldSampleCount = getCount();
+	const size_t newTotalSampleCount = oldSampleCount + vertexCount;
+	reserve(newTotalSampleCount);
+
+	// read each sample / vertex
+	uint32 globalIdx = oldSampleCount;
+	for (uint32 fileSampleIdx = 0; fileSampleIdx < vertexCount && fileSampleIdx < maxAdditionalCount; ++fileSampleIdx)
+	{
+		if (!file.hasLeftData())
+			throw FileCorruptionException("Could not read all vertices which were defined by the ply header.", fileName);
+
+		// create sample
+		addSample();
+
+		// load data for current sample
+		for (uint32 propertyIdx = 0; propertyIdx < propertyCount; ++propertyIdx)
+			readSampleProperty(file, globalIdx, types[propertyIdx], (VerticesDescription::SEMANTICS) semantics[propertyIdx]);
+		
+		// ignore zero confidence samples or samples with invalid scale
+		if (Math::EPSILON >= getConfidence(globalIdx) || Math::EPSILON >= getScale(globalIdx))
+		{
+			popBackSample();
+			continue;
+		}
+
+		++globalIdx;
+	}
+	
+	const uint32 sampleCount = globalIdx - oldSampleCount;
+	cout << "Loaded " << sampleCount << " samples from " << fileName << "." << endl;
+	return sampleCount;
+}
+
+void Samples::readSampleProperty(PlyFile &file, const uint32 sampleIdx,
+	const ElementsDescription::TYPES type, const VerticesDescription::SEMANTICS semantic)
+{
+	// get sample data destinations
+	Vector3 *color = mColors.data() + sampleIdx;
+	Vector3 *normal = mNormals.data() + sampleIdx;
+	Vector3 &position = mPositions[sampleIdx];
+	Real *confidence = mConfidences.data() + sampleIdx;
+	Real *scale = mScales.data() + sampleIdx;
+	uint32 *camIDs = mParentCameras.data() + mMaxCamsPerSample * sampleIdx;
+
+	file.readVertexProperty(color, normal, position, NULL, confidence, scale, camIDs, type, semantic);
+}
+
 void Samples::loadFromFile(const Path &fileName)
 {
+	clear();
 	cout << "Loading samples from file " << fileName << "." << endl;
 	
 	// open file & check version
 	File file(fileName, File::OPEN_READING, true, FILE_VERSION);
 
-	// get #samples & #views per sample & request memory
+	// get #samples & #cameras per sample & request memory
 	uint32 sampleCount;
 	file.read(&sampleCount, sizeof(uint32), sizeof(uint32), 1);
-	file.read(&mViewsPerSample, sizeof(uint32), sizeof(uint32), 1);
+	file.read(&mMaxCamsPerSample, sizeof(uint32), sizeof(uint32), 1);
 	file.read(mAABBWS, sizeof(Vector3) * 2, sizeof(Vector3), 2);
 
-	resize(sampleCount);
+	if (sampleCount != mNormals.capacity())
+	{
+		shrinkToFit();
+		resize(sampleCount);
+	}
 
 	// load samples
-	uint32 parentCount = sampleCount * mViewsPerSample;
+	uint32 parentCount = sampleCount * mMaxCamsPerSample;
 
 	file.read(mColors.data(), sizeof(Vector3) * sampleCount, sizeof(Vector3), sampleCount);
 	file.read(mNormals.data(), sizeof(Vector3) * sampleCount, sizeof(Vector3), sampleCount);
 	file.read(mPositions.data(), sizeof(Vector3) * sampleCount, sizeof(Vector3), sampleCount);
 	file.read(mConfidences.data(), sizeof(Real) * sampleCount, sizeof(Real), sampleCount);
 	file.read(mScales.data(), sizeof(Real) * sampleCount, sizeof(Real), sampleCount);
-	file.read(mParentViews.data(), sizeof(uint32) * parentCount, sizeof(uint32), parentCount);
+	file.read(mParentCameras.data(), sizeof(uint32) * parentCount, sizeof(uint32), parentCount);
 	
-	computeParentCameraCount();
+	computeValidParentCameraCount();
 
 	cout << "Loaded " << getCount() << " samples." << endl;
 }
@@ -711,7 +825,7 @@ void Samples::saveToFile(const Path &beginning, const bool saveAsPly, const bool
 		PlyFile file(fileName, File::CREATE_WRITING, true);
 		file.saveTriangleMesh(ENCODING_BINARY_LITTLE_ENDIAN, true,
 			getCount(), 0, mColors.data(), mNormals.data(), mPositions.data(), 
-			mConfidences.data(), mScales.data(), mParentViews.data(), mViewsPerSample, NULL);
+			mConfidences.data(), mScales.data(), mParentCameras.data(), mMaxCamsPerSample, NULL);
 	}
 	
 	// internal mesh format?
@@ -721,10 +835,10 @@ void Samples::saveToFile(const Path &beginning, const bool saveAsPly, const bool
 		const Path fileName = Path::extendLeafName(beginning, FileNaming::ENDING_SAMPLES);
 		File file(fileName, File::CREATE_WRITING, true, FILE_VERSION);
 
-		// save sample count, views per sample & AABB
+		// save sample count, cameras per sample & AABB
 		const uint32 sampleCount = (uint32) mNormals.size();
 		file.write(&sampleCount, sizeof(uint32), 1);
-		file.write(&mViewsPerSample, sizeof(uint32), 1);
+		file.write(&mMaxCamsPerSample, sizeof(uint32), 1);
 		file.write(mAABBWS, sizeof(Vector3), 2);
 
 		// save all samples
@@ -733,7 +847,7 @@ void Samples::saveToFile(const Path &beginning, const bool saveAsPly, const bool
 		file.write(mPositions.data(), sizeof(Vector3), sampleCount);
 		file.write(mConfidences.data(), sizeof(Real), sampleCount);
 		file.write(mScales.data(), sizeof(Real), sampleCount);
-		file.write(mParentViews.data(), sizeof(uint32), sampleCount * mViewsPerSample);
+		file.write(mParentCameras.data(), sizeof(uint32), sampleCount * mMaxCamsPerSample);
 	}
 }
 
@@ -745,45 +859,58 @@ void Samples::resize(const uint32 sampleCount)
 	mPositions.resize(sampleCount);
 	mConfidences.resize(sampleCount, 1.0f);
 	mScales.resize(sampleCount);
-	mParentViews.resize(sampleCount * mViewsPerSample);
 
-	// invalid views for all new samples
+	mParentCameras.resize(sampleCount * mMaxCamsPerSample);
+
+	// invalid cameras for all new samples
 	if (sampleCount <= oldCount)
 		return;
 
 	const uint32 newSamples = sampleCount - oldCount;
-	const size_t byteCount = newSamples * mViewsPerSample * sizeof(uint32);
-	memset(mParentViews.data() + oldCount * mViewsPerSample, View::INVALID_ID, byteCount);
+	const size_t byteCount = newSamples * mMaxCamsPerSample * sizeof(uint32);
+	memset(mParentCameras.data() + oldCount * mMaxCamsPerSample, Cameras::INVALID_ID, byteCount);
 }
 
-void Samples::unifyInvalidParentViewIDs()
-{
-	// get number of views and sample to parent view links
-	const uint32 viewCount = Scene::getSingleton().getViewCount();
-	const int64 linkCount = getMaxViewConeCount();
-
-	// set each view ID >= view count to View::INVALID_ID
-	#pragma omp parallel for
-	for (int64 linkIdx = 0; linkIdx < linkCount; ++linkIdx)
-	{
-		uint32 &ID = mParentViews[linkIdx];
-		if (ID >= viewCount)
-			ID = View::INVALID_ID;
-	}
-}
-
-void Samples::updateParentViews(const map<uint32, uint32> &viewToCameraIndices)
+void Samples::tansformViewToParentCameraLinks(const vector<uint32> &viewToCameraIndices)
 {
 	// update each link
-	const int64 linkCount = mPositions.size() * mViewsPerSample;
+	const int64 linkCount = getCount() * mMaxCamsPerSample;
 	#pragma omp parallel for
 	for (int64 linkIdx = 0; linkIdx < linkCount; ++linkIdx)
 	{
-		const uint32 oldParentID = mParentViews[linkIdx];
-		map<uint32, uint32>::const_iterator it = viewToCameraIndices.find(oldParentID);
-		if (viewToCameraIndices.end() != it)
-			mParentViews[linkIdx] = it->second;
-		else
-			mParentViews[linkIdx] = View::INVALID_ID;
+		const uint32 viewID = mParentCameras[linkIdx];
+		if (Cameras::INVALID_ID != viewID)
+			mParentCameras[linkIdx] = viewToCameraIndices[viewID];
 	}
+}
+
+void Samples::computeValidParentCameraCount()
+{
+	// get & check parent link count
+	uint64 linkCount = mMaxCamsPerSample * getCount();
+	if (linkCount >= (uint32) -1)
+		throw Exception("Number of sample to parent camera links exceeds supported maximum = 2^32 - 2.");
+	const uint32 parentCount = (uint32) linkCount;
+
+	// count number of valid parent links
+	uint32 invalidCount = 0;
+	for (uint32 parentIdx = 0; parentIdx < parentCount; ++parentIdx)
+		if (Cameras::INVALID_ID == mParentCameras[parentIdx])
+			++invalidCount;
+	mValidParentLinkCount = parentCount - invalidCount;
+
+	cout << "Computed number of valid parent cameras for all samples.\n";
+	cout << "Parent camera count: " << mValidParentLinkCount << "; invalid view link count: " << invalidCount << "; parent view link count: " << getCount() * mMaxCamsPerSample << endl;
+}
+
+void Samples::reorder(const uint32 *targetIndices)
+{
+	const uint32 sampleCount = getCount();
+
+	Array<Vector3>::reorder(mColors, targetIndices);
+	Array<Vector3>::reorder(mNormals, targetIndices);
+	Array<Vector3>::reorder(mPositions, targetIndices);
+	Array<Real>::reorder(mConfidences, targetIndices);
+	Array<Real>::reorder(mScales, targetIndices);
+	Array<uint32>::reorder(mParentCameras, targetIndices, mMaxCamsPerSample);
 }

@@ -9,6 +9,7 @@
 #include "CollisionDetection/CollisionDetection.h"
 #include "Evaluator.h"
 #include "Math/MathHelper.h"
+#include "Platform/Utilities/Array.h"
 #include "Platform/Utilities/PlyFile.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/StaticMesh.h"
@@ -58,7 +59,7 @@ Evaluator::Evaluator(const string &groundTruthFile, const string &reconstruction
 		// get filtered geometry
 		// reserve memory for filtered ground truth geometry
 		Vector3 *newPositions = new Vector3[newVertexCount];
-		FlexibleMesh::filterData<Vector3>(newPositions, oldPositions, vertexOffsets, oldVertexCount);
+		Array<Vector3>::compaction(newPositions, oldPositions, vertexOffsets, oldVertexCount);
 
 		// 2D reconstruction vertex data
 		mGroundTruthPositions.resize(newVertexCount);
@@ -157,8 +158,8 @@ Evaluator::Evaluator(const string &groundTruthFile, const string &reconstruction
 		Vector3 *newPositions = new Vector3[newVertexCount];
 		uint32 *newIndices = new uint32[newIndexCount];
 
-		FlexibleMesh::filterData<Vector3>(newNormals, oldNormals, vertexOffsets, oldVertexCount);
-		FlexibleMesh::filterData<Vector3>(newPositions, oldPositions, vertexOffsets, oldVertexCount);
+		Array<Vector3>::compaction(newNormals, oldNormals, vertexOffsets, oldVertexCount);
+		Array<Vector3>::compaction(newPositions, oldPositions, vertexOffsets, oldVertexCount);
 		FlexibleMesh::filterTriangles(newIndices, oldIndices, triangleOffsets, oldIndexCount, vertexOffsets);
 
 		// 2D reconstruction vertex data

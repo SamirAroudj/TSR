@@ -94,7 +94,7 @@ set(sceneHeaderFiles
 )
 
 # Scene/Camera sub namespace header files
-set (sceneViewHeaderFiles
+set (sceneCameraHeaderFiles
 	${sceneCameraPath}/Cameras.h
 	${sceneCameraPath}/CameraData.h
 	${sceneCameraPath}/MVECameraIO.h
@@ -116,13 +116,13 @@ set (sceneTreeHeaderFiles
 
 # surface extraction sub namespace header files
 set(surfaceExtractionHeaderFiles
-	${surfaceExtractionPath}/SphereNodeStatesChecker.h
+	${surfaceExtractionPath}/ConeNodesChecker.h
 	${surfaceExtractionPath}/DualMarchingCell.h
 	${surfaceExtractionPath}/DualMarchingCells.h
 	${surfaceExtractionPath}/EdgeVertexIndex.h
 	${surfaceExtractionPath}/LineChecker.h
 	${surfaceExtractionPath}/Occupancy.h
-	${surfaceExtractionPath}/ViewConeNodesChecker.h
+	${surfaceExtractionPath}/SphereNodeStatesChecker.h
 )
 
 # source files
@@ -185,7 +185,7 @@ set(sceneSourceFiles
 )
 
 # Scene/Camera sub namespace ource files
-set (sceneViewSourceFiles
+set (sceneCameraSourceFiles
 	${sceneCameraPath}/Cameras.cpp
 	${sceneCameraPath}/CameraData.cpp
 	${sceneCameraPath}/MVECameraIO.cpp
@@ -206,14 +206,14 @@ set (sceneTreeSourceFiles
 
 # surface extraction sub namespace source files
 set(surfaceExtractionSourceFiles	
-	${surfaceExtractionPath}/SphereNodeStatesChecker.cpp
+	${surfaceExtractionPath}/ConeNodesChecker.cpp
 	${surfaceExtractionPath}/DualMarchingCell.cpp
 	${surfaceExtractionPath}/DualMarchingCells.cpp	
 	${surfaceExtractionPath}/DualMarchingCellTables.cpp
 	${surfaceExtractionPath}/EdgeVertexIndex.cpp
 	${surfaceExtractionPath}/LineChecker.cpp
 	${surfaceExtractionPath}/Occupancy.cpp
-	${surfaceExtractionPath}/ViewConeNodesChecker.cpp
+	${surfaceExtractionPath}/SphereNodeStatesChecker.cpp
 )
 
 # gather all header files in headerFiles
@@ -224,7 +224,7 @@ set(headerFiles
 	${renderingHeaderFiles}
 	${sceneHeaderFiles}
 	${sceneTreeHeaderFiles}
-	${sceneViewHeaderFiles}
+	${sceneCameraHeaderFiles}
 	${surfaceExtractionHeaderFiles}
 )
 
@@ -235,8 +235,8 @@ set(sourceFiles
 	${refinementSourceFiles}
 	${renderingSourceFiles}
 	${sceneSourceFiles}
+	${sceneCameraSourceFiles}
 	${sceneTreeSourceFiles}
-	${sceneViewSourceFiles}
 	${surfaceExtractionSourceFiles}
 )
 
@@ -256,6 +256,6 @@ source_group("Image" FILES ${imageHeaderFiles} ${imageSourceFiles})
 source_group("Refinement" FILES ${refinementHeaderFiles} ${refinementSourceFiles})
 source_group("Rendering" FILES ${renderingHeaderFiles} ${renderingSourceFiles})
 source_group("Scene" FILES ${sceneHeaderFiles} ${sceneSourceFiles})
-source_group("Scene\\Camera" FILES ${sceneViewHeaderFiles} ${sceneViewSourceFiles})
+source_group("Scene\\Camera" FILES ${sceneCameraHeaderFiles} ${sceneCameraSourceFiles})
 source_group("Scene\\Tree" FILES ${sceneTreeHeaderFiles} ${sceneTreeSourceFiles})
 source_group("SurfaceExtraction" FILES ${surfaceExtractionHeaderFiles} ${surfaceExtractionSourceFiles})

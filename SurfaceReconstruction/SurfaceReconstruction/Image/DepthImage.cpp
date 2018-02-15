@@ -87,8 +87,8 @@ DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
 	Image(ImgSize(0, 0), resourceName), mDepths(NULL), mDepthConvention(DEPTH_CONVENTION_ALONG_RAY)
 {
 	// get complete file name
-	const Path viewsFolder(VolatileResource<Image>::getPathToResources());
-	const Path fileName = Path::appendChild(viewsFolder, imageFileName);
+	const Path folder(VolatileResource<Image>::getPathToResources());
+	const Path fileName = Path::appendChild(folder, imageFileName);
 
 	// load image header and body
 	MVEIHeader header;
@@ -393,19 +393,19 @@ FlexibleMesh *DepthImage::createFlexibleMesh(const vector<uint32> &pixelToVertex
 	const uint32 vertexCount = (uint32) vertexNeighbors.size();
 
 	// create mesh & set indices
-	FlexibleMesh *viewMesh = new FlexibleMesh(vertexCount, indexCount);
-	viewMesh->setIndices(indices.data(), indexCount);
+	FlexibleMesh *mesh = new FlexibleMesh(vertexCount, indexCount);
+	mesh->setIndices(indices.data(), indexCount);
 
 	// set vertices: position, color, normal & scale for each vertex
-	setVertexPositions(*viewMesh, pixelToVertexIndices, hPSToNNRayDirWS, centerOfProjection);
-	setVertexColors(*viewMesh, pixelToVertexIndices, vertexCount, image);
-	viewMesh->computeNormalsWeightedByAngles();
-	FlexibleMesh::computeVertexScales(viewMesh->getScales(), vertexNeighbors.data(), viewMesh->getPositions(), viewMesh->getVertexCount());
+	setVertexPositions(*mesh, pixelToVertexIndices, hPSToNNRayDirWS, centerOfProjection);
+	setVertexColors(*mesh, pixelToVertexIndices, vertexCount, image);
+	mesh->computeNormalsWeightedByAngles();
+	FlexibleMesh::computeVertexScales(mesh->getScales(), vertexNeighbors.data(), mesh->getPositions(), mesh->getVertexCount());
 	
-	return viewMesh;
+	return mesh;
 }
 
-void DepthImage::setVertexPositions(FlexibleMesh &viewMesh, const vector<uint32> &pixelToVertexIndices,
+void DepthImage::setVertexPositions(FlexibleMesh &mesh, const vector<uint32> &pixelToVertexIndices,
 	const Matrix3x3 &hPSToNNRayDirWS, const Vector3 &centerOfProjection) const
 {
 	// vertex positions
@@ -426,11 +426,11 @@ void DepthImage::setVertexPositions(FlexibleMesh &viewMesh, const vector<uint32>
 		// compute world space position using ray direction, center of projection and depth
 		const Real &depth = mDepths[pixelIdx];
 		const Vector3 posWS = centerOfProjection + (directionWS * depth);
-		viewMesh.setPosition(posWS, vertexIdx);
+		mesh.setPosition(posWS, vertexIdx);
 	}
 }
 
-void DepthImage::setVertexColors(FlexibleMesh &viewMesh,
+void DepthImage::setVertexColors(FlexibleMesh &mesh,
 	const vector<uint32> &pixelToVertexIndices, const uint32 &vertexCount, const ColorImage *image) const
 {
 	// vertex colors via default color?
@@ -439,7 +439,7 @@ void DepthImage::setVertexColors(FlexibleMesh &viewMesh,
 		// no image? -> set vertex colors to some default value
 		const Vector3 defaultColor(0.5f, 0.5f, 0.5f);
 		for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
-			viewMesh.setColor(defaultColor, vertexIdx);
+			mesh.setColor(defaultColor, vertexIdx);
 		return;
 	}
 
@@ -456,7 +456,7 @@ void DepthImage::setVertexColors(FlexibleMesh &viewMesh,
 		Vector3 color;
 
 		image->get(color, pixelIdx % width, pixelIdx / width);
-		viewMesh.setColor(color, vertexIdx);
+		mesh.setColor(color, vertexIdx);
 	}
 }
 

@@ -72,10 +72,10 @@ namespace SurfaceReconstruction
 			const Math::Matrix3x3 &hPSToNNRayDirWS, const Math::Vector3 &centerOfProjection,
 			const std::vector<uint32> &indices, const ColorImage *image = NULL) const;
 
-		void setVertexColors(FlexibleMesh &viewMesh, const std::vector<uint32> &pixelToVertexIndices, const uint32 &vertexCount,
+		void setVertexColors(FlexibleMesh &mesh, const std::vector<uint32> &pixelToVertexIndices, const uint32 &vertexCount,
 			const ColorImage *image) const;
 
-		void setVertexPositions(FlexibleMesh &viewMesh, const std::vector<uint32> &pixelToVertexIndices,
+		void setVertexPositions(FlexibleMesh &mesh, const std::vector<uint32> &pixelToVertexIndices,
 			const Math::Matrix3x3 &hPSToNNRayDirWS, const Math::Vector3 &centerOfProjection) const;
 
 		uint32 triangulateBlock(std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices, uint32 vertexCount,

@@ -53,8 +53,8 @@ namespace SurfaceReconstruction
 		uint32 mOutlierIsleMinKeepingSize;
 
 		// super sampling pattern
-		Utilities::Size2<uint32> mRaysPerViewSamplePair;
-		bool mOrientSamplingPatternLikeView;
+		Utilities::Size2<uint32> mRaysPerLinkedPair;
+		bool mOrientSamplingPattern;
 	};
 }
 

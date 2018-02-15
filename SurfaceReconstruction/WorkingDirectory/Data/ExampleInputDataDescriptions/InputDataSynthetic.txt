@@ -3,9 +3,9 @@ string sceneFolder = C:\Dev\Scenes\WedgeComplex; // scene root folder where all 
 string relativeCamerasFileName = Cameras.txt; // where to save the cameras file for the automatically and randomly generated synthetic cameras, relative to "<sceneFolder>/Results"
 
 // how many cameras, image resolution, focal length boundaries, minimum distance to surface
-uint32 viewCount = 250;  // how many random synthetic views shall be created?
-uint32 imageWidth = 100; // width in pixels of each synthetic view
-uint32 imageHeight = 70; // height in pixels of each synthetic view
+uint32 cameraCount = 250;  // how many random synthetic cameras shall be created?
+uint32 imageWidth = 100; // width in pixels of each synthetic camera
+uint32 imageHeight = 70; // height in pixels of each synthetic camera
 Real minimumFocalLength = 2.0; // lower bound for synthetic camera focal length
 Real maximumFocalLength = 6.0; // upper bound for synthetic camera focal length
 Real minimumDepth = 8.0; // minimum distance (in scene units) of a sample between camera projection center and surface (no samples closer than that are created)
@@ -16,7 +16,7 @@ Real relativeSceneBorderX = 10.0; // width of the scene for defining a bounding 
 Real relativeSceneBorderY = 3.0; // height of the scene for defining a bounding box in which cameras are allowed to be created)
 Real relativeSceneBorderZ = 1.5; // depth of the scene for defining a bounding box in which cameras are allowed to be created)
 
-Real viewBalance = 3.0; //  set this to 1 for an approximately balanced scene and to a higher value to have more views on one side of the scene than the other
+Real cameraBalance = 3.0; //  set this to 1 for an approximately balanced scene and to a higher value to have more cameras on one side of the scene than the other
 
 // sample noise (Gaussian distribution)
 Real relativeNoiseMean = 0.00; // mean of the noise to be added to the samples - I don't see a use case where it is reasonable to change this - keep it zero

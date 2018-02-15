@@ -25,12 +25,12 @@ namespace SurfaceReconstruction
 {
 	// forward declarations
 	class Mesh;
-	class View;
+	class Cameras;
 
 	class RayTracer
 	{
 	public:
-		static inline Math::Vector2 getRelativeSamplingOffset(const uint32 localSamplingCoords[2], const Utilities::Size2<uint32> &raysPerViewSamplePair);
+		static inline Math::Vector2 getRelativeSamplingOffset(const uint32 localSamplingCoords[2], const Utilities::Size2<uint32> &raysPerLinkedPair);
 
 	public:
 		RayTracer();
@@ -52,15 +52,15 @@ namespace SurfaceReconstruction
 		
 		void freeScene();
 		
-		void renderFromView(GeometryMap *geometryMap, const Utilities::ImgSize &size, const Graphics::PinholeCamera &camera,
+		void render(GeometryMap *geometryMap, const Utilities::ImgSize &size, const Graphics::PinholeCamera &camera,
 			const Math::Matrix3x3 &HPSToNNRayDirWS, const bool backfaceCulling);
 
 		//void filterForBackFaceCulling(int *valid, RTCRayN *ray, const RTCHitN *potentionHit, const size_t N, const bool forOcclusionTest) const;
 		
 		bool findIntersection(Surfel &surfel, const Math::Vector3 &rayStartWS, const Math::Vector3 &rayDirWS, const bool backFaceCulling = true);
-		void findIntersectionsForViewSamplePairs(
+		void findIntersectionsForCamSamplePairs(
 			const bool backFaceCulling,	const uint32 startPairIdx, const uint32 endPairIdx, const uint32 rayBatchSize,
-			const Utilities::Size2<uint32> &raysPerViewSamplePair, const bool orientLikeView);
+			const Utilities::Size2<uint32> &raysPerLinkedPair, const bool orientSamplingPattern);
 		void findIntersectionsAlongMeshNormals(const Math::Vector3 *normals, const Real *searchLengths, 
 			const Real searchLengthScaleFactor, const bool backFaceCulling);
 
@@ -69,7 +69,7 @@ namespace SurfaceReconstruction
 
 		void findOcclusions(const Math::Vector3 *positions, const uint32 positionCount, const Math::Vector3 &rayOrigin, const bool backFaceCulling);
 
-		/** Computes for each valid Surfel object in geometryMap whether it is visible from camera's point of view.
+		/** Computes for each valid Surfel object in geometryMap whether it is visible from a projective device.
 		todo */
 		void findOcclusions(const GeometryMap &geometryMap, const Utilities::ImgSize &size, const Graphics::PinholeCamera &camera, const bool backFaceCulling);
 		
@@ -131,13 +131,13 @@ namespace SurfaceReconstruction
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	
-	inline Math::Vector2 RayTracer::getRelativeSamplingOffset(const uint32 localSamplingCoords[2], const Utilities::Size2<uint32> &raysPerViewSamplePair)
+	inline Math::Vector2 RayTracer::getRelativeSamplingOffset(const uint32 localSamplingCoords[2], const Utilities::Size2<uint32> &raysPerLinkedPair)
 	{
 		// rectangular pattern
 		return Math::Vector2
 		(
-			((Real) localSamplingCoords[0] / (Real) (raysPerViewSamplePair[0] - 1)) - 0.5f,
-			((Real) localSamplingCoords[1] / (Real) (raysPerViewSamplePair[1] - 1)) - 0.5f
+			((Real) localSamplingCoords[0] / (Real) (raysPerLinkedPair[0] - 1)) - 0.5f,
+			((Real) localSamplingCoords[1] / (Real) (raysPerLinkedPair[1] - 1)) - 0.5f
 		);
 	}
 

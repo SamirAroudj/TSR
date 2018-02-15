@@ -22,12 +22,12 @@
 
 namespace SurfaceReconstruction
 {
+	class Cameras;
 	class FlexibleMesh;
 	class Mesh;
 	class MeshRefiner;
 	class Scope;
 	class StaticMesh;
-	class View;
 
 	struct TreeIntersectionTriangle
 	{
@@ -39,32 +39,42 @@ namespace SurfaceReconstruction
 		std::vector<uint32> mLeaves;
 	};
 
-	/// Visualizes 2D reconstruction related data such as surfaces and views.
+	/// Visualizes 2D reconstruction related data such as surfaces and cameras.
 	class Renderer : public IReconstructorObserver
 	{
 	public:
-		enum OCCUPANCY_RENDERING_FLAGS
+		/** Enables switching between different ways to render cameras. */
+		enum CameraRendering
 		{
-			OCCUPANCY_RENDERING_FLAGS_EMPTINESS		= 0x1 << 0,
-			OCCUPANCY_RENDERING_FLAGS_OCCUPANCY		= 0x1 << 1,
-			OCCUPANCY_RENDERING_FLAGS_SAMPLENESS	= 0x1 << 2,
-			OCCUPANCY_RENDERING_FLAGS_LOG_SCALE		= 0x1 << 31
+			CAMERA_RENDERING_INVISIBLE,		/// Don't render any camera.
+			CAMERA_RENDERING_POINTS,		/// Render only points to represent the cameras.
+			CAMERA_RENDERING_ARROWS,		/// Render the cameras by means of simple arrows indicating their orientation.
+			CAMERA_RENDERING_RAY_BUNDLES,	/// Render the cameras as arrows and also add a line for each sample between it and its center of projection.
+			CAMERA_RENDERING_COUNT			/// Defines the number of different ways to render cameras.
 		};
-		
-		enum LEAF_RESULTS_RENDERING
+
+		enum LeafResultsRendering
 		{
 			LEAF_RESULTS_RENDERING_EMPTY		= 0x1 << 0,
 			LEAF_RESULTS_RENDERING_NEAR_SURFACE	= 0x1 << 1
 		};
 
 		// todo
-		enum MESH_REFINER_RENDERING
+		enum MeshRefinerRendering
 		{
 			MESH_REFINER_PCS_MOVEMENTS = 0x1 << 0
 		};
 
+		enum OccupancyRenderingFlags
+		{
+			OCCUPANCY_RENDERING_FLAGS_EMPTINESS		= 0x1 << 0,
+			OCCUPANCY_RENDERING_FLAGS_OCCUPANCY		= 0x1 << 1,
+			OCCUPANCY_RENDERING_FLAGS_SAMPLENESS	= 0x1 << 2,
+			OCCUPANCY_RENDERING_FLAGS_LOG_SCALE		= 0x1 << 31
+		};
+
 		/** Enables switching between different ways to render surface samples. */
-		enum SAMPLE_RENDERING
+		enum SampleRendering
 		{
 			SAMPLE_RENDERING_INVISIBLE,				/// Don't render any sample.
 			SAMPLE_RENDERING_POINTS_DATA_COLOR,		/// Render samples by means of simple points with colors attached to them, e.g. colors loaded from file.
@@ -75,20 +85,10 @@ namespace SurfaceReconstruction
 		};
 
 		/** Flags that define what data of a Tree object is rendered. */
-		enum SCENE_TREE_RENDERING
+		enum SceneTreeRendering
 		{
 			SCENE_TREE_RENDERING_SHOW_LEAVES				= 0x1 << 0,
 			SCENE_TREE_RENDERING_SHOW_LEAF_NEIGHBORHOODS	= 0x1 << 1
-		};
-
-		/** Enables switching between different ways to render views. */
-		enum VIEW_RENDERING
-		{
-			VIEW_RENDERING_INVISIBLE,		/// Don't render any view.
-			VIEW_RENDERING_POINTS,			/// Render only points to represent the views.
-			VIEW_RENDERING_ARROWS,			/// Render the views by means of simple arrows indicating their orientation.
-			VIEW_RENDERING_RAY_BUNDLES,		/// Render the views as arrows and also add a line for each sample between it and its center of projection.
-			VIEW_RENDERING_COUNT			/// Defines the number of different ways to render views.
 		};
 
 	public:
@@ -98,37 +98,38 @@ namespace SurfaceReconstruction
 		/** Releases resources. */
 		virtual ~Renderer();
 
-		/** Sets which view is rendered with highlight color.
-		@param viewID Identifies which view is rendered with highlight color. E.g., set this to a selected view.
-			Make sure that viewID < views.size().
-		@see Views to be rendered are entered in render(views). */
-		inline void highlightView(uint32 viewID);
+		/** Sets which camera is rendered with highlight color.
+		@param cameraIdx Identifies which camera is rendered with highlight color. E.g., set this to a selected camera.
+			Make sure that cameraIdx < cameras.getCount().
+		@see cameras to be rendered are entered in render(cameras). */
+		inline void highlightCamera(uint32 cameraIdx);
 
-		/** Increases the ID of the view to be highlighted to emphasize the "next" view.
-		@param viewCount Set this to the number of views in order to highlight
-			the first view (ID 0) if the last view (count - 1) is the highlighted view upon this call. */
-		inline void highlightNextView(uint32 viewCount);
+		/** Increases the ID of the camera to be highlighted to emphasize the "next" camera.
+		@param cameraCount Set this to the number of cameras in order to highlight
+			the first camera (ID 0) if the last camera (count - 1) is the highlighted camera upon this call. */
+		inline void highlightNextCamera(uint32 cameraCount);
 		
 		virtual bool onNewReconstruction(FlexibleMesh *mesh,
 			const uint32 iteration, const std::string &text, const Scene::ReconstructionType type, const bool responsible);
 
-		/** Renders a scene. (surfaces, views, samples etc.)
-		@param Set this to the camera from which you want to see the scene. This defines the view and projection matrix to be used.
-		@param scaleFactor Applies a uniform scaling matrix to all vertices in view space in order to achieve a zooming effect. */
+		/** Renders a scene. (surfaces, cameras, samples etc.)
+		@param Set this to the camera from which you want to see the scene. This defines the camera and projection matrix to be used.
+		@param scaleFactor Applies a uniform scaling matrix to all vertices in camera space in order to achieve a zooming effect. */
 		void render(const Real scaleFactor);
 
 		/** todo */
 		void render(const Mesh &mesh, bool perFaceNormal = false);
 
 		void renderCursor(const Math::Vector2 &cursorPosNDC, const Graphics::Color &color, const Real cursorSize);
+		
+
+		/** Changes the way cameras are rendered. It simply switches to the "next mode".
+		@see See CameraRendering enumeration for possible modes. */
+		inline void shiftCameraRendering();
 
 		/** Changes the way samples are rendered. It simply switches to the "next mode".
-		@see See SAMPLE_RENDERING enumeration for possible modes.*/
+		@see See SampleRendering enumeration for possible modes.*/
 		inline void shiftSampleRendering();
-
-		/** Changes the way views are rendered. It simply switches to the "next mode".
-		@see See VIEW_RENDERING enumeration for possible modes. */
-		inline void shiftViewRendering();
 
 		/** todo */	
 		inline void showEdgeNeighbors(const uint32 edgeIdx);
@@ -188,7 +189,7 @@ namespace SurfaceReconstruction
 
 		/** Changes the way the Occupancy is rendered. It simply switches to the "next mode".
 		@see See OCCUPANCY_RENDERING enumeration for possible modes. */
-		inline void toggleOccupancyRenderingFlags(OCCUPANCY_RENDERING_FLAGS flags);
+		inline void toggleOccupancyRenderingFlags(OccupancyRenderingFlags flags);
 
 		/** Toggles rendering of Tree elements.
 		@param flags Set this to elements of the enumeration Renderer::SCENE_TREE_RENDERING
@@ -199,21 +200,21 @@ namespace SurfaceReconstruction
 		void update();
 
 	private:
-		/** Enter all views that shall be rendered.
-		@param views All contained views are rendered according to the current view rendering mode.
-		@see shiftViewRendering() changes the way views are rendered and VIEW_RENDERING enumeration defines possible ways to render them. */
-		void render(const std::vector<SurfaceReconstruction::View *> &views);
+		/** Enter all cameras that shall be rendered.
+		@param cameras All contained cameras are rendered according to the current camera rendering mode.
+		@see shiftCameraRendering() changes the way cameras are rendered and CameraRendering enumeration defines possible ways to render them. */
+		void render(const Cameras &cameras);
 
-		/** Renders all samples identified by the entered vector with a specific color. Is used to render a single view.
+		/** Renders all samples identified by the entered vector with a specific color. Is used to render a single camera.
 		@param samples Set this to the set of samples to be rendered.
 		@param highlighted Set this to true to use a lighter sample color. */
 		void render(const std::vector<uint32> &sampleSet, bool highlighted = false);
 
-		/** Renders viewCount views (only the views) with the entered color.
-		@param views Set this pointer to the array containing viewCount views to be rendered.
-		@param viewCount Set this to -1 to render all views and to some view index to only render this view.
-		@param color Set this to the 4D color with which views are rendered. (OpenGL format) */
-		void render(const std::vector<View *> views, uint32 viewIdx, const float *color);
+		/** Renders all cameras or a specific one.
+		@param cameras Set this to the objecect representing all registered cameras
+		@param cameraIdx Set this to -1 to render all cameras and to some index to only render this particular camera.
+		@param color Set this to the 4D color with which cameras are rendered. (OpenGL format) */
+		void render(const Cameras &cameras, uint32 cameraIdx, const float *color);
 
 		/** Enter the ground truth surfaces here which shall be shown.
 		@param curves Defines the ground truth surfaces that shall be shown.
@@ -272,29 +273,28 @@ namespace SurfaceReconstruction
 		@param highlighted Set this to true if the sample should be emphasized and rendered in a special way.
 		@param sampleRendering Set this to overwrite the default sample rendering behaviour stored in mSampleRendering. */
 		void renderSample(const uint32 sampleIdx,
-			bool highlighted = false, SAMPLE_RENDERING sampleRendering = SAMPLE_RENDERING_INVALID) const;
+			bool highlighted = false, SampleRendering sampleRendering = SAMPLE_RENDERING_INVALID) const;
 
 		/** todo */
 		void renderTree();
 
 	public:
-
+		static const Graphics::Color COLOR_CAMERA;		/// Defines the color for rendering of capturing cameras which create samples.
 		static const Graphics::Color COLOR_HIGHLIGHTED;	/// Defines how the color of emphasized elements.
-		static const Graphics::Color COLOR_SAMPLES[3];	/// Defines the colors for rendering of surface samples created by views. [0] -> evaluated ones, [1] -> unprocessed, [2] -> Mean Shift
+		static const Graphics::Color COLOR_SAMPLES[3];	/// Defines the colors for rendering of surface samples created by cameras. [0] -> evaluated ones, [1] -> unprocessed, [2] -> Mean Shift
 		static const Graphics::Color COLOR_SURFACES[3];	/// Defines the colors for rendering of object surfaces. Each surface might be partitioned into subsets. 3 colors are required to render the subsets.
-		static const Graphics::Color COLOR_VIEW;		/// Defines the color for rendering of capturing views which create samples.
+		static const Real CAMERA_SIZE;					/// Defines the camera length of each camera visualization. This is a scaling factor to control the size of the camera representations. 
 		static const Real NORMAL_SIZE;					/// Defines the length of each normal visualization.
-		static const Real VIEW_SIZE;					/// Defines the view length of each view visualization. This is a scaling factor to control the size of the view representations. 
-
+		
 	private:
 		TreeIntersectionTriangle mInterTriangle;	/// For test rendering of triangle and nodes/tree intersection data
 
 		Real mLightAzimuth;				/// Stores the angle which is used to animate the lights. (They are rotating in a horizontal plane.)		
 		float mElementSizes[2];			/// Default size/width of points and lines in pixels.
-
+		
+		uint32 mHighlightedCamera;		/// Defines the camera and thus its samples that are highlighted by a special color.
 		uint32 mHighlightedSampleCount;	/// Defines how many samples are emphasized.
 		uint32 mHighlightedSampleStart;	/// Defines the index of the first sample to be emphasized.
-		uint32 mHighlightedView;		/// Defines the view and thus its samples that are highlighted by a special color.
 		
 		uint32 mCrustFlags;				/// Defines how a SurfaceCrust object is rendered.
 		uint32 mLeafResultsFlags;		/// Contains flags that define what implicit function data is rendered.
@@ -310,8 +310,8 @@ namespace SurfaceReconstruction
 		uint32 mShownSample;			/// Identifies the sample for which additional information is rendered.
 		uint32 mShownTriangle;			/// Identifies the reconstruction mesh triangle and its neighbors which are highlighted.
 		
-		SAMPLE_RENDERING mSampleRendering;				/// Defines how samples are rendered.
-		VIEW_RENDERING mViewRendering;					/// Defines how views are rendered.
+		CameraRendering mCameraRendering;	/// Defines how cameras are rendered.
+		SampleRendering mSampleRendering;	/// Defines how samples are rendered.
 
 		bool mBackfaceCulling;		/// Defines whether backface culling for faces and oriented points is done or not.
 		bool mShowGroundTruth;		/// Defines whether the ground truth mesh is visualized or not.
@@ -322,28 +322,28 @@ namespace SurfaceReconstruction
 	///   inline function definitions   ////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	inline void Renderer::highlightNextView(uint32 viewCount)
+	inline void Renderer::highlightNextCamera(uint32 cameraCount)
 	{
-		++mHighlightedView;
-		if (mHighlightedView >= viewCount)
-			mHighlightedView = 0;
+		++mHighlightedCamera;
+		if (mHighlightedCamera >= cameraCount)
+			mHighlightedCamera = 0;
 	}
 
-	inline void Renderer::highlightView(uint32 viewID)
+	inline void Renderer::highlightCamera(uint32 cameraID)
 	{
-		mHighlightedView = viewID;
+		mHighlightedCamera = cameraID;
 	}
 
-	inline void Renderer::shiftViewRendering()
+	inline void Renderer::shiftCameraRendering()
 	{
-		mViewRendering = (VIEW_RENDERING) (mViewRendering + 1);
-		if (mViewRendering >= VIEW_RENDERING_COUNT)
-			mViewRendering = VIEW_RENDERING_INVISIBLE;
+		mCameraRendering = (CameraRendering) (mCameraRendering + 1);
+		if (mCameraRendering >= CAMERA_RENDERING_COUNT)
+			mCameraRendering = CAMERA_RENDERING_INVISIBLE;
 	}
 
 	inline void Renderer::shiftSampleRendering()
 	{
-		mSampleRendering = (SAMPLE_RENDERING) (mSampleRendering + 1);
+		mSampleRendering = (SampleRendering) (mSampleRendering + 1);
 		if (mSampleRendering >= SAMPLE_RENDERING_INVALID)
 			mSampleRendering = SAMPLE_RENDERING_INVISIBLE;
 	}
@@ -450,7 +450,7 @@ namespace SurfaceReconstruction
 		mMeshRefinerFlags ^= flags;
 	}
 
-	inline void Renderer::toggleOccupancyRenderingFlags(OCCUPANCY_RENDERING_FLAGS flags)
+	inline void Renderer::toggleOccupancyRenderingFlags(OccupancyRenderingFlags flags)
 	{
 		mOccupancyFlags ^= flags;
 	}

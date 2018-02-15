@@ -15,8 +15,8 @@ using namespace SurfaceReconstruction;
 
 CameraData::CameraData() :
 	mOrientation(), mPosition(),
-	mDistortion(),
 	mPrincipalPoint(0.5f, 0.5f),
+	mDistortion{0.0f, 0.0f},
 	mFocalLength(-REAL_MAX),
 	mPixelAspectRatio(1.0f),
 	mViewID(-1)
@@ -31,7 +31,9 @@ void CameraData::set(const uint32 &viewID, const PinholeCamera &camera)
 	mPosition.set(camera.getPosition().x, camera.getPosition().y, camera.getPosition().z);
 
 	// intrinsics
-	mDistortion = camera.getDistortion();
+	const Real *distortion = camera.getDistortion();
+	mDistortion[0] = distortion[0];
+	mDistortion[1] = distortion[1];
 	mPrincipalPoint = camera.getPrincipalPoint();
 
 	mFocalLength = camera.getFocalLength();

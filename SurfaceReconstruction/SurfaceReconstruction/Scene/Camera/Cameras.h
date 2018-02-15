@@ -37,6 +37,13 @@ namespace SurfaceReconstruction
 
 		inline void addCamera(const CameraData &data);
 
+		/** todo
+		@param viewID Set this to a unique number to find / identify the view associated with this camera. See getViewID for more info.
+		@param pixelAspectRatio This is the ratio of width to height of the camera's image plane. Must be positive.
+		todo */
+		void addCamera(const uint32 viewID, const Math::Quaternion &orientation, const Math::Vector3 &position,
+			 const Real focalLength, const Math::Vector2 &principalPoint, const Real pixelAspectRatio, const Real distortion[2]);
+
 		/** Creates a projective capture somewhere inside sceneAABB but outside the objects described by surfaces.
 		@param viewID Set this to a unique number to find / identify the view associated with this camera. See getViewID for more info.
 		@param sceneAABB Set this to an axis aligned bounding box (first min, then max) to restrict the camera placement area.
@@ -48,13 +55,7 @@ namespace SurfaceReconstruction
 		void addCamera(const uint32 viewID, const Math::Vector3 sceneAABB[2], const Real minSampleDistance, const Real maxSampleDistance,
 			const Real meanFOV, const Real maxFOVDeviation, const Real pixelAspectRatio);
 
-		/** todo
-		@param viewID Set this to a unique number to find / identify the view associated with this camera. See getViewID for more info.
-		@param pixelAspectRatio This is the ratio of width to height of the camera's image plane. Must be positive.
-		todo */
-		void addCamera(const uint32 viewID, const Math::Quaternion &orientation, const Math::Vector3 &position,
-			 const Real focalLength, const Math::Vector2 &principalPoint, const Real pixelAspectRatio, const Real distortion[2]);
-
+		/** Removes all cameras. */
 		void clear();
 
 		/** Computes and returns the matrix which transforms coordinates relative to the world space coordinate system into the pixel coordinate system of this view and its current image. 
@@ -64,6 +65,10 @@ namespace SurfaceReconstruction
 		@param considerPixelCenterOffset Set this to true if you want to get coordinates refering to pixel centers instead of lower left corners.
 			E.g., a point at the lower left camera frustum edge is mapped to the pixel coordinates (0.5, 0.5) if this is set to true (instead of (0, 0)). */
 		void computeHWSToNNPS(Math::Matrix4x4 &WSToPS, const Utilities::ImgSize &resolution, const bool considerPixelCenterOffset, const uint32 cameraIdx) const;
+
+		/** Returns true if there are no cameras otherwise false is returned. 
+		@return Returns true if there are no cameras otherwise false is returned.*/
+		inline bool empty() const;
 
 		/** todo */
 		inline Graphics::PinholeCamera &getCamera(const uint32 cameraIdx);
@@ -94,7 +99,12 @@ namespace SurfaceReconstruction
 
 		void loadFromFile(const Storage::Path &fileName);
 
+		inline void popBack();
+
+		inline void reserve(const uint32 cameraCount);
 		void saveToFile(const Storage::Path &fileName) const;
+
+		void shrinkToFit();
 
 	public:
 		static const uint32 FILE_VERSION;	/// Identifies the version of implementation of saving and loading of views for persistent storage.
@@ -123,6 +133,11 @@ namespace SurfaceReconstruction
 	{
 		addCamera(data.mViewID,	data.mOrientation, data.mPosition,
 			data.mFocalLength, data.mPrincipalPoint, data.mPixelAspectRatio, data.mDistortion);
+	}
+
+	inline bool Cameras::empty() const
+	{
+		return mCameras.empty();
 	}
 
 	inline const Graphics::PinholeCamera &Cameras::getCamera(const uint32 cameraIdx) const
@@ -155,6 +170,18 @@ namespace SurfaceReconstruction
 	inline bool Cameras::isValid(const uint32 cameraIdx) const
 	{
 		return (cameraIdx < (uint32) mCameras.size());
+	}
+	
+	inline void Cameras::popBack()
+	{
+		mCameras.pop_back();
+		mViewIDs.pop_back();
+	}
+
+	inline void Cameras::reserve(const uint32 cameraCount)
+	{
+		mCameras.reserve(cameraCount);
+		mViewIDs.reserve(cameraCount);
 	}
 
 }

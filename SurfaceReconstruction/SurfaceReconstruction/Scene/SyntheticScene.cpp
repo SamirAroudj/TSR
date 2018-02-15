@@ -22,11 +22,11 @@
 #include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Image/DepthImage.h"
 #include "SurfaceReconstruction/Refinement/MeshRefiner.h"
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
+#include "SurfaceReconstruction/Scene/Camera/MVECameraIO.h"
 #include "SurfaceReconstruction/Scene/FileNaming.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/SyntheticScene.h"
-#include "SurfaceReconstruction/Scene/View/MVECameraIO.h"
-#include "SurfaceReconstruction/Scene/View/View.h"
 #include "tinyxml2.h"
 
 using namespace CollisionDetection;
@@ -48,6 +48,8 @@ SyntheticScene::SyntheticScene(const Path &fileName, const std::vector<IReconstr
 	if (!getParameters(fileName))
 		return;
 
+	const uint32 camerasPerSample = 1;
+	mSamples = new Samples(camerasPerSample);
 	mGroundTruth = new StaticMesh(mGroundTruthName);
 
 	// results folder to store the synthetic views and depth maps
@@ -81,7 +83,7 @@ SyntheticScene::SyntheticScene(const Path &fileName, const std::vector<IReconstr
 
 	// save views to file
 	MVECameraIO mveIO(Path::appendChild(getResultsFolder(), mRelativeCamerasFile));
-	mveIO.saveCamerasToFile(mViews);
+	mveIO.saveCamerasToFile(mCameras);
 }
 
 bool SyntheticScene::getParameters(const Path &fileName)
@@ -95,14 +97,12 @@ bool SyntheticScene::getParameters(const Path &fileName)
 	ParametersManager &manager = ParametersManager::getSingleton();
 
 	// create empty views
-	uint32 viewCount;
-	if (!manager.get(viewCount, "viewCount"))
+	if (!manager.get(mMaxCameraCount, "cameraCount"))
 	{
-		cerr << missingParameter << "uint32 viewCount = <count>\n";
+		cerr << missingParameter << "uint32 cameraCount = <count>\n";
 		return false;
 	}
-	mViews.resize(viewCount);
-	memset(mViews.data(), 0, sizeof(View *) * viewCount);
+	mCameras.reserve(mMaxCameraCount);
 	
 	// load view resolution
 	uint32 width = 400;
@@ -112,7 +112,7 @@ bool SyntheticScene::getParameters(const Path &fileName)
 		cerr << missingParameter << "uint32 imageWidth = <width>; or uint32 imageHeight = <height>;\n";
 		return false;
 	}
-	mViewResolution.set(width, height);
+	mImageResolution.set(width, height);
 
 	// load focal length bounds
 	mMinFocalLength = 1.0f;
@@ -130,10 +130,10 @@ bool SyntheticScene::getParameters(const Path &fileName)
 	if (!manager.get(mRelativeSceneBorder.x, "relativeSceneBorderX") || !manager.get(mRelativeSceneBorder.y, "relativeSceneBorderY") || !manager.get(mRelativeSceneBorder.z, "relativeSceneBorderZ"))
 		cerr << missingParameter << "Real relativeSceneBorderX = <width>; Real relativeSceneBorderY = <height>; or Real relativeSceneBorderZ = <depth>;\n";
 	
-	// unbalanced view distribution?
-	mViewBalance = 1.0f;
-	if (!manager.get(mViewBalance, "viewBalance"))
-		cerr << missingParameter << "Real viewBalance = <balancing value>;\n";
+	// unbalanced camera distribution?
+	mCameraBalance = 1.0f;
+	if (!manager.get(mCameraBalance, "cameraBalance"))
+		cerr << missingParameter << "Real cameraBalance = <balancing value>;\n";
 	
 	// depth map noise configuration
 	mDepthMapNoise[0] = 0.0f;
@@ -153,28 +153,82 @@ bool SyntheticScene::getParameters(const Path &fileName)
 	return true;
 }
 
-View *SyntheticScene::createSyntheticView(const uint32 viewIdx)
+void SyntheticScene::createAndSaveSamples()
 {
-	// free previous view for clean start
-	delete mViews[viewIdx];
-	mViews[viewIdx] = NULL;
-	View *&view = mViews[viewIdx];
+	// ray tracing preparation
+	const uint32 pixelCount = mImageResolution.getElementCount();
 
+	// create the scene and target depth map for the ray tracer
+	RayTracer rayTracer;
+	vector<Vector3> positionsWSMap(pixelCount);
+	vector<Real> depthMap(pixelCount);
+	vector<vector<uint32>> vertexNeighbors;
+	vector<uint32> pixelToVertexIndices;
+	vector<uint32> indices;
+	uint32 validDepthCount;
+
+	rayTracer.createStaticScene(*mGroundTruth, true);
+
+	// create folder for images if necessary
+	if (!Directory::createDirectory(Scene::getSingleton().getViewsFolder()))
+		return;
+
+	// create a camera & depth map until there are mMaxCameraCount cams
+	for (uint32 cameraIdx = 0; cameraIdx < mMaxCameraCount; )
+	{
+		// create candidate camera data
+		createSyntheticCamera();
+
+		// trace scene -> depth, position (in world space) & index map
+		const bool good = fill(depthMap, positionsWSMap, rayTracer, validDepthCount, mCameras.getCamera(cameraIdx));
+		if (0 == validDepthCount || !good)
+		{
+			mCameras.popBack();
+			continue;
+		}
+		
+		// create directory
+		const uint32 viewID = mCameras.getViewID(cameraIdx);
+		const Path viewFolder = getViewFolder(viewID);
+		if (!Directory::createDirectory(viewFolder))
+			throw FileException("Could not create view directory!", viewFolder);
+
+		// noise on surface samples
+		addNoise(positionsWSMap, depthMap, mCameras.getPositionWS(cameraIdx));
+		
+		// save depth map as undistorted color image and MVEI depth map
+		const Path depthMapName = getRelativeImageFileName(viewID, FileNaming::IMAGE_TAG_DEPTH, 0, false);
+		Image::saveAsMVEFloatImage(depthMapName, true, mImageResolution, depthMap.data(), false, false);
+		saveColorImage(depthMap, viewID, false);
+
+		// triangulate surface samples & create proper input samples
+		createMeshFromDepthMap(vertexNeighbors, indices, pixelToVertexIndices,
+			depthMapName, positionsWSMap, validDepthCount, cameraIdx);
+
+		++cameraIdx;
+	}
+
+	mSamples->addSamplesFromMeshes(mViewMeshes);
+}
+
+void SyntheticScene::createSyntheticCamera()
+{
 	// randomly distribute the cameras in the AABB
 	RandomManager &randomManager = RandomManager::getSingleton();
 
-	// view data
+	// camera data
 	const Vector3 up(0.0f, 1.0f, 0.0f);
 	const Vector2 principalPoint(0.5f, 0.5f);
-	const Real aspectRatio = (Real) mViewResolution[0] / (Real) mViewResolution[1];
+	const Real aspectRatio = 1.0f;
+	const Real distortion[2] = { 0.0f, 0.0f };
 
-	// AABB for view positions
+	// AABB for camera positions
 	const Real centerX = (mAABB[0].x + mAABB[1].x) * 0.5f;
 	Vector3 min = mAABB[0];
 	Vector3 max = mAABB[1];
 
 	// on which side of the mesh?
-	const Real sideRandomness = randomManager.getUniform(0.0f, mViewBalance + 1.0f);
+	const Real sideRandomness = randomManager.getUniform(0.0f, mCameraBalance + 1.0f);
 	const bool firstSide = (sideRandomness < 1.0f);
 	if (firstSide)
 	{
@@ -198,97 +252,26 @@ View *SyntheticScene::createSyntheticView(const uint32 viewIdx)
 	// random focal length
 	const Real focalLength = randomManager.getUniform(mMinFocalLength, mMaxFocalLength);
 
-	// create view
-	const Vector4 pHWS(pWS.x, pWS.y, pWS.z, 1.0f);
+	// create camera
+	const Vector3 pHWS(pWS.x, pWS.y, pWS.z);
 	const Vector3 lookAt = randomManager.getUniform(mMeshAABB[0], mMeshAABB[1]);
 
-	view = new View(viewIdx, Quaternion(), pHWS, focalLength, principalPoint, aspectRatio);
-	view->getCamera().lookAt(pWS, lookAt, up);
-	return view;
-}
-
-void SyntheticScene::createAndSaveSamples()
-{
-	// valid mesh?
-	if (!mGroundTruth)
-		return;
-
-	// create samples
-	const uint32 viewsPerSample = 1; // todo: how to get more views per sample?
-	mSamples = new Samples(viewsPerSample);
-
-	// ray tracing preparation
-	const uint32 pixelCount = mViewResolution.getElementCount();
-
-	// create the scene and target depth map for the ray tracer
-	RayTracer rayTracer;
-	vector<Vector3> positionsWSMap(pixelCount);
-	vector<Real> depthMap(pixelCount);
-	vector<vector<uint32>> vertexNeighbors;
-	vector<uint32> pixelToVertexIndices;
-	vector<uint32> indices;
-	uint32 validDepthCount;
-
-	rayTracer.createStaticScene(*mGroundTruth, true);
-
-	// create folder for images if necessary
-	if (!Directory::createDirectory(Scene::getSingleton().getViewsFolder()))
-		return;
-
-	// create a depth map for each view
-	const uint32 viewCount = (uint32) mViews.size();
-	for (uint32 viewIdx = 0; viewIdx < viewCount; )
-	{
-		// get camera data
-		const View &view = *createSyntheticView(viewIdx);
-		const PinholeCamera &camera = view.getCamera();
-		const Vector3 camPosWS = view.getPositionWS();
-
-		// trace scene -> depth, position (in world space) & index map
-		const bool good = fill(depthMap, positionsWSMap, rayTracer, validDepthCount, camera);
-		if (0 == validDepthCount || !good)
-			continue;
-
-		// noise on surface samples
-		addNoise(positionsWSMap, depthMap, camPosWS);
-		
-		// create view directory
-		const string viewIDString = getIDString(viewIdx);
-		const Path viewFolder = getViewFolder(viewIDString);
-		if (!Directory::createDirectory(viewFolder))
-			throw FileException("Could not create view directory!", viewFolder);
-		
-		//if (Math::EPSILON < mDepthMapNoise[0] || Math::EPSILON < mDepthMapNoise[1])
-		//	saveColorImage(depthMap, viewIdx, true);
-
-		// save depth map as undistorted color image and MVEI depth map
-		const Path depthMapName = getRelativeImageFileName(viewIDString, FileNaming::IMAGE_TAG_DEPTH, 0, false);
-		Image::saveAsMVEFloatImage(depthMapName, true, mViewResolution, depthMap.data(), false, false);
-		saveColorImage(depthMap, viewIdx, false);
-
-		// triangulate surface samples & create proper input samples
-		addToSamples(vertexNeighbors, indices, pixelToVertexIndices,
-			depthMapName, positionsWSMap, validDepthCount, viewIdx);
-
-		++viewIdx;
-	}
-	
-	mSamples->check();
-	mSamples->computeParentCameraCount();
-	mSamples->computeAABB();
+	const uint32 cameraIdx = mCameras.getCount();
+	mCameras.addCamera(cameraIdx, Quaternion(), pHWS, focalLength, principalPoint, aspectRatio, distortion);
+	mCameras.getCamera(cameraIdx).lookAt(pWS, lookAt, up);
 }
 
 bool SyntheticScene::fill(vector<Real> &depthMap, vector<Vector3> &positionsWSMap,
 	RayTracer &rayTracer, uint32 &validDepthCount, const PinholeCamera &camera)
 {
-	const Matrix3x3 HPSToNNRayDirWS = camera.computeHPSToNNRayDirWS(mViewResolution, true);
+	const Matrix3x3 HPSToNNRayDirWS = camera.computeHPSToNNRayDirWS(mImageResolution, true);
 	const Vector3 camPosWS(camera.getPosition().x, camera.getPosition().y, camera.getPosition().z);
 	const Real minDepthSq = mMinSampleDistance * mMinSampleDistance;
-	const uint32 pixelCount = mViewResolution.getElementCount();
+	const uint32 pixelCount = mImageResolution.getElementCount();
 
 	// find surface points
 	validDepthCount = 0;
-	rayTracer.renderFromView(NULL, mViewResolution, camera, HPSToNNRayDirWS, true);
+	rayTracer.render(NULL, mImageResolution, camera, HPSToNNRayDirWS, true);
 
 	// fill depth & index map
 	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
@@ -324,7 +307,7 @@ void SyntheticScene::addNoise(vector<Vector3> &positionsWSMap, vector<Real> &dep
 		return;
 
 	// preparation
-	const uint32 pixelCount = mViewResolution.getElementCount();
+	const uint32 pixelCount = mImageResolution.getElementCount();
 	RandomManager &manager = RandomManager::getSingleton();
 	normal_distribution<Real> depthMapNoise(mDepthMapNoise[0], mDepthMapNoise[1]);
 
@@ -350,7 +333,7 @@ void SyntheticScene::addNoise(vector<Vector3> &positionsWSMap, vector<Real> &dep
 	}
 }
 
-void SyntheticScene::saveColorImage(const vector<Real> &depthMap, const uint32 viewIdx, const bool withNoise) const
+void SyntheticScene::saveColorImage(const vector<Real> &depthMap, const uint32 cameraIdx, const bool withNoise) const
 {
 	// create file name
 	// file name with noise data inside?
@@ -362,13 +345,13 @@ void SyntheticScene::saveColorImage(const vector<Real> &depthMap, const uint32 v
 		localName += buffer;
 	}
 
-	// absolute file name via tag, view index and views folder
-	const Path relativeFileName = getRelativeImageFileName(viewIdx, localName, 0, true);
+	// absolute file name for color image
+	const Path relativeFileName = getRelativeImageFileName(cameraIdx, localName, 0, true);
 	const Path viewsFolder = Scene::getSingleton().getViewsFolder();
 	const Path absoluteName = Path::appendChild(viewsFolder, relativeFileName);
 
 	// convert depth to gray values
-	const uint32 pixelCount = mViewResolution.getElementCount();
+	const uint32 pixelCount = mImageResolution.getElementCount();
 	const uint32 channelCount = 3;
 	uint8 *grayValues = new uint8[pixelCount * channelCount];
 
@@ -379,49 +362,25 @@ void SyntheticScene::saveColorImage(const vector<Real> &depthMap, const uint32 v
 
 	// save the gray values to file
 	File file(absoluteName, File::CREATE_WRITING, true);
-	ImageManager::getSingleton().savePNG(file, grayValues, channelCount, mViewResolution);
+	ImageManager::getSingleton().savePNG(file, grayValues, channelCount, mImageResolution);
 
 	delete [] grayValues;
 	grayValues = NULL;
 }
 
-void SyntheticScene::addToSamples(vector<vector<uint32>> &vertexNeighbors, vector<uint32> &indices, vector<uint32> &pixelToVertexIndices,
-	const Path &depthMapName, const vector<Vector3> &positionsWSMap, const uint32 validDepthCount, const uint32 viewIdx)
+void SyntheticScene::createMeshFromDepthMap(vector<vector<uint32>> &vertexNeighbors, vector<uint32> &indices, vector<uint32> &pixelToVertexIndices,
+	const Path &depthMapName, const vector<Vector3> &positionsWSMap, const uint32 validDepthCount, const uint32 cameraIdx)
 {
-	// reserve memory for the new samples
-	const uint32 oldSampleCount = mSamples->getCount();
-	const uint32 newSampleCount = validDepthCount + oldSampleCount;
-	mSamples->reserve(newSampleCount);
-
 	// camera data
-	const View &view = *mViews[viewIdx];
-	const PinholeCamera &camera = view.getCamera();
+	const PinholeCamera &camera = mCameras.getCamera(cameraIdx);
 
 	// load depth map & triangulate it
-	const Path colorImageName = getRelativeImageFileName(viewIdx, FileNaming::IMAGE_TAG_COLOR_S0, 0, true);
+	const Path colorImageName = getRelativeImageFileName(cameraIdx, FileNaming::IMAGE_TAG_COLOR_S0, 0, true);
 	const ColorImage *colorImage = ColorImage::request(colorImageName.getString(), colorImageName);
+	const DepthImage *depthMap = DepthImage::request(depthMapName.getString(), depthMapName);
 
-	DepthImage *depthMap = DepthImage::request(depthMapName.getString(), depthMapName);
-
-	FlexibleMesh *viewMesh = depthMap->triangulate(pixelToVertexIndices, vertexNeighbors, indices, camera, colorImage);
-	mViewMeshes.push_back(viewMesh);
-
-	// add view mesh / triangulated depth map to all other samples
-	//const uint32 pixelCount = mViewResolution.getElementCount();
-	const Vector3 *colors = viewMesh->getColors();
-	const Vector3 *normals = viewMesh->getNormals();
-	const Vector3 *positions = viewMesh->getPositions();
-	const Real *scales = viewMesh->getScales();
-	const Real confidence = 1.0f; // todo: how to get reasonable confidence values?
-	const uint32 vertexCount = viewMesh->getVertexCount();
-
-	for (uint32 vertexIdx = 0, nextSampleIdx = oldSampleCount; vertexIdx < vertexCount; ++vertexIdx, ++nextSampleIdx)
-	{
-		mSamples->addSample();
-		mSamples->setSample(nextSampleIdx,
-			colors[vertexIdx], normals[vertexIdx], positions[vertexIdx], 
-			confidence, scales[vertexIdx], &viewIdx);
-	}
+	FlexibleMesh *mesh = depthMap->triangulate(pixelToVertexIndices, vertexNeighbors, indices, camera, colorImage);
+	mViewMeshes.push_back(mesh);
 }
 
 SyntheticScene::~SyntheticScene()

@@ -368,11 +368,11 @@ void Mesh::loadVertices(PlyFile &file, const VerticesDescription &verticesFormat
 		Vector2 *uvCoords = NULL; //mUVCoords + vertexIdx;
 		Real *confidence = NULL; //mConfidences + vertexIdx;
 		Real *scale = getScales() + vertexIdx;
-		uint32 *viewIDs = NULL; // mViewIDs + viewsPerSample * vertexIdx;
+		uint32 *parentIDs = NULL; // parentIDs + parentsPerSample * vertexIdx;
 
 		color->set(0.5f, 0.5f, 0.5f);
 		for (uint32 propertyIdx = 0; propertyIdx < propertyCount; ++propertyIdx)
-			file.readVertexProperty(color, normal, position, uvCoords, confidence, scale, viewIDs,
+			file.readVertexProperty(color, normal, position, uvCoords, confidence, scale, parentIDs,
 				syntax[propertyIdx], (VerticesDescription::SEMANTICS) semantics[propertyIdx]);
 	}
 }

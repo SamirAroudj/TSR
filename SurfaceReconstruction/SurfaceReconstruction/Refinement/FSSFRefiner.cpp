@@ -19,11 +19,11 @@
 #include "SurfaceReconstruction/Refinement/FSSFParameters.h"
 #include "SurfaceReconstruction/Refinement/FSSFRefiner.h"
 #include "SurfaceReconstruction/Refinement/MeshDijkstra.h"
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 #include "SurfaceReconstruction/Scene/Tree/LeavesIterator.h"
 #include "SurfaceReconstruction/Scene/Tree/Tree.h"
 #include "SurfaceReconstruction/Scene/Tree/TriangleNodesChecker.h"
-#include "SurfaceReconstruction/Scene/View/View.h"
 #include "SurfaceReconstruction/SurfaceExtraction/Occupancy.h"
 
 using namespace CollisionDetection;
@@ -68,7 +68,7 @@ FSSFRefiner::FSSFRefiner() :
 	//mLocalEdgeWeights = new vector<Real>[maxNumThreads];
 
 	// for median surfel confidence searches within projected sample areas
-	const size_t patternSize = mParams.mRaysPerViewSamplePair.getElementCount();
+	const size_t patternSize = mParams.mRaysPerLinkedPair.getElementCount();
 	mLocalConfidences = new vector<Real>[maxNumThreads];
 
 	for (uint32 threadIdx = 0; threadIdx < maxNumThreads; ++threadIdx)
@@ -152,7 +152,7 @@ void FSSFRefiner::kernelInterpolation()
 	cout << "Summing of weighted quantities via surface kernels." << endl;
 	const Scene &scene = Scene::getSingleton();
 	const Samples &samples = scene.getSamples();
-	const uint32 pairCount = samples.getMaxViewConeCount();
+	const uint32 pairCount = samples.getMaxParentLinkCount();
 	
 	// ray trace scene from sensors to samples in batches
 	for (uint32 startPairIdx = 0; startPairIdx < pairCount; startPairIdx += EMBREE_PAIR_BATCH_SIZE)
@@ -161,8 +161,8 @@ void FSSFRefiner::kernelInterpolation()
 		uint32 batchSize = EMBREE_PAIR_BATCH_SIZE;
 		if (batchSize + startPairIdx > pairCount)
 			batchSize = pairCount - startPairIdx;
-		mRayTracer.findIntersectionsForViewSamplePairs(false, startPairIdx, startPairIdx + batchSize,
-			EMBREE_RAY_BATCH_SIZE, mParams.mRaysPerViewSamplePair, mParams.mOrientSamplingPatternLikeView);
+		mRayTracer.findIntersectionsForCamSamplePairs(false, startPairIdx, startPairIdx + batchSize,
+			EMBREE_RAY_BATCH_SIZE, mParams.mRaysPerLinkedPair, mParams.mOrientSamplingPattern);
 
 		// process ray tracing results
 		cout << "Processing projected samples." << endl;
@@ -174,7 +174,7 @@ void FSSFRefiner::kernelInterpolation()
 			const uint32 sampleIdx = samples.getSampleIdx(globalPairIdx);
 			ProjectedSample projectedSample;
 			
-			// get matching confidence for linked view sample pair and current surface estimate
+			// get matching confidence for linked pair and current surface estimate
 			getProjectedSample(projectedSample, localPairIdx, sampleIdx);
 			if (Triangle::INVALID_IDX == projectedSample.mSurfel.mTriangleIdx || projectedSample.mConfidence <= EPSILON)
 				continue;
@@ -194,7 +194,7 @@ void FSSFRefiner::getProjectedSample(ProjectedSample &projectedSample,
 {
 	// compute weighted mean matching confidence from all ray hits / sampled surfels within projeced sample area
 	const Samples &samples = Scene::getSingleton().getSamples();
-	const uint32 patternSize = mParams.mRaysPerViewSamplePair.getElementCount();
+	const uint32 patternSize = mParams.mRaysPerLinkedPair.getElementCount();
 	const uint32 startRayIdx = localPairIdx * patternSize;
 	vector<Real> &localConfidences = mLocalConfidences[omp_get_thread_num()];
 	uint32 localSamplingCoords[2];
@@ -202,12 +202,12 @@ void FSSFRefiner::getProjectedSample(ProjectedSample &projectedSample,
 
 	projectedSample.mSurfel.mTriangleIdx = Triangle::INVALID_IDX;
 	projectedSample.mConfidence = 0.0f;
-	for (localSamplingCoords[1] = 0; localSamplingCoords[1] < mParams.mRaysPerViewSamplePair[1]; ++localSamplingCoords[1])
+	for (localSamplingCoords[1] = 0; localSamplingCoords[1] < mParams.mRaysPerLinkedPair[1]; ++localSamplingCoords[1])
 	{
-		for (localSamplingCoords[0] = 0; localSamplingCoords[0] < mParams.mRaysPerViewSamplePair[0]; ++localSamplingCoords[0], ++localRayIdx)
+		for (localSamplingCoords[0] = 0; localSamplingCoords[0] < mParams.mRaysPerLinkedPair[0]; ++localSamplingCoords[0], ++localRayIdx)
 		{
 			const uint32 rayIdx = startRayIdx + localRayIdx;
-			const Vector2 offset = RayTracer::getRelativeSamplingOffset(localSamplingCoords, mParams.mRaysPerViewSamplePair);
+			const Vector2 offset = RayTracer::getRelativeSamplingOffset(localSamplingCoords, mParams.mRaysPerLinkedPair);
 
 			// sample confidence & (ray hit, sample) mismatch confidence -> kernel weight factor
 			localConfidences[localRayIdx] = 0.0f;
@@ -1183,7 +1183,7 @@ void FSSFRefiner::findMergingEdges()
 			mEdgeMergeCandidates.push_back(edgeIdx);
 	}
 
-	Utilities::removeDuplicates(mEdgeMergeCandidates);
+	Array<uint32>::removeDuplicates(mEdgeMergeCandidates);
 }
 
 uint32 *FSSFRefiner::getEdgeMergeTriangleSearchSet(uint32 &triangleCount)
@@ -1211,7 +1211,7 @@ uint32 *FSSFRefiner::getEdgeMergeTriangleSearchSet(uint32 &triangleCount)
 	}
 		
 	mLeftEdgeMergeCandidates.clear();
-	Utilities::removeDuplicates(mLeftTriangleMergeCandidates);
+	Array<uint32>::removeDuplicates(mLeftTriangleMergeCandidates);
 	triangleCount = (uint32) mLeftTriangleMergeCandidates.size();
 	return mLeftTriangleMergeCandidates.data();
 }
@@ -1311,7 +1311,7 @@ void FSSFRefiner::findSubdivisionEdges()
 	mSubdivisionEdges.clear();
 	findSubdivisionEdgesViaNodes();
 	//findSubdivisionEdgesViaErrors();
-	removeDuplicates(mSubdivisionEdges);
+	Array<uint32>::removeDuplicates(mSubdivisionEdges);
 }
 
 void FSSFRefiner::findSubdivisionEdgesViaNodes()
@@ -1573,14 +1573,14 @@ void FSSFRefiner::onFilterData(
 {
 	MeshRefiner::onFilterData(vertexOffsets, vertexOffsetCount, edgeOffsets, edgeOffsetCount, triangleOffsets, triangleOffsetCount);
 	
-	FlexibleMesh::filterData<Vector3>(mBestPositions, vertexOffsets);
-	FlexibleMesh::filterData<Real>(mBestSurfaceErrors, vertexOffsets);
-	FlexibleMesh::filterData<Real>(mSurfaceErrors, vertexOffsets);
-	FlexibleMesh::filterData<uint8>(mVertexStates, vertexOffsets);
+	Array<Vector3>::compaction(mBestPositions, vertexOffsets);
+	Array<Real>::compaction(mBestSurfaceErrors, vertexOffsets);
+	Array<Real>::compaction(mSurfaceErrors, vertexOffsets);
+	Array<uint8>::compaction(mVertexStates, vertexOffsets);
 
-	//FlexibleMesh::filterData<Vector3>(mEdgeVectorField, edgeOffsets);
-	//FlexibleMesh::filterData<Real>(mEdgeScales, edgeOffsets);
-	//FlexibleMesh::filterData<Real>(mEdgeWeights, edgeOffsets);
+	//Array::compaction<Vector3>(mEdgeVectorField, edgeOffsets);
+	//Array::compaction<Real>(mEdgeScales, edgeOffsets);
+	//Array::compaction<Real>(mEdgeWeights, edgeOffsets);
 }
 
 void FSSFRefiner::onEdgeMerging(const uint32 targetVertex, const uint32 edgeVertex0, const uint32 edgeVertex1)
@@ -1721,7 +1721,7 @@ void FSSFRefiner::findInlierSamples(bool *inliers)
 	const Scene &scene = Scene::getSingleton();
 	const Samples &samples = scene.getSamples();
 	const uint32 sampleCount = samples.getCount();
-	const uint32 pairCount = samples.getMaxViewConeCount();
+	const uint32 pairCount = samples.getMaxParentLinkCount();
 
 	// create scene & set initial states
 	mRayTracer.createStaticScene(mMesh.getPositions(), mMesh.getVertexCount(), mMesh.getIndices(), mMesh.getIndexCount(), true);
@@ -1734,14 +1734,14 @@ void FSSFRefiner::findInlierSamples(bool *inliers)
 		uint32 batchSize = EMBREE_PAIR_BATCH_SIZE;
 		if (batchSize + startPairIdx > pairCount)
 			batchSize = pairCount - startPairIdx;
-		mRayTracer.findIntersectionsForViewSamplePairs(true, startPairIdx, startPairIdx + batchSize, 
-			EMBREE_RAY_BATCH_SIZE, mParams.mRaysPerViewSamplePair, mParams.mOrientSamplingPatternLikeView);
+		mRayTracer.findIntersectionsForCamSamplePairs(true, startPairIdx, startPairIdx + batchSize, 
+			EMBREE_RAY_BATCH_SIZE, mParams.mRaysPerLinkedPair, mParams.mOrientSamplingPattern);
 	
 		// process intersections
 		#pragma omp parallel for schedule(dynamic, OMP_PAIR_BATCH_SIZE)
 		for (int64 i = 0; i < batchSize; ++i)
 		{
-			// get view sample pair data
+			// get linked pair data
 			const uint32 localPairIdx = (uint32) i;
 			const uint32 globalPairIdx = startPairIdx + localPairIdx;
 			const uint32 sampleIdx = samples.getSampleIdx(globalPairIdx);

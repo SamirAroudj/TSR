@@ -48,17 +48,6 @@ namespace SurfaceReconstruction
 		static void findBorderRing(std::vector<uint32> &remainingEdges, std::vector<uint32> &borderEdges);
 		static void findBorderRings(std::vector<std::vector<uint32>> &holeBorderEdges, const uint32 *vertexOffsets = NULL);
 
-		template <class T>
-		static void filterData(std::vector<T> &buffer, const uint32 *offsets);
-
-		template <class T>
-		static void filterData(T *targetbuffer, const T *sourceBuffer,
-			const uint32 *offsets, const uint32 sourceCount);
-
-		template <class T>
-		static void filterData(T *targetbuffer, const T *sourceBuffer,
-			const uint32 *offsets, const uint32 sourceCount, const uint32 elementsPerBlock);
-
 		static void filterTriangles(uint32 *targetIndices, const uint32 *sourceIndices, const uint32 *triangleOffsets, const uint32 sourceIndexCount, const uint32 *vertexOffsets);		
 
 		static void findVertexNeighbors(std::vector<uint32> *vertexNeighbors, const uint32 *indices, const uint32 indexCount);
@@ -338,55 +327,6 @@ namespace SurfaceReconstruction
 	inline void FlexibleMesh::computeNormalsWeightedByArea()
 	{
 		Mesh::computeNormalsWeightedByArea(getNormals(), getPositions(), getVertexCount(), getIndices(), getIndexCount());
-	}
-
-	template <class T>
-	void FlexibleMesh::filterData(std::vector<T> &buffer, const uint32 *offsets)
-	{
-		const uint32 oldCount = (uint32) buffer.size();
-		const uint32 newCount = oldCount - offsets[oldCount];
-		
-		std::vector<T> newBuffer(newCount);
-		FlexibleMesh::filterData<T>(newBuffer.data(), buffer.data(), offsets, oldCount);
-		buffer.swap(newBuffer);
-	}
-
-	template <class T>
-	void FlexibleMesh::filterData(T *targetBuffer, const T *sourceBuffer, const uint32 *offsets, const uint32 sourceCount)
-	{	
-		#pragma omp parallel for
-		for (int64 i = 0; i < sourceCount; ++i)
-		{
-			// discard this one?
-			const uint32 oldIdx = (uint32) i;
-			if (offsets[oldIdx] != offsets[oldIdx + 1])
-				continue;
-
-			// keep & copy it
-			const uint32 newIdx = oldIdx - offsets[oldIdx];
-			targetBuffer[newIdx] = sourceBuffer[oldIdx];
-		}
-	}
-
-	template <class T>
-	void FlexibleMesh::filterData(T *targetBuffer, const T *sourceBuffer, const uint32 *offsets, const uint32 sourceCount, const uint32 elementsPerBlock)
-	{	
-		#pragma omp parallel for
-		for (int64 i = 0; i < sourceCount; ++i)
-		{
-			// discard this one?
-			const uint32 oldIdx = (uint32) i;
-			if (offsets[oldIdx] != offsets[oldIdx + 1])
-				continue;
-
-			// copy  data for a complete memory block of elementsPerBlock elements
-			const uint32 newIdx = oldIdx - offsets[oldIdx];
-			const T *const sourceStart = sourceBuffer + oldIdx * elementsPerBlock;
-			T *const targetStart = targetBuffer + newIdx * elementsPerBlock;
-
-			for (uint32 relativeIdx = 0; relativeIdx < elementsPerBlock; ++relativeIdx)
-				targetStart[relativeIdx] = sourceStart[relativeIdx];
-		}
 	}
 
 	inline Math::Vector3 &FlexibleMesh::getColor(const uint32 vertexIdx)
