@@ -65,7 +65,7 @@ Path Scene::getRelativeImageFileName(const uint32 &viewID, const string &tag, co
 Path Scene::getRelativeViewFolder(const uint32 &viewID)
 {
 	string temp(FileNaming::BEGINNING_VIEW_FOLDER);
-	temp += viewID;
+	temp += Converter::from<uint32>(viewID, 4);
 	temp += FileNaming::ENDING_VIEW_FOLDER;
 	return Path(temp);
 }
