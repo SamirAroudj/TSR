@@ -596,47 +596,27 @@ void Samples::reserve(const size_t sampleCount)
 
 void Samples::swap(const uint32 i, const uint32 j)
 {
+	// same sample?
 	if (i == j)
 		return;
 
-	// swap all which belongs to the two normals
-	Vector3 temp3;
-	Real temp;
+	// swap everything belonging to the two samples i and j
 
 	// swap color, normal, position & scale
-	temp3 = mColors[i];
-	mColors[i] = mColors[j];
-	mColors[j] = temp3;
-
-	temp3		= mNormals[i];
-	mNormals[i]	= mNormals[j];
-	mNormals[j]	= temp3;
-
-	temp3			= mPositions[i];
-	mPositions[i]	= mPositions[j];
-	mPositions[j]	= temp3;
-
-	temp = mConfidences[i];
-	mConfidences[i] = mConfidences[j];
-	mConfidences[j] = temp;
-
-	temp		= mScales[i];
-	mScales[i]	= mScales[j];
-	mScales[j]	= temp;
+	Utilities::swap(mColors[i], mColors[j]);
+	Utilities::swap(mNormals[i], mNormals[j]);
+	Utilities::swap(mPositions[i], mPositions[j]);
+	Utilities::swap(mConfidences[i], mConfidences[j]);
+	Utilities::swap(mScales[i], mScales[j]);
 
 	// update camera indices
 	const uint32 offsetI = i * mMaxCamsPerSample;
 	const uint32 offsetJ = j * mMaxCamsPerSample;
 
-	for (uint32 cameraIdx = 0; cameraIdx < mMaxCamsPerSample; ++cameraIdx)
-	{
-		const uint32 cameraI = offsetI + cameraIdx;
-		const uint32 cameraJ = offsetJ + cameraIdx;
-
-		const uint32 temp = mParentCameras[cameraI];
-		mParentCameras[cameraI] = mParentCameras[cameraJ];
-		mParentCameras[cameraJ] = temp;
-	}
+	uint32 *cameraI = mParentCameras.data() + (i * mMaxCamsPerSample);
+	uint32 *cameraJ = mParentCameras.data() + (j * mMaxCamsPerSample);
+	for (uint32 cameraIdx = 0; cameraIdx < mMaxCamsPerSample; ++cameraIdx, ++cameraI, ++cameraJ)
+			Utilities::swap(*cameraI, *cameraJ);
 }
 
 Vector3 Samples::toSampleSpace(const Vector3 &pWS, const uint32 sampleIdx) const

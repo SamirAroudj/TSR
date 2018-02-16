@@ -1694,7 +1694,7 @@ void FlexibleMesh::findBorderRing(vector<uint32> &remainingEdges, vector<uint32>
 void FlexibleMesh::extendBorderRing(uint32 &size, vector<uint32> &edgeSet,
 	const uint32 edge[2], const uint32 v0Idx, const uint32 v1Idx)
 {
-	// swap edges & extend border ring
+	// exchange edges & extend border ring
 
 	// preserve the edge at ring end memory location
 	const uint32 ringEnd0 = size;
