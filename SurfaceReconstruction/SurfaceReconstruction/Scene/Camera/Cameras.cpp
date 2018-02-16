@@ -131,7 +131,7 @@ void Cameras::loadFromFile(const Path &fileName)
 		// read each camera's data from file
 		const uint32 eleSize = sizeof(CameraData);
 		const uint64 byteCount = eleSize * cameraCount;
-		CameraData *rawCams = new CameraData[cameraCount];
+		rawCams = new CameraData[cameraCount];
 		file.read(rawCams, byteCount, eleSize, cameraCount);
 	}
 	
