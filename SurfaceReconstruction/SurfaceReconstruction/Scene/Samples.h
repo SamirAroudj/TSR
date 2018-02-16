@@ -49,6 +49,9 @@ namespace SurfaceReconstruction
 
 		/** Checks whether sample properties look valid. */
 		void check() const;
+		
+		/** Removes all samples. */
+		void clear();
 
 		/** Removes samples according to entered offsets. 
 		@param sampleOffsets todo*/
@@ -210,9 +213,6 @@ namespace SurfaceReconstruction
 
 		/** todo */
 		uint32 addSample();
-
-		/** Releases resources. */
-		void clear();
 		
 		/** todo */
 		void computeAABB();

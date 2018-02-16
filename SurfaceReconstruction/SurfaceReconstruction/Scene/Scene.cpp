@@ -27,6 +27,7 @@
 #include "SurfaceReconstruction/SurfaceExtraction/Occupancy.h"
 
 using namespace FailureHandling;
+using namespace Graphics;
 using namespace Math;
 using namespace std;
 using namespace Storage;
@@ -100,7 +101,6 @@ Scene::Scene(const vector<IReconstructorObserver *> &observers) :
 	#ifdef PCS_REFINEMENT
 		mPCSRefiner(NULL),
 	#endif // PCS_REFINEMENT
-	mSamples(NULL),
 	mTree(NULL),
 	mRefinerObservers(observers),
 	mFolder(""),
@@ -134,20 +134,13 @@ bool Scene::reconstruct()
 {
 	// nothing to reconstruct without cameras or samples
 	const uint32 cameraCount = mCameras.getCount();
-	if (0 == cameraCount)
-	{
-		cout << "Stopping early. No registered views available for reconstruction ." << endl;
-		return false;
-	}
-	if (!mSamples)
-	{
-		cout << "Stopping early. No samples available for reconstruction ." << endl;
-		return false;
-	}
-
-	// view and sample count
-	const uint32 sampleCount = mSamples->getCount();
+	const uint32 sampleCount = mSamples.getCount();
 	cout << "Starting reconstruction with " << cameraCount << " views and " << sampleCount << " samples.\n";
+	if (0 == cameraCount || 0 == sampleCount)
+	{
+		cout << "Stopping early. Necessary input data for surface reconstruction is missing." << endl;
+		return false;
+	}
 
 	// create results folder
 	if (!Directory::createDirectory(getResultsFolder()))
@@ -167,7 +160,7 @@ bool Scene::reconstruct()
 		cout << "Stopping early. No surface samples available for reconstruction ." << endl;
 		return false;
 	}
-	if (0 == mSamples->getValidParentLinkCount())
+	if (0 == mSamples.getValidParentLinkCount())
 	{
 		cout << "Stopping early. No valid links between surface samples and views available for reconstruction." << endl;
 		return false;
@@ -175,7 +168,7 @@ bool Scene::reconstruct()
 
 	// save unfiltered / initial non-zero confidence surface samples
 	if (!mOccupancy && !mTree)
-		mSamples->saveToFile(beginning, true, true);
+		mSamples.saveToFile(beginning, true, true);
 		
 	if (!mTree)
 	{
@@ -184,7 +177,7 @@ bool Scene::reconstruct()
 		mTree->getNodes().checkSamplesOrder(mTree->getRootScope());
 
 		// save tree & samples
-		mSamples->saveToFile(Path::extendLeafName(beginning, FileNaming::REORDERED_SAMPLES), true, true);
+		mSamples.saveToFile(Path::extendLeafName(beginning, FileNaming::REORDERED_SAMPLES), true, true);
 		mTree->saveToFiles(Path::extendLeafName(beginning, FileNaming::ENDING_OCTREE));
 	}
 
@@ -292,7 +285,7 @@ bool Scene::onNewReconstruction(FlexibleMesh *mesh,
 void Scene::eraseSamples(const bool *inliers, const bool saveResults)
 {
 	// sampleOffsets & outliers vector
-	const uint32 oldSampleCount = mSamples->getCount();
+	const uint32 oldSampleCount = mSamples.getCount();
 	vector<uint32> sampleOffsets(oldSampleCount + 1);
 	vector<uint32> outliers;
 	outliers.reserve(oldSampleCount / 3);
@@ -314,7 +307,7 @@ void Scene::eraseSamples(const bool *inliers, const bool saveResults)
 	
 	mOccupancy->eraseSamples(outliers.data(), (uint32) outliers.size());
 	mTree->eraseSamples(sampleOffsets.data());
-	mSamples->compact(sampleOffsets.data());
+	mSamples.compact(sampleOffsets.data());
 
 	// save data?
 	if (!saveResults)
@@ -323,7 +316,7 @@ void Scene::eraseSamples(const bool *inliers, const bool saveResults)
 	cout << "Saving data." << endl;
 	const Path beginning = getFileBeginning();
 
-	mSamples->saveToFile(Path::extendLeafName(beginning, FileNaming::FILTERED_SAMPLES), true, true);
+	mSamples.saveToFile(Path::extendLeafName(beginning, FileNaming::FILTERED_SAMPLES), true, true);
 	mTree->saveToFiles(Path::extendLeafName(beginning, FileNaming::ENDING_OCTREE));
 	mOccupancy->saveToFile(Path::extendLeafName(beginning, FileNaming::ENDING_OCCUPANCY));
 }
@@ -377,7 +370,7 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 	{
 		mTree = new Tree(Path::extendLeafName(beginning, FileNaming::ENDING_OCTREE));
 	}
-	catch(Exception &exception)
+	catch (Exception &exception)
 	{
 		cout << exception;
 		cout << "There is no saved scene tree which could be loaded." << endl;
@@ -387,7 +380,15 @@ void Scene::loadFromFile(const Path &rootFolder, const Path &FSSFReconstruction)
 	string ending(mTree ? FileNaming::REORDERED_SAMPLES : "");
 	ending += FileNaming::ENDING_SAMPLES;
 	const Path samplesPath = Path::extendLeafName(beginning, ending);
-	mSamples = new Samples(samplesPath);
+	try
+	{
+		mSamples.loadFromFile(samplesPath);;
+	}
+	catch (Exception &exception)
+	{
+		cout << exception;
+		cout << "There are no surface samples which could be loaded." << endl;
+	}
 
 	// try to load the free space
 	if (mTree)
@@ -494,6 +495,47 @@ void Scene::createFSSFRefiner()
 	mFSSFRefiner->registerObserver(this);
 }
 
+
+void Scene::loadViewMeshes(const vector<uint32> &imageScales)
+{
+	// load the corresponding images for all views at all scales
+	const uint32 scaleCount = (uint32) imageScales.size();
+	const uint32 cameraCount = mCameras.getCount();
+	vector<vector<uint32>> vertexNeighbors;
+	vector<uint32> indices;
+	vector<uint32> pixelToVertexIndices;
+
+	for (uint32 cameraIdx = 0; cameraIdx < cameraCount; ++cameraIdx)
+	{
+		// get camera data
+		const PinholeCamera &camera = mCameras.getCamera(cameraIdx);
+		const uint32 viewID = mCameras.getViewID(cameraIdx);
+
+		for (uint32 scaleIdx = 0; scaleIdx < scaleCount; ++scaleIdx)
+		{
+			const uint32 &scale = imageScales[scaleIdx];
+
+			// load corresponding images
+			const char *colorImageTag = (0 == scale ? FileNaming::IMAGE_TAG_COLOR_S0 : FileNaming::IMAGE_TAG_COLOR);
+			const ColorImage *colorImage = getColorImage(viewID, colorImageTag, scale);
+			if (!colorImage)
+				continue;
+
+			const DepthImage *depthImage = getDepthImage(viewID, FileNaming::IMAGE_TAG_DEPTH, scale);
+			if (!depthImage)
+				continue;
+			//depthImage->erode(5);
+
+			//const ViewsImage *viewsImage = ???;
+			//if (!viewsImage)
+			//	continue;
+
+			FlexibleMesh *mesh = depthImage->triangulate(pixelToVertexIndices, vertexNeighbors, indices, camera, colorImage);
+			mViewMeshes.push_back(mesh);
+		}
+	}
+}
+
 bool Scene::getParameters(const Path &fileName)
 {
 	const string missingParameter = "Missing parameter in scene description file: ";
@@ -568,11 +610,9 @@ void Scene::clear()
 	delete mFSSFRefiner;
 	delete mOccupancy;
 	delete mTree;
-	delete mSamples;
 	
 	mFSSFRefiner = NULL;
 	mOccupancy = NULL;
-	mSamples = NULL;
 	mTree = NULL;
 
 	// free view meshes
@@ -581,6 +621,12 @@ void Scene::clear()
 		delete mViewMeshes[meshIdx];
 	mViewMeshes.clear();
 	mViewMeshes.shrink_to_fit();
+
+	// release samples & cameras
+	mSamples.clear();
+	mSamples.shrinkToFit();
+	mCameras.clear();
+	mCameras.shrinkToFit();
 
 	// free volatile resources
 	// free cached images

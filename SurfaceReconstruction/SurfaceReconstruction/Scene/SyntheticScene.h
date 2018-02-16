@@ -40,11 +40,8 @@ namespace SurfaceReconstruction
 		
 		void createAndSaveSamples();
 		void createSyntheticCamera();
+		void createSyntheticImages();
 		
-		void createMeshFromDepthMap(std::vector<std::vector<uint32>> &vertexNeighbors, std::vector<uint32> &indices, std::vector<uint32> &pixelToVertexIndices,
-			const Storage::Path &depthMapName, const std::vector<Math::Vector3> &positionsWSMap,
-			const uint32 validDepthCount, const uint32 viewIdx);
-
 		/** todo */
 		bool fill(std::vector<Real> &depthMap, std::vector<Math::Vector3> &positionsMap, RayTracer &rayTracer, uint32 &validDepthCount,
 			const Graphics::PinholeCamera &camera);
@@ -73,7 +70,6 @@ namespace SurfaceReconstruction
 		Real mMinFocalLength;
 
 		// loaded view creation parameters
-
 		Real mMinSampleViewAngle;			/// Defines the minimum angle between sample tangent and view vector that is required for Sample object creation.
 		Real mMinSampleDistance;			/// Defines the mininum distance between a surface and a camera that is required for Sample creation (per sample).
 		uint32 mMaxCameraCount;				/// Defines how many projectice capture devices are created for sample point generation at maximum.

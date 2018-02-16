@@ -39,8 +39,6 @@ namespace SurfaceReconstruction
 
 		void loadCameras();
 
-		void loadImages(const std::vector<uint32> &imagesScales);
-
 		/** todo */
 		void loadMetaData(std::vector<Storage::Path> &plyCloudFileNames, std::vector<uint32> &imageScales,
 			const Storage::Path &fileName);

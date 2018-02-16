@@ -15,6 +15,7 @@
 #include "Platform/Utilities/Size2.h"
 #include "SurfaceReconstruction/Scene/Camera/Cameras.h"
 #include "SurfaceReconstruction/Scene/IReconstructorObserver.h"
+#include "SurfaceReconstruction/Scene/Samples.h"
 
 namespace SurfaceReconstruction
 {
@@ -23,7 +24,6 @@ namespace SurfaceReconstruction
 	class Mesh;
 	class Occupancy;
 	class PCSRefiner;
-	class Samples;
 	class StaticMesh;
 	class Tree;
 
@@ -144,6 +144,8 @@ namespace SurfaceReconstruction
 		/** todo */
 		void loadFromFile(const Storage::Path &rootFolder, const Storage::Path &FSSFReconstruction);
 
+		void loadViewMeshes(const std::vector<uint32> &imagesScales);
+
 		/** todo */
 		void setRootFolder(const Storage::Path &rootFolder);
 
@@ -168,6 +170,7 @@ namespace SurfaceReconstruction
 
 	protected:
 		Cameras mCameras;											/// Contains all the camera data for all registered views. They represent projective captures measuring surfaces and creating samples.
+		Samples mSamples;											/// Represents all scene samples.
 		std::vector<IReconstructorObserver *> mRefinerObservers;	/// get updates from mesh refiners
 		std::vector<FlexibleMesh *> mViewMeshes;					/// Triangulated depth maps - one mesh per registered view.
 		std::vector<uint32> mViewToCameraIndices;					/// Links from views to camera indices. Views (a view's images) might not be registered which is why there might be no camera.
@@ -183,7 +186,6 @@ namespace SurfaceReconstruction
 		FSSFRefiner *mFSSFRefiner;			/// Does variational surface mesh refinement starting with an initial mesh to get a reconstruction which "fits to" input images (high photo consistency score).
 		Occupancy *mOccupancy;				/// Represents how empty and full the space is.
 		PCSRefiner *mPCSRefiner;			/// Refines a coarse extracted crust to fit to the scene input samples.
-		Samples *mSamples;					/// Represents all scene samples.
 		Tree *mTree;						/// This tree partitions this scene spatially and defines sampling positions for the implicit function used for reconstruction.
 		
 		uint32 mMinIsleSize;				/// Triangle isles (isolated, connected sets of triangles) smaller than this are removed.
@@ -238,12 +240,12 @@ namespace SurfaceReconstruction
 
 	inline Samples &Scene::getSamples()
 	{
-		return *mSamples;
+		return mSamples;
 	}
 
 	inline const Samples &Scene::getSamples() const
 	{
-		return *mSamples;
+		return mSamples;
 	}
 
 	inline const Tree *Scene::getTree()

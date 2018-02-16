@@ -48,8 +48,6 @@ SyntheticScene::SyntheticScene(const Path &fileName, const std::vector<IReconstr
 	if (!getParameters(fileName))
 		return;
 
-	const uint32 camerasPerSample = 1;
-	mSamples = new Samples(camerasPerSample);
 	mGroundTruth = new StaticMesh(mGroundTruthName);
 
 	// results folder to store the synthetic views and depth maps
@@ -154,24 +152,32 @@ bool SyntheticScene::getParameters(const Path &fileName)
 }
 
 void SyntheticScene::createAndSaveSamples()
-{
-	// ray tracing preparation
-	const uint32 pixelCount = mImageResolution.getElementCount();
-
-	// create the scene and target depth map for the ray tracer
-	RayTracer rayTracer;
-	vector<Vector3> positionsWSMap(pixelCount);
-	vector<Real> depthMap(pixelCount);
-	vector<vector<uint32>> vertexNeighbors;
-	vector<uint32> pixelToVertexIndices;
-	vector<uint32> indices;
-	uint32 validDepthCount;
-
-	rayTracer.createStaticScene(*mGroundTruth, true);
-
+{	
 	// create folder for images if necessary
 	if (!Directory::createDirectory(Scene::getSingleton().getViewsFolder()))
 		return;
+
+	// create syntehtic cameras & images
+	createSyntheticImages();
+	
+	// view meshes from synthetic images
+	vector<uint32> scales;
+	scales.push_back(0); // load s0 images & depth maps
+	loadViewMeshes(scales);
+	mSamples.addSamplesFromMeshes(mViewMeshes);
+}
+
+void SyntheticScene::createSyntheticImages()
+{
+	// ray tracing preparation
+	RayTracer rayTracer;
+	rayTracer.createStaticScene(*mGroundTruth, true);
+
+	// create the scene and target depth map for the ray tracer
+	const uint32 pixelCount = mImageResolution.getElementCount();
+	vector<Vector3> positionsWSMap(pixelCount);
+	vector<Real> depthMap(pixelCount);
+	uint32 validDepthCount;
 
 	// create a camera & depth map until there are mMaxCameraCount cams
 	for (uint32 cameraIdx = 0; cameraIdx < mMaxCameraCount; )
@@ -200,15 +206,8 @@ void SyntheticScene::createAndSaveSamples()
 		const Path depthMapName = getRelativeImageFileName(viewID, FileNaming::IMAGE_TAG_DEPTH, 0, false);
 		Image::saveAsMVEFloatImage(depthMapName, true, mImageResolution, depthMap.data(), false, false);
 		saveColorImage(depthMap, viewID, false);
-
-		// triangulate surface samples & create proper input samples
-		createMeshFromDepthMap(vertexNeighbors, indices, pixelToVertexIndices,
-			depthMapName, positionsWSMap, validDepthCount, cameraIdx);
-
 		++cameraIdx;
 	}
-
-	mSamples->addSamplesFromMeshes(mViewMeshes);
 }
 
 void SyntheticScene::createSyntheticCamera()
@@ -366,24 +365,6 @@ void SyntheticScene::saveColorImage(const vector<Real> &depthMap, const uint32 c
 
 	delete [] grayValues;
 	grayValues = NULL;
-}
-
-void SyntheticScene::createMeshFromDepthMap(vector<vector<uint32>> &vertexNeighbors, vector<uint32> &indices, vector<uint32> &pixelToVertexIndices,
-	const Path &depthMapName, const vector<Vector3> &positionsWSMap, const uint32 validDepthCount, const uint32 cameraIdx)
-{
-	// camera data
-	const PinholeCamera &camera = mCameras.getCamera(cameraIdx);
-	const uint32 &viewID = mCameras.getViewID(cameraIdx);
-
-	// load images for depth map triangulation
-	const ColorImage *colorImage = getColorImage(viewID, FileNaming::IMAGE_TAG_COLOR, 0);
-	const DepthImage *depthMap = DepthImage::request(depthMapName.getString(), depthMapName);
-	if (!depthMap)
-		throw FileException("Could not load depth map for synthetic depth map triangulation!", depthMapName);
-
-	// create view mesh
-	FlexibleMesh *mesh = depthMap->triangulate(pixelToVertexIndices, vertexNeighbors, indices, camera, colorImage);
-	mViewMeshes.push_back(mesh);
 }
 
 SyntheticScene::~SyntheticScene()

@@ -120,6 +120,11 @@ void Samples::addToAABB(Vector3 AABB[2], const uint32 sampleIdx) const
 
 void Samples::addSamplesFromMeshes(const vector<FlexibleMesh *> &meshes)
 {
+	assert(mMaxCamsPerSample <= 1);
+	if (mMaxCamsPerSample > 1)
+		throw Exception("Not implemented."); // todo
+	mMaxCamsPerSample = 1; // todo
+
 	// compute number of new samples
 	uint32 additionalSampleCount = 0;
 	const uint32 meshCount = (uint32) meshes.size();

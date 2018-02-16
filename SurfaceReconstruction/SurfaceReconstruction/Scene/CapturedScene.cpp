@@ -23,7 +23,6 @@
 
 using namespace Math;
 using namespace FailureHandling;
-using namespace Graphics;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;
@@ -44,11 +43,11 @@ CapturedScene::CapturedScene(const Path &metaFileName, const vector<IReconstruct
 
 	// load data
 	loadCameras();
-	loadImages(imageScales);
+	loadViewMeshes(imageScales);
 	if (mViewMeshes.empty())
-		mSamples->loadClouds(plyCloudFileNames, mViewToCameraIndices, mInputOrientation, mInputOrigin);
+		mSamples.loadClouds(plyCloudFileNames, mViewToCameraIndices, mInputOrientation, mInputOrigin);
 	else
-		mSamples->addSamplesFromMeshes(mViewMeshes);
+		mSamples.addSamplesFromMeshes(mViewMeshes);
 }
 
 void CapturedScene::loadMetaData(vector<Path> &plyCloudFileNames, vector<uint32> &imageScales,
@@ -141,47 +140,6 @@ void CapturedScene::loadCameras()
 	// load views from folders within MVE views folder?
 	MVECameraIO loader(getViewsFolder());
 	loader.loadFromMetaIniFiles(mCameras, mViewToCameraIndices, inverseRotation, translation);
-}
-
-void CapturedScene::loadImages(const vector<uint32> &imageScales)
-{
-	// load the corresponding images for all views at all scales
-	const uint32 scaleCount = (uint32) imageScales.size();
-	const uint32 cameraCount = mCameras.getCount();
-	vector<vector<uint32>> vertexNeighbors;
-	vector<uint32> indices;
-	vector<uint32> pixelToVertexIndices;
-
-	for (uint32 cameraIdx = 0; cameraIdx < cameraCount; ++cameraIdx)
-	{
-		// get camera data
-		const PinholeCamera &camera = mCameras.getCamera(cameraIdx);
-		const uint32 viewID = mCameras.getViewID(cameraIdx);
-
-		for (uint32 scaleIdx = 0; scaleIdx < scaleCount; ++scaleIdx)
-		{
-			const uint32 &scale = imageScales[scaleIdx];
-
-			// load corresponding images
-			const char *colorImageTag = (0 == scale ? FileNaming::IMAGE_TAG_COLOR_S0 : FileNaming::IMAGE_TAG_COLOR);
-			const ColorImage *colorImage = getColorImage(viewID, colorImageTag, scale);
-			if (!colorImage)
-				continue;
-
-			const DepthImage *depthImage = getDepthImage(viewID, FileNaming::IMAGE_TAG_DEPTH, scale);
-			if (!depthImage)
-				continue;
-			//depthImage->erode(5);
-
-			//const ViewsImage *viewsImage = ???;
-			//if (!viewsImage)
-			//	continue;
-
-
-			FlexibleMesh *mesh = depthImage->triangulate(pixelToVertexIndices, vertexNeighbors, indices, camera, colorImage);
-			mViewMeshes.push_back(mesh);
-		}
-	}
 }
 
 CapturedScene::~CapturedScene()
