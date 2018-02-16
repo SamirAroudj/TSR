@@ -28,8 +28,8 @@ namespace SurfaceReconstruction
 	public:
 		enum DepthConvention
 		{
-			DEPTH_CONVENTION_ALONG_RAY,
-			DEPTH_CONVENTION_ALONG_Z_AXIS,
+			DEPTH_ALONG_RAY,
+			DEPTH_ALONG_Z_AXIS,
 			CONVENTION_COUNT
 		};
 

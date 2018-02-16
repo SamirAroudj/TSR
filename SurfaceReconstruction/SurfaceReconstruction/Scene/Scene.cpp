@@ -516,9 +516,11 @@ void Scene::loadViewMeshes(const vector<uint32> &imageScales)
 			if (!colorImage)
 				continue;
 
-			const DepthImage *depthImage = getDepthImage(viewID, FileNaming::IMAGE_TAG_DEPTH, scale);
+			DepthImage *depthImage = getDepthImage(viewID, FileNaming::IMAGE_TAG_DEPTH, scale);
 			if (!depthImage)
 				continue;
+			
+			depthImage->setDepthConvention(mCameras.getCamera(cameraIdx), DepthImage::DEPTH_ALONG_RAY);
 			//depthImage->erode(5);
 
 			//const ViewsImage *viewsImage = ???;

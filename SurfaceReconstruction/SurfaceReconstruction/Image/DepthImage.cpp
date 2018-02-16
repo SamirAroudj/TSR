@@ -84,7 +84,7 @@ DepthImage *DepthImage::request(const string &resourceName, const Path &imageFil
 }
 
 DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
-	Image(ImgSize(0, 0), resourceName), mDepths(NULL), mDepthConvention(DEPTH_CONVENTION_ALONG_RAY)
+	Image(ImgSize(0, 0), resourceName), mDepths(NULL), mDepthConvention(DEPTH_ALONG_RAY)
 {
 	// get complete file name
 	const Path folder(VolatileResource<Image>::getPathToResources());
@@ -492,7 +492,7 @@ void DepthImage::setDepthConvention(const PinholeCamera &camera, const DepthConv
 			rayVS.normalize();
 
 			// convert from depth along view space z-axis to depth along view space ray
-			const Real conversionFactor = (DEPTH_CONVENTION_ALONG_Z_AXIS == targetConvention ? fabsr(rayVS.z) : 1.0f / rayVS.z);
+			const Real conversionFactor = fabsr((DEPTH_ALONG_Z_AXIS == targetConvention ? rayVS.z : 1.0f / rayVS.z));
 			depth = depth * conversionFactor;
 		}
 	}
@@ -501,7 +501,7 @@ void DepthImage::setDepthConvention(const PinholeCamera &camera, const DepthConv
 }
 
 DepthImage::DepthImage(Real *depths, const ImgSize &size, const string &resourceName) :
-	Image(size, resourceName), mDepths(NULL), mDepthConvention(DEPTH_CONVENTION_ALONG_RAY)
+	Image(size, resourceName), mDepths(NULL), mDepthConvention(DEPTH_ALONG_RAY)
 {
 	// copy depths
 	const uint32 elementCount = size.getElementCount();
