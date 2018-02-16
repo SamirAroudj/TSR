@@ -94,7 +94,7 @@ Scene::Scene(const Path &rootFolder, const Path &FSSFReconstruction,
 
 Scene::Scene(const vector<IReconstructorObserver *> &observers) : 
 	mGroundTruth(NULL),
-	mCameras(NULL),
+	mCameras(),
 	mFSSFRefiner(NULL),
 	mOccupancy(NULL),
 	#ifdef PCS_REFINEMENT
