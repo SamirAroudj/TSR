@@ -94,7 +94,7 @@ namespace SurfaceReconstruction
 		@param rootScope todo*/
 		void balance(const Scope &rootScope);
 
-		uint32 computeReorderedAddresses(std::vector<uint32> &newOrder,
+		uint32 computeTargetIndices(uint32 *targetIndices,
 			const uint32 nodeIdx, const uint32 nextFreeAddress) const;
 
 		/** todo */
@@ -119,7 +119,7 @@ namespace SurfaceReconstruction
 			Also Sets sample start and end indices (sample area in memory) for each node according to the NEW ORDER. */
 		void reorder();
 
-		void reorder(const std::vector<uint32> &newOrder);
+		void reorder(const uint32 *targetIndices);
 
 		/** todo *
 		@return Returns a copy of the scene samples, but reordered in memory according to tree structure. */

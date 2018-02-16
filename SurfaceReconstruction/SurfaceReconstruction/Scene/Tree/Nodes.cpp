@@ -10,6 +10,7 @@
 #include "CollisionDetection/CollisionDetection.h"
 #include "Platform/FailureHandling/Exception.h"
 #include "Platform/Storage/File.h"
+#include "Platform/Utilities/Array.h"
 #include "SurfaceReconstruction/Scene/Camera/Cameras.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
@@ -23,6 +24,7 @@ using namespace Math;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;
+using namespace Utilities;
 
 const uint32 Nodes::FILE_VERSION = 0;
 const uint32 Nodes::INVALID_INDEX = (uint32) -1;
@@ -518,15 +520,20 @@ void Nodes::reorder()
 {
 	assert((uint32) -1 > getCount());
 	const uint32 nodeCount = getCount();
-	vector<uint32> newOrder(nodeCount, INVALID_INDEX);
+	uint32 *targetIndices = new uint32[nodeCount];
+	memset(targetIndices, INVALID_INDEX, sizeof(uint32) * nodeCount);
 
 	// compute spatially coherent nodes ordering
-	newOrder[0] = 0;
-	computeReorderedAddresses(newOrder, 0, 1);
-	reorder(newOrder);
+	targetIndices[0] = 0;
+	computeTargetIndices(targetIndices, 0, 1);
+	reorder(targetIndices);
+
+	// free resources
+	delete [] targetIndices;
+	targetIndices = NULL;
 }
 
-uint32 Nodes::computeReorderedAddresses(vector<uint32> &newOrder, const uint32 nodeIdx, const uint32 nextFreeAddress) const
+uint32 Nodes::computeTargetIndices(uint32 *targetIndices, const uint32 nodeIdx, const uint32 nextFreeAddress) const
 {
 	// anchor: no children to be placed
 	if (isLeaf(nodeIdx))
@@ -539,50 +546,49 @@ uint32 Nodes::computeReorderedAddresses(vector<uint32> &newOrder, const uint32 n
 	for (uint32 relativeChildIdx = 0; relativeChildIdx < CHILD_COUNT; ++relativeChildIdx)
 	{	
 		const uint32 childIdx = childrenBlockIdx + relativeChildIdx;
-		newOrder[childIdx] = nextFreeAddress + relativeChildIdx;
-		newNextFreeAddress = computeReorderedAddresses(newOrder, childIdx, newNextFreeAddress);
+		targetIndices[childIdx] = nextFreeAddress + relativeChildIdx;
+		newNextFreeAddress = computeTargetIndices(targetIndices, childIdx, newNextFreeAddress);
 	}
 	
 	return newNextFreeAddress;
 }
 
-void Nodes::reorder(const vector<uint32> &newOrder)
+void Nodes::reorder(const uint32 *targetIndices)
 {
 	// all nodes must follow the NEW ORDER
 	// (NEW ORDER must be read with a dark and low voice)
 	const uint32 nodeCount = getCount();
-	vector<uint32> *nodesData[2] = { &mChildren, &mParents};
-	vector<uint32> orderedAttributes(nodeCount);
-	
+	vector<uint32> temp(nodeCount);
+
 	// reorder links: mChildren, mParents
+	vector<uint32> *nodesData[2] = { &mChildren, &mParents};
 	for (uint32 type = 0; type < 2; ++type)
 	{
 		vector<uint32> &links = *(nodesData[type]);
 
+		// 2 tasks: reorder nodes values (here links) AND update links to fit to the new order
 		#pragma omp parallel for
 		for (int64 sourceIdx = 0; sourceIdx < nodeCount; ++sourceIdx)
 		{
-			const uint32 targetIdx = newOrder[sourceIdx];
-			const uint32 oldIdx = links[sourceIdx];
-			const uint32 newIdx = (INVALID_INDEX == oldIdx ? oldIdx : newOrder[oldIdx]);
-			orderedAttributes[targetIdx] = newIdx;
+			const uint32 oldLink = links[sourceIdx];
+			const uint32 newLink = (INVALID_INDEX == oldLink ? oldLink : targetIndices[oldLink]);
+			const uint32 targetIdx = targetIndices[sourceIdx];
+			temp[targetIdx] = newLink;
 		}
-		links.swap(orderedAttributes);
+		links.swap(temp);
 	}
+	
+	// reorder mSamplesPerNode
+	Array<uint32>::reorder(temp.data(), mSamplesPerNodes.data(), targetIndices, nodeCount);
+	mSamplesPerNodes.swap(temp);
 
-	// reorder mSamplesPerNodes
-	#pragma omp parallel for
-	for (int64 sourceIdx = 0; sourceIdx < nodeCount; ++sourceIdx)
-		orderedAttributes[newOrder[sourceIdx]] = mSamplesPerNodes[sourceIdx];
-	mSamplesPerNodes.swap(orderedAttributes);
+	// compute offsets for the sets of sample start indices each node must store, see input ordering
+	// each node is responsible for a set of samples which is contiguously stored in memory
+	Array<uint32>::prefixSum(mSampleStartIndices.data(), mSamplesPerNodes.data(), nodeCount, false);
 
-	// mSampleStartIndices = prefix sum(mSamplesPerNodes)
-	for (uint32 nodeIdx = 0, nextStart = 0; nodeIdx < nodeCount; ++nodeIdx)
-	{
-		mSampleStartIndices[nodeIdx] = nextStart;
-		nextStart += mSamplesPerNodes[nodeIdx];
-		mSamplesPerNodes[nodeIdx] = 0;
-	}
+	// clear samples per node / tree is empty
+	const uint64 byteCount = sizeof(uint32) * nodeCount;
+	memset(mSamplesPerNodes.data(), 0, byteCount);
 }
 
 void Nodes::reorderSamplesAndFillNodes(const Scope &rootScope)
@@ -592,9 +598,9 @@ void Nodes::reorderSamplesAndFillNodes(const Scope &rootScope)
 	Scene &scene = Scene::getSingleton();
 	Samples &samples = scene.getSamples();
 	const uint32 sampleCount = samples.getCount();
-	uint32 *sampleTargetIndices = new uint32[sampleCount];
+	uint32 *targetIndices = new uint32[sampleCount];
 
-	// get new order for samples in sampleTargetIndices
+	// get new order for samples in targetIndices
 	// the samples within a single node are moved so that they are all within a single memory block
 	#pragma omp parallel for
 	for (int64 sampleIdx = 0; sampleIdx < sampleCount; ++sampleIdx)
@@ -615,15 +621,15 @@ void Nodes::reorderSamplesAndFillNodes(const Scope &rootScope)
 		#pragma omp critical (reorderedSamplesTargetIndex)
 			offset = samplesInNode++;
 
-		// update new samples
+		// set target / new index for sample oldSampleIdx
 		const uint32 targetIdx = mSampleStartIndices[nodeIdx] + offset;
-		sampleTargetIndices[oldSampleIdx] = targetIdx;
+		targetIndices[oldSampleIdx] = targetIdx;
 	}
 
 	// reorder samples
-	samples.reorder(sampleTargetIndices);
-	delete [] sampleTargetIndices;
-	sampleTargetIndices = NULL;
+	samples.reorder(targetIndices);
+	delete [] targetIndices;
+	targetIndices = NULL;
 
 	// All samples follow the NEW ORDER!
 	checkSampleIndicesOfNodes();
