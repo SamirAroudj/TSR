@@ -1275,8 +1275,8 @@ bool FSSFRefiner::computeErrorStatistics(const uint32 iteration)
 	mStatistics.saveToFile(fileName);
 	
 	mMesh.computeNormalsWeightedByAngles();
-	outputErrorColoredMesh(mAverageAngles[0].data(), mBestSurfaceErrors.data(), iteration, "absoluteErrorsBest");
-	outputErrorColoredMesh(mAverageAngles[0].data(), mSurfaceErrors.data(), iteration, "absoluteErrors");
+	//outputErrorColoredMesh(mAverageAngles[0].data(), mBestSurfaceErrors.data(), iteration, "absoluteErrorsBest");
+	//outputErrorColoredMesh(mAverageAngles[0].data(), mSurfaceErrors.data(), iteration, "absoluteErrors");
 	//outputErrorColoredMesh(temp[0], mRelativeSurfaceErrors.data(), iteration, "RelativeErrors");
 
 	return mStatistics.hasConverged();
