@@ -156,7 +156,7 @@ void CapturedScene::loadImages(const vector<uint32> &imageScales)
 	{
 		// get camera data
 		const PinholeCamera &camera = mCameras.getCamera(cameraIdx);
-		const uint32 viewIdx = mCameras.getViewID(cameraIdx);
+		const uint32 viewID = mCameras.getViewID(cameraIdx);
 
 		for (uint32 scaleIdx = 0; scaleIdx < scaleCount; ++scaleIdx)
 		{
@@ -164,14 +164,11 @@ void CapturedScene::loadImages(const vector<uint32> &imageScales)
 
 			// load corresponding images
 			const char *colorImageTag = (0 == scale ? FileNaming::IMAGE_TAG_COLOR_S0 : FileNaming::IMAGE_TAG_COLOR);
-			const Path colorImageName = getRelativeImageFileName(viewIdx, colorImageTag, scale, true);
-			const Path depthImageName = getRelativeImageFileName(viewIdx, FileNaming::IMAGE_TAG_DEPTH, scale, false);
-
-			const ColorImage *colorImage = ColorImage::request(colorImageName.getString(), colorImageName);
+			const ColorImage *colorImage = getColorImage(viewID, colorImageTag, scale);
 			if (!colorImage)
 				continue;
 
-			DepthImage *depthImage = DepthImage::request(depthImageName.getString(), depthImageName);
+			const DepthImage *depthImage = getDepthImage(viewID, FileNaming::IMAGE_TAG_DEPTH, scale);
 			if (!depthImage)
 				continue;
 			//depthImage->erode(5);

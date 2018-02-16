@@ -19,6 +19,7 @@ namespace SurfaceReconstruction
 {
 	// forward declarations
 	class ColorImage;
+	class DepthImage;
 
 	/// Represents how the scene was captured by means of cameras. (Can also be used for laser scans and similar). Each has a position, rotation, focal length, etc.
 	class Cameras
@@ -78,9 +79,17 @@ namespace SurfaceReconstruction
 
 		/** Returns the color image which is associated to this view or NULL if there is none.
 		@return Returns the color image which was taken from this view or NULL if there is none.*/
-		inline const ColorImage *getColorImage( const std::string &tag, const uint32 scale, const uint32 cameraIdx) const;
+		const ColorImage *getColorImage(const std::string &tag, const uint32 &scale, const uint32 &cameraIdx) const;
 		
 		inline uint32 getCount() const;
+
+		const DepthImage *getDepthImage(const std::string &tag, const uint32 &scale, const uint32 &cameraIdx) const;
+
+		Math::Vector3 getPositionWS(const uint32 cameraIdx) const;
+
+		/** Returns the central view direction the projective capture device had when this View object was created.
+		@return Returns the central view direction the projective capture device had when this View object was created. */
+		const Math::Vector3 getViewDirection(const uint32 cameraIdx) const;
 
 		/** Returns this camera's view identifier.
 			There is one view for each captured image of the current scene and a camera for each registered view / image.
@@ -88,12 +97,6 @@ namespace SurfaceReconstruction
 		@param cameraIdx Identifies the camera. (Cameras are compactly stored and linked to views (thus also images) via their view IDs.
 		@return Returns the view identifier for the camera cameraIdx. */
 		inline uint32 getViewID(const uint32 cameraIdx) const;
-
-		Math::Vector3 getPositionWS(const uint32 cameraIdx) const;
-
-		/** Returns the central view direction the projective capture device had when this View object was created.
-		@return Returns the central view direction the projective capture device had when this View object was created. */
-		const Math::Vector3 getViewDirection(const uint32 cameraIdx) const;
 
 		inline bool isValid(const uint32 cameraIdx) const;
 
@@ -155,11 +158,6 @@ namespace SurfaceReconstruction
 		return (uint32) mCameras.size();
 	}
 
-	inline uint32 Cameras::getViewID(const uint32 cameraIdx) const
-	{
-		return mViewIDs[cameraIdx];
-	}
-
 	inline Math::Vector3 Cameras::getPositionWS(const uint32 cameraIdx) const
 	{
 		const Graphics::PinholeCamera &camera = mCameras[cameraIdx];
@@ -167,6 +165,11 @@ namespace SurfaceReconstruction
 		return Math::Vector3(pHWS.x, pHWS.y, pHWS.z);
 	}
 	
+	inline uint32 Cameras::getViewID(const uint32 cameraIdx) const
+	{
+		return mViewIDs[cameraIdx];
+	}
+
 	inline bool Cameras::isValid(const uint32 cameraIdx) const
 	{
 		return (cameraIdx < (uint32) mCameras.size());

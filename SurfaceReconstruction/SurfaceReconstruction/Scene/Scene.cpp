@@ -12,6 +12,7 @@
 #include "Platform/Storage/Directory.h"
 #include "Platform/Utilities/ParametersManager.h"
 #include "SurfaceReconstruction/Image/ColorImage.h"
+#include "SurfaceReconstruction/Image/DepthImage.h"
 #include "SurfaceReconstruction/Geometry/StaticMesh.h"
 #include "SurfaceReconstruction/Refinement/FSSFRefiner.h"
 #ifdef PCS_REFINEMENT
@@ -39,6 +40,18 @@ const char *Scene::PARAMETER_NAME_SCENE_FOLDER = "sceneFolder";
 
 const uint32 Scene::PARAMETER_VALUE_REFINEMENT_VIA_PHOTOS_MESH_OUTPUT_FREQUENCY = 25;
 const uint32 Scene::PARAMETER_VALUE_TRIANGLE_ISLE_SIZE_MINIMUM = 2500;
+
+ColorImage *Scene::getColorImage(const uint32 &viewID, const string &tag, const uint32 &scale)
+{
+	const Path relativeFileName = getRelativeImageFileName(viewID, tag, scale, true);
+	return ColorImage::request(relativeFileName.getString(), relativeFileName);
+}
+
+DepthImage *Scene::getDepthImage(const uint32 &viewID, const string &tag, const uint32 &scale)
+{
+	const Path relativeFileName = getRelativeImageFileName(viewID, tag, scale, false);
+	return DepthImage::request(relativeFileName.getString(), relativeFileName);
+}
 
 Path Scene::getRelativeImageFileName(const uint32 &viewID, const string &tag, const uint32 scale, const bool colorImage)
 {

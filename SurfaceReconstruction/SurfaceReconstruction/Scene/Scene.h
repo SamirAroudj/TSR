@@ -31,6 +31,9 @@ namespace SurfaceReconstruction
 	class Scene : public IReconstructorObserver, public Patterns::Singleton<Scene>
 	{
 	public:
+		static ColorImage *getColorImage(const uint32 &viewID, const std::string &tag, const uint32 &scale);
+		static DepthImage *getDepthImage(const uint32 &viewID, const std::string &tag, const uint32 &scale);
+
 		/** Returns the name of the image without any parent folders, e.g., depth-L2.mvei. */
 		static const std::string getLocalImageName(const std::string &tag, const uint32 scale, const bool colorImage);
 
@@ -248,9 +251,9 @@ namespace SurfaceReconstruction
 		return Scene::getSingleton().mTree;
 	}
 
-	inline Storage::Path Scene::getViewFolder(const uint32 &viewIdx) const
+	inline Storage::Path Scene::getViewFolder(const uint32 &viewID) const
 	{
-		return Storage::Path::appendChild(getViewsFolder(), getRelativeViewFolder(viewIdx));
+		return Storage::Path::appendChild(getViewsFolder(), getRelativeViewFolder(viewID));
 	}
 
 	inline const std::vector<FlexibleMesh *> Scene::getViewMeshes() const

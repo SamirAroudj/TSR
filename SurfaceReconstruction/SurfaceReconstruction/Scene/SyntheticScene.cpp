@@ -373,12 +373,15 @@ void SyntheticScene::createMeshFromDepthMap(vector<vector<uint32>> &vertexNeighb
 {
 	// camera data
 	const PinholeCamera &camera = mCameras.getCamera(cameraIdx);
+	const uint32 &viewID = mCameras.getViewID(cameraIdx);
 
-	// load depth map & triangulate it
-	const Path colorImageName = getRelativeImageFileName(cameraIdx, FileNaming::IMAGE_TAG_COLOR_S0, 0, true);
-	const ColorImage *colorImage = ColorImage::request(colorImageName.getString(), colorImageName);
+	// load images for depth map triangulation
+	const ColorImage *colorImage = getColorImage(viewID, FileNaming::IMAGE_TAG_COLOR, 0);
 	const DepthImage *depthMap = DepthImage::request(depthMapName.getString(), depthMapName);
+	if (!depthMap)
+		throw FileException("Could not load depth map for synthetic depth map triangulation!", depthMapName);
 
+	// create view mesh
 	FlexibleMesh *mesh = depthMap->triangulate(pixelToVertexIndices, vertexNeighbors, indices, camera, colorImage);
 	mViewMeshes.push_back(mesh);
 }

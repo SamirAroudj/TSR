@@ -95,14 +95,15 @@ void Cameras::computeHWSToNNPS(Matrix4x4 &WSToPS, const ImgSize &resolution, con
 	const PinholeCamera &cam = mCameras[cameraIdx];
 	WSToPS = cam.computeWorldSpaceToPixelSpaceMatrix(resolution, considerPixelCenterOffset);
 }
-
-const ColorImage *Cameras::getColorImage(const string &tag, const uint32 scale, const uint32 cameraIdx) const
+	
+const ColorImage *Cameras::getColorImage(const string &tag, const uint32 &scale, const uint32 &cameraIdx) const
 {
-	// return the image taken by this this view
-	const uint32 &viewID = mViewIDs[cameraIdx];
-	const Path relativeFileName = Scene::getRelativeImageFileName(viewID, tag, scale, true);
+	return Scene::getColorImage(mViewIDs[cameraIdx], tag, scale);
+}
 
-	return ColorImage::request(relativeFileName.getString(), relativeFileName);
+const DepthImage *Cameras::getDepthImage(const string &tag, const uint32 &scale, const uint32 &cameraIdx) const
+{
+	return Scene::getDepthImage(mViewIDs[cameraIdx], tag, scale);
 }
 
 const Vector3 Cameras::getViewDirection(const uint32 cameraIdx) const

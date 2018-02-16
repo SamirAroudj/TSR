@@ -437,7 +437,7 @@ void DepthImage::setVertexColors(FlexibleMesh &mesh,
 	if (!image)
 	{
 		// no image? -> set vertex colors to some default value
-		const Vector3 defaultColor(0.5f, 0.5f, 0.5f);
+		const Vector3 defaultColor(0.5f, 0.5f, 0.5f); // todo
 		for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
 			mesh.setColor(defaultColor, vertexIdx);
 		return;
