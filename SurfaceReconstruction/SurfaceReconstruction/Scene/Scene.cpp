@@ -142,6 +142,13 @@ bool Scene::reconstruct()
 		return false;
 	}
 
+	// check links between samples and parent cameras
+	if (0 == mSamples.getValidParentLinkCount())
+	{
+		cout << "Stopping early. No valid links between surface samples and views available for reconstruction." << endl;
+		return false;
+	}
+
 	// create results folder
 	if (!Directory::createDirectory(getResultsFolder()))
 	{
@@ -153,18 +160,6 @@ bool Scene::reconstruct()
 	// save cameras in binary format
 	const Path beginning = getFileBeginning();
 	mCameras.saveToFile(Path::extendLeafName(beginning, FileNaming::ENDING_CAMERAS));
-
-	// check samples
-	if (0 == sampleCount)
-	{
-		cout << "Stopping early. No surface samples available for reconstruction ." << endl;
-		return false;
-	}
-	if (0 == mSamples.getValidParentLinkCount())
-	{
-		cout << "Stopping early. No valid links between surface samples and views available for reconstruction." << endl;
-		return false;
-	}
 
 	// save unfiltered / initial non-zero confidence surface samples
 	if (!mOccupancy && !mTree)

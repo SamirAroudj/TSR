@@ -705,7 +705,7 @@ uint32 Samples::loadCloud(PlyFile &file, const Path &fileName, const VerticesDes
 	const uint32 propertyCount = (uint32) types.size();
 
 	// get #parents per sample if its the first loadCloud call
-	if (!empty())
+	if (empty())
 	{
 		mMaxCamsPerSample = 0;
 		for (uint32 propertyIdx = 0; propertyIdx < propertyCount; ++propertyIdx)
