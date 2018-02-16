@@ -272,7 +272,7 @@ void MVECameraIO::readViewData(CameraData &data, File &file,
 
 	// links: camera -> view & view to camera
 	data.mViewID = viewID;
-	viewToCameraIndices.resize(cameraIdx + 1, Cameras::INVALID_ID);
+	viewToCameraIndices.resize(viewID + 1, Cameras::INVALID_ID);
 	viewToCameraIndices[viewID] = cameraIdx;
 }
 
