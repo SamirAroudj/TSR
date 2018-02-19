@@ -218,7 +218,7 @@ void SyntheticScene::createSyntheticCamera()
 	// camera data
 	const Vector3 up(0.0f, 1.0f, 0.0f);
 	const Vector2 principalPoint(0.5f, 0.5f);
-	const Real aspectRatio = 1.0f;
+	const Real aspectRatio = (Real) mImageResolution[0] / (Real) mImageResolution[1];
 	const Real distortion[2] = { 0.0f, 0.0f };
 
 	// AABB for camera positions
@@ -263,7 +263,7 @@ void SyntheticScene::createSyntheticCamera()
 bool SyntheticScene::fill(vector<Real> &depthMap, vector<Vector3> &positionsWSMap,
 	RayTracer &rayTracer, uint32 &validDepthCount, const PinholeCamera &camera)
 {
-	const Matrix3x3 HPSToNNRayDirWS = camera.computeHPSToNNRayDirWS(mImageResolution, true);
+	const Matrix3x3 HPSToNNRayDirWS = camera.computeHPSToNNRayDirWS(mImageResolution[1], true);
 	const Vector3 camPosWS(camera.getPosition().x, camera.getPosition().y, camera.getPosition().z);
 	const Real minDepthSq = mMinSampleDistance * mMinSampleDistance;
 	const uint32 pixelCount = mImageResolution.getElementCount();

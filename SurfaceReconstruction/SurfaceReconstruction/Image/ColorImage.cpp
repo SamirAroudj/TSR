@@ -84,9 +84,9 @@ ColorImage::ColorImage(const string &resourceName, const Path &imageFileName) :
 	// get complete file name
 	const Path &folder = VolatileResource<Image>::getPathToResources();
 	const Path fileName = Path::appendChild(folder, imageFileName);
-
+	
 	// load data
-	mPixels = ImageManager::getSingleton().loadPNG(mSize, mFormat, fileName);
+	mPixels = ImageManager::getSingleton().loadPNG(mSize, mFormat, fileName, false);
 	if (!mPixels)
 		throw FileCorruptionException("Could not load pixel RGB values from PNG file!", imageFileName);
 

@@ -18,7 +18,7 @@ CameraData::CameraData() :
 	mPrincipalPoint(0.5f, 0.5f),
 	mDistortion{0.0f, 0.0f},
 	mFocalLength(-REAL_MAX),
-	mPixelAspectRatio(1.0f),
+	mImageAspectRatio(1.0f),
 	mViewID(-1)
 {
 
@@ -37,7 +37,7 @@ void CameraData::set(const uint32 &viewID, const PinholeCamera &camera)
 	mPrincipalPoint = camera.getPrincipalPoint();
 
 	mFocalLength = camera.getFocalLength();
-	mPixelAspectRatio = camera.getAspectRatio();
+	mImageAspectRatio = camera.getAspectRatio();
 
 	// link to view
 	mViewID = viewID;

@@ -31,7 +31,7 @@ namespace SurfaceReconstruction
 		Math::Vector2 mPrincipalPoint;
 		Real mDistortion[2];
 		Real mFocalLength;
-		Real mPixelAspectRatio;
+		Real mImageAspectRatio;
 		uint32 mViewID;
 	};
 }

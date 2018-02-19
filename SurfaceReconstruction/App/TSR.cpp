@@ -457,7 +457,7 @@ void TSR::createNewScene(const uint32 sceneCreationType, const vector<string> &a
 			mScene = new Scene(rootFolder, previousFSSFResult, observers);
 			break;
 		}
-
+		
 		case SCENE_CREATION_SYNTHETIC:
 		{
 			mScene = new SyntheticScene(arguments[1], observers);

@@ -39,15 +39,16 @@ namespace SurfaceReconstruction
 		void clear(Cameras &cameras, std::vector<uint32>& viewToCameraIndices);
 
 		/** todo */
-		void loadFromMetaIniFile(Cameras &cameras, std::vector<uint32> &viewToCameraIndices, Storage::File &file,
-			const Math::Matrix3x3 &inverseInputRotation, const Math::Vector3 &inverseInputTranslation);
+		void loadFromMetaIniFile(Cameras &cameras, std::vector<uint32> &viewToCameraIndices,
+			const Storage::Path &metaFileName, const Math::Matrix3x3 &inverseInputRotation, const Math::Vector3 &inverseInputTranslation);
 
 		void readCamerasFileHeader(Storage::File &file);
 		void readDistortion(CameraData &data, Storage::File &file);
 		void readExtrinsics(CameraData &data, Storage::File &file,
 			const Math::Matrix3x3 &inverseInputRotation, const Math::Vector3 &inverseInputTranslation);
-		void readFocalLength(CameraData &data, Storage::File &file);
-		void readPixelAspectRatio(CameraData &data, Storage::File& file);
+		Real readFocalLength(Storage::File &file);
+		Real readImageAspectRatio(Storage::File &file);
+		Real readPixelAspectRatio(Storage::File& file);
 		void readPrincipalPoint(CameraData &data, Storage::File &file);
 		void readViewData(CameraData &data, Storage::File &file,
 			std::vector<uint32> &viewToCameraIndices, const uint32 cameraIdx);

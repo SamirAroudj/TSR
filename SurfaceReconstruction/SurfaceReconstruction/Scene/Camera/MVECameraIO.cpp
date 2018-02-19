@@ -14,8 +14,10 @@
 #include "Platform/FailureHandling/FileCorruptionException.h"
 #include "Platform/Storage/Directory.h"
 #include "Platform/Storage/Path.h"
+#include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Scene/Camera/Cameras.h"
 #include "SurfaceReconstruction/Scene/Camera/MVECameraIO.h"
+#include "SurfaceReconstruction/Scene/FileNaming.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 #include "Platform/Utilities/Conversions.h"
 
@@ -34,7 +36,8 @@ using namespace Utilities;
 #define NAME_FORMAT_1 "\n"
 #define DISTORTION_FORMAT "camera_distortion = " REAL_IT " " REAL_IT "\n"
 #define FOCAL_LENGTH_FORMAT "focal_length = " REAL_IT "\n"
-#define HEADER_SIGNATURE "MVE camera infos 1.1\n"
+#define HEADER_SIGNATURE "MVE camera infos 1.2\n"
+#define IMAGE_ASPECT_RATIO_FORMAT "image_aspect = " REAL_IT "\n"
 #define PIXEL_ASPECT_RATIO_FORMAT "pixel_aspect = " REAL_IT "\n"
 #define PRINCIPAL_POINT_FORMAT "principal_point = " REAL_IT " " REAL_IT "\n"
 #define ROTATION_FORMAT "rotation = " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT "\n"
@@ -65,8 +68,9 @@ void MVECameraIO::loadFromCamerasFile(Cameras &cameras, vector<uint32> &viewToCa
 
 	while (file.hasLeftData())
 	{
-		readFocalLength(cameraData, file);
-		readPixelAspectRatio(cameraData, file);
+		cameraData.mFocalLength = readFocalLength(file);
+		cameraData.mImageAspectRatio = readImageAspectRatio(file);
+		readPixelAspectRatio(file);
 		readPrincipalPoint(cameraData, file);
 		readDistortion(cameraData, file);
 		readExtrinsics(cameraData, file, inverseInputRotation, inverseInputTranslation);
@@ -125,18 +129,17 @@ void MVECameraIO::loadFromMetaIniFiles(Cameras &cameras, vector<uint32> &viewToC
 	{
 		// is it a directory?
 		const string &child = children[fileIdx];
-		if (string::npos == child.find("view"))
+		if (string::npos == child.find(FileNaming::BEGINNING_VIEW_FOLDER))
 			continue;
 
 		const Path absFolder = Path::appendChild(mPath, child);
 		if (!Directory::exists(absFolder))
 			continue;
 	
-		const Path metaFileName = Path::appendChild(absFolder, "meta.ini");
+		const Path metaFileName = Path::appendChild(absFolder, FileNaming::CAMERA_META_FILE_NAME);
 		try
 		{
-			File cameraFile(metaFileName, File::OPEN_READING, false);
-			loadFromMetaIniFile(cameras, viewToCameraIndices, cameraFile, inverseInputRotation, inverseInputTranslation);
+			loadFromMetaIniFile(cameras, viewToCameraIndices, metaFileName, inverseInputRotation, inverseInputTranslation);
 		}
 		catch (Exception &exception)
 		{
@@ -147,50 +150,59 @@ void MVECameraIO::loadFromMetaIniFiles(Cameras &cameras, vector<uint32> &viewToC
 }
 
 
-void MVECameraIO::loadFromMetaIniFile(Cameras &cameras, vector<uint32> &viewToCameraIndices, File &file,
-	const Matrix3x3 &inverseInputRotation, const Vector3 &inverseInputTranslation)
+void MVECameraIO::loadFromMetaIniFile(Cameras &cameras, vector<uint32> &viewToCameraIndices,
+	const Path &metaFileName, const Matrix3x3 &inverseInputRotation, const Vector3 &inverseInputTranslation)
 {
 	CameraData cameraData;
-	string line = "";
 
-	// read data into cameraData
-	while (file.hasLeftData())
+	// load from file
 	{
-		file.readTextLine(line);
+		File file(metaFileName, File::OPEN_READING, false);
+		string line = "";
 
-		// empty line?
-		if (line.empty() || line[0] == '\n')
-			continue;
-
-		// comment?
-		if ('#' == line[0])
-			continue;
-
-		// camera block start?
-		if (string::npos != line.find(BLOCK_IDENTIFIER_CAMERA))
+		// read data into cameraData
+		while (file.hasLeftData())
 		{
-			readFocalLength(cameraData, file);
-			readPixelAspectRatio(cameraData, file);
-			readPrincipalPoint(cameraData, file);
-			readExtrinsics(cameraData, file, inverseInputRotation, inverseInputTranslation);
+			file.readTextLine(line);
 
-			continue;
+			// empty line?
+			if (line.empty() || line[0] == '\n')
+				continue;
+
+			// comment?
+			if ('#' == line[0])
+				continue;
+
+			// camera block start?
+			if (string::npos != line.find(BLOCK_IDENTIFIER_CAMERA))
+			{
+				cameraData.mFocalLength = readFocalLength(file);
+				readPixelAspectRatio(file);
+				readPrincipalPoint(cameraData, file);
+				readExtrinsics(cameraData, file, inverseInputRotation, inverseInputTranslation);
+
+				continue;
+			}
+
+			// view block start?
+			if (string::npos != line.find(BLOCK_IDENTIFIER_VIEW))
+			{
+				readViewData(cameraData, file, viewToCameraIndices, cameras.getCount());
+				continue;
+			}
+
+			// ignore this line	// todo log this
 		}
-
-		// view block start?
-		if (string::npos != line.find(BLOCK_IDENTIFIER_VIEW))
-		{
-			readViewData(cameraData, file, viewToCameraIndices, cameras.getCount());
-			continue;
-		}
-
-		// ignore this line
-		// todo log this
 	}
 
 	// create camera if it's valid
-	if (cameraData.mFocalLength > 0.0f)
-		cameras.addCamera(cameraData);
+	const ColorImage *image = Scene::getSingleton().getColorImage(cameraData.mViewID, FileNaming::IMAGE_TAG_COLOR_S0, 0);
+	if (!image || cameraData.mFocalLength <= 0.0f)
+		return;
+
+	const ImgSize &size = image->getSize();
+	cameraData.mImageAspectRatio = (Real) size[0] / (Real) size[1]; // we still need the aspect ratio (image width / image height)
+	cameras.addCamera(cameraData);
 }
 
 void MVECameraIO::readDistortion(CameraData &data, File &file)
@@ -237,16 +249,28 @@ void MVECameraIO::readExtrinsics(CameraData &data, File &file,
 	pos = pos * inverseInputRotation + inverseInputTranslation;
 }
 
-void MVECameraIO::readFocalLength(CameraData &data, File &file)
+Real MVECameraIO::readFocalLength(File &file)
 {
-	if (1 != file.scanf(FOCAL_LENGTH_FORMAT, &data.mFocalLength))
+	Real focalLength;
+	if (1 != file.scanf(FOCAL_LENGTH_FORMAT, &focalLength))
 		throw FileCorruptionException("Camera focal length isn't provided in correct camera file format.", file.getName());
+	return focalLength;
 }
 
-void MVECameraIO::readPixelAspectRatio(CameraData &data, File &file)
+Real MVECameraIO::readImageAspectRatio(File &file)
 {
-	if (1 != file.scanf(PIXEL_ASPECT_RATIO_FORMAT, &data.mPixelAspectRatio))
+	Real imageAspectRatio;
+	if (1 != file.scanf(IMAGE_ASPECT_RATIO_FORMAT, &imageAspectRatio))
+		throw FileCorruptionException("Camera image aspect ratio (image width / image height) isn't provided in correct camera file format.", file.getName());
+	return imageAspectRatio;
+}
+
+Real MVECameraIO::readPixelAspectRatio(File &file)
+{
+	Real pixelAspectRatio = 0.0f;
+	if (1 != file.scanf(PIXEL_ASPECT_RATIO_FORMAT, &pixelAspectRatio))
 		throw FileCorruptionException("Camera focal length isn't provided in correct camera file format.", file.getName());
+	return pixelAspectRatio;
 }
 
 void MVECameraIO::readPrincipalPoint(CameraData &data, File &file)

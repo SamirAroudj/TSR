@@ -40,6 +40,9 @@ const char *FileNaming::RECONSTRUCTED_MESHES[IReconstructorObserver::RECONSTRUCT
 const char *FileNaming::REORDERED_SAMPLES = "Reordered";
 const char *FileNaming::RESULTS_FOLDER = "Results";
 
+// MVE naming
+const char *FileNaming::CAMERA_META_FILE_NAME = "meta.ini";
+
 // image tags
 const char *FileNaming::IMAGE_TAG_COLOR = "undist";
 const char *FileNaming::IMAGE_TAG_COLOR_S0 = "undistorted";

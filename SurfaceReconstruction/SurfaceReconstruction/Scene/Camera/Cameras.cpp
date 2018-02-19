@@ -55,7 +55,7 @@ void Cameras::clear()
 }
 
 void Cameras::addCamera(const uint32 viewID, const Vector3 AABB[2], const Real minSampleDistance, const Real maxSampleDistance,
-	const Real meanFOV, const Real maxFOVDeviation, const Real pixelAspectRatio)
+	const Real meanFOV, const Real maxFOVDeviation, const Real aspectRatio)
 {
 	// place the camera with some randomndess
 	RandomManager &manager = RandomManager::getSingleton();
@@ -69,12 +69,12 @@ void Cameras::addCamera(const uint32 viewID, const Vector3 AABB[2], const Real m
 	const Real focalLength = manager.getUniform(meanFOV - maxFOVDeviation, meanFOV + maxFOVDeviation); 
 	const Real distortion[2] = { 0.0f, 0.0f };
 
-	addCamera(viewID, orientation, position, focalLength, principalPoint, pixelAspectRatio, distortion);
+	addCamera(viewID, orientation, position, focalLength, principalPoint, aspectRatio, distortion);
 	mCameras.back().lookAt(position, target, Vector3(0.0f, 1.0f, 0.0f));
 }
 
 void Cameras::addCamera(const uint32 viewID, const Quaternion &orientation, const Vector3 &position,
-	const Real focalLength, const Vector2 &principalPoint, const Real pixelAspectRatio, const Real distortion[2])
+	const Real focalLength, const Vector2 &principalPoint, const Real imageAspectRatio, const Real distortion[2])
 {
 	// create camera
 	mCameras.resize(mCameras.size() + 1);
@@ -84,7 +84,7 @@ void Cameras::addCamera(const uint32 viewID, const Quaternion &orientation, cons
 	PinholeCamera &camera = mCameras.back();
 	camera.setOrientation(orientation);
 	camera.setPosition(position.x, position.y, position.z);
-	camera.setProjectionProperties(focalLength, pixelAspectRatio);
+	camera.setProjectionProperties(focalLength, imageAspectRatio);
 	camera.setPrincipalPoint(principalPoint);
 	camera.setDistortion(distortion);
 }
@@ -93,7 +93,7 @@ void Cameras::computeHWSToNNPS(Matrix4x4 &WSToPS, const ImgSize &resolution, con
 {
 	// compute viewport transformation: device coordinates to pixel coordinates
 	const PinholeCamera &cam = mCameras[cameraIdx];
-	WSToPS = cam.computeWorldSpaceToPixelSpaceMatrix(resolution, considerPixelCenterOffset);
+	WSToPS = cam.computeWorldSpaceToPixelSpaceMatrix(resolution[1], considerPixelCenterOffset);
 }
 	
 const ColorImage *Cameras::getColorImage(const string &tag, const uint32 &scale, const uint32 &cameraIdx) const

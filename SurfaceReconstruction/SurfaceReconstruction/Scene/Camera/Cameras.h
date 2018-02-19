@@ -40,10 +40,10 @@ namespace SurfaceReconstruction
 
 		/** todo
 		@param viewID Set this to a unique number to find / identify the view associated with this camera. See getViewID for more info.
-		@param pixelAspectRatio This is the ratio of width to height of the camera's image plane. Must be positive.
+		@param aspectRatio This is the ratio of width to height of the camera's image plane. Must be positive.
 		todo */
 		void addCamera(const uint32 viewID, const Math::Quaternion &orientation, const Math::Vector3 &position,
-			 const Real focalLength, const Math::Vector2 &principalPoint, const Real pixelAspectRatio, const Real distortion[2]);
+			 const Real focalLength, const Math::Vector2 &principalPoint, const Real imageAspectRatio, const Real distortion[2]);
 
 		/** Creates a projective capture somewhere inside sceneAABB but outside the objects described by surfaces.
 		@param viewID Set this to a unique number to find / identify the view associated with this camera. See getViewID for more info.
@@ -52,9 +52,9 @@ namespace SurfaceReconstruction
 		@param maxSampleDistance This is the maximum distance from the ground truth surfaces to the camera position which a Sample must have during its creation otherwise it is discarded.
 		@param meanFOV Defines the mean field of view (radiance measure) which is used for random FOV creation.
 		@param maxFOVDeviation Defines the maximally possible difference between the field of view of this object and meanFOV. (radiance measure)
-		@param pixelAspectRatio This is the ratio of width to height of the camera's image plane. Must be positive. */
+		@param aspectRatio This is the ratio of width to height of the camera's image plane. Must be positive. */
 		void addCamera(const uint32 viewID, const Math::Vector3 sceneAABB[2], const Real minSampleDistance, const Real maxSampleDistance,
-			const Real meanFOV, const Real maxFOVDeviation, const Real pixelAspectRatio);
+			const Real meanFOV, const Real maxFOVDeviation, const Real aspectRatio);
 
 		/** Removes all cameras. */
 		void clear();
@@ -135,7 +135,7 @@ namespace SurfaceReconstruction
 	inline void Cameras::addCamera(const CameraData &data)
 	{
 		addCamera(data.mViewID,	data.mOrientation, data.mPosition,
-			data.mFocalLength, data.mPrincipalPoint, data.mPixelAspectRatio, data.mDistortion);
+			data.mFocalLength, data.mPrincipalPoint, data.mImageAspectRatio, data.mDistortion);
 	}
 
 	inline bool Cameras::empty() const

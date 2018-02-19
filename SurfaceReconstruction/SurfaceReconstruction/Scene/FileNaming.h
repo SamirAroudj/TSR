@@ -41,6 +41,9 @@ namespace SurfaceReconstruction
 		static const char *REORDERED_SAMPLES;
 		static const char *RESULTS_FOLDER;
 
+		// MVE naming
+		static const char *CAMERA_META_FILE_NAME;
+
 		// image tags for file naming
 		static const char *IMAGE_TAG_COLOR;
 		static const char *IMAGE_TAG_COLOR_S0;
