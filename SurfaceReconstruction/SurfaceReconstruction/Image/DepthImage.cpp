@@ -181,11 +181,11 @@ bool DepthImage::hasInvalidNeighbor(const uint32 &x, const uint32 &y) const
 	return false;
 }
 
-FlexibleMesh *DepthImage::triangulate( vector<uint32> &tempPixelToVertexIndices, vector<vector<uint32>> &tempVertexNeighbors, vector<uint32> &tempIndices,
+FlexibleMesh *DepthImage::triangulate(vector<uint32> &tempPixelToVertexIndices, vector<vector<uint32>> &tempVertexNeighbors, vector<uint32> &tempIndices,
 	const PinholeCamera &camera, const ColorImage *image) const
 {
 	// get necessary camera data
-	const Matrix3x3 invViewPort = camera.computeInverseViewportMatrix(mSize[1], true);
+	const Matrix3x3 invViewPort = camera.computeInverseViewportMatrix(mSize, true);
 	const Matrix3x3 invProj = camera.computeInverseProjectionMatrix();
 	const Matrix3x3 invRot = camera.computeInverseRotationMatrix();
 	const Matrix3x3 hPSToNNRayDirVS = invViewPort * invProj;
@@ -472,7 +472,7 @@ void DepthImage::setDepthConvention(const PinholeCamera &camera, const DepthConv
 		return;
 
 	// homogenous pixel to non-normalized ray dir view space matrix
-	const Matrix3x3 invViewPort = camera.computeInverseViewportMatrix(mSize[1], true);
+	const Matrix3x3 invViewPort = camera.computeInverseViewportMatrix(mSize, true);
 	const Matrix3x3 invProjection = camera.computeInverseProjectionMatrix();
 	const Matrix3x3 hPSToNNRayDirVS = invViewPort * invProjection;
 

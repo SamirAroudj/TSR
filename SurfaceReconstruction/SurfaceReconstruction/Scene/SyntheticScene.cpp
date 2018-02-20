@@ -263,7 +263,7 @@ void SyntheticScene::createSyntheticCamera()
 bool SyntheticScene::fill(vector<Real> &depthMap, vector<Vector3> &positionsWSMap,
 	RayTracer &rayTracer, uint32 &validDepthCount, const PinholeCamera &camera)
 {
-	const Matrix3x3 HPSToNNRayDirWS = camera.computeHPSToNNRayDirWS(mImageResolution[1], true);
+	const Matrix3x3 HPSToNNRayDirWS = camera.computeHPSToNNRayDirWS(mImageResolution, true);
 	const Vector3 camPosWS(camera.getPosition().x, camera.getPosition().y, camera.getPosition().z);
 	const Real minDepthSq = mMinSampleDistance * mMinSampleDistance;
 	const uint32 pixelCount = mImageResolution.getElementCount();

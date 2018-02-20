@@ -93,7 +93,7 @@ void Cameras::computeHWSToNNPS(Matrix4x4 &WSToPS, const ImgSize &resolution, con
 {
 	// compute viewport transformation: device coordinates to pixel coordinates
 	const PinholeCamera &cam = mCameras[cameraIdx];
-	WSToPS = cam.computeWorldSpaceToPixelSpaceMatrix(resolution[1], considerPixelCenterOffset);
+	WSToPS = cam.computeWorldSpaceToPixelSpaceMatrix(resolution, considerPixelCenterOffset);
 }
 	
 const ColorImage *Cameras::getColorImage(const string &tag, const uint32 &scale, const uint32 &cameraIdx) const
