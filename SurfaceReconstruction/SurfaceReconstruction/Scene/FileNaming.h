@@ -48,6 +48,7 @@ namespace SurfaceReconstruction
 		static const char *IMAGE_TAG_COLOR;
 		static const char *IMAGE_TAG_COLOR_S0;
 		static const char *IMAGE_TAG_DEPTH;
+		static const char *IMAGE_TAG_VIEWS;
 	};
 }
 

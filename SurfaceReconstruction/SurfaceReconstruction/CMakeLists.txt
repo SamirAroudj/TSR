@@ -52,6 +52,7 @@ set(geometryHeaderFiles
 set(imageHeaderFiles
 	${imagePath}/ColorImage.h
 	${imagePath}/DepthImage.h
+	${imagePath}/ViewsImage.h
 	${imagePath}/Filter.h
 	${imagePath}/Image.h
 	${imagePath}/MVEIHeader.h
@@ -144,6 +145,7 @@ set(geometrySourceFiles
 set(imageSourceFiles
 	${imagePath}/ColorImage.cpp
 	${imagePath}/DepthImage.cpp
+	${imagePath}/ViewsImage.cpp
 	${imagePath}/Filter.cpp
 	${imagePath}/Image.cpp
 	${imagePath}/MVEIHeader.cpp

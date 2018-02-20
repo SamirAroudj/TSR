@@ -45,9 +45,14 @@ CapturedScene::CapturedScene(const Path &metaFileName, const vector<IReconstruct
 	loadCameras();
 	loadViewMeshes(imageScales);
 	if (mViewMeshes.empty())
+	{
 		mSamples.loadClouds(plyCloudFileNames, mViewToCameraIndices, mInputOrientation, mInputOrigin);
+	}
 	else
-		mSamples.addSamplesFromMeshes(mViewMeshes);
+	{
+		mSamples.setMaxCamerasPerSample(todo);
+		mSamples.addSamplesFromMeshes(mViewMeshes, cameraIndices);
+	}
 }
 
 void CapturedScene::loadMetaData(vector<Path> &plyCloudFileNames, vector<uint32> &imageScales,

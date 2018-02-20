@@ -79,7 +79,7 @@ ColorImage *ColorImage::request(const string &resourceName, const Path &imageFil
 }
 
 ColorImage::ColorImage(const string &resourceName, const Path &imageFileName) :
-	Image(ImgSize(0, 0), resourceName), mPixels(NULL), mFormat(Texture::FORMAT_NUM_OF)
+	Image(ImgSize(0, 0), 0, resourceName), mPixels(NULL), mFormat(Texture::FORMAT_NUM_OF)
 {
 	// get complete file name
 	const Path &folder = VolatileResource<Image>::getPathToResources();
@@ -89,12 +89,13 @@ ColorImage::ColorImage(const string &resourceName, const Path &imageFileName) :
 	mPixels = ImageManager::getSingleton().loadPNG(mSize, mFormat, fileName, false);
 	if (!mPixels)
 		throw FileCorruptionException("Could not load pixel RGB values from PNG file!", imageFileName);
+	mChannelCount = Texture::getChannelCount(mFormat);
 
 	checkFormat();
 }
 
 ColorImage::ColorImage(uint8 *pixels, const ImgSize &size, const Graphics::Texture::Format format, const string &resourceName) :
-	Image(size, resourceName), mPixels(pixels), mFormat(format)
+	Image(size, Texture::getChannelCount(format), resourceName), mPixels(pixels), mFormat(format)
 {
 	checkFormat();
 }

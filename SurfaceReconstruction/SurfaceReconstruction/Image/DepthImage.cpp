@@ -70,6 +70,7 @@ void DepthImage::findExtrema(Real &minimum, Real &maximum, const Real *depths, c
 
 DepthImage *DepthImage::request(const string &resourceName, const Path &imageFileName)
 {
+	// exists?
 	Image *image = Image::request(resourceName);
 	if (image)
 	{
@@ -84,7 +85,7 @@ DepthImage *DepthImage::request(const string &resourceName, const Path &imageFil
 }
 
 DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
-	Image(ImgSize(0, 0), resourceName), mDepths(NULL), mDepthConvention(DEPTH_ALONG_RAY)
+	Image(ImgSize(0, 0), 0, resourceName), mDepths(NULL), mDepthConvention(DEPTH_ALONG_RAY)
 {
 	// get complete file name
 	const Path folder(VolatileResource<Image>::getPathToResources());
@@ -94,6 +95,7 @@ DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
 	MVEIHeader header;
 	void *data = Image::loadMVEI(header, imageFileName, true);
 	mSize = header.mSize;
+	mChannelCount = header.mChannelCount;
 
 	// check header
 	if (header.mChannelCount != 1)
@@ -501,7 +503,7 @@ void DepthImage::setDepthConvention(const PinholeCamera &camera, const DepthConv
 }
 
 DepthImage::DepthImage(Real *depths, const ImgSize &size, const string &resourceName) :
-	Image(size, resourceName), mDepths(NULL), mDepthConvention(DEPTH_ALONG_RAY)
+	Image(size, 1, resourceName), mDepths(NULL), mDepthConvention(DEPTH_ALONG_RAY)
 {
 	// copy depths
 	const uint32 elementCount = size.getElementCount();

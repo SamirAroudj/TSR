@@ -62,7 +62,6 @@ namespace SurfaceReconstruction
 
 	private:
 		uint8 *mPixels;
-
 		Graphics::Texture::Format mFormat;
 	};
 

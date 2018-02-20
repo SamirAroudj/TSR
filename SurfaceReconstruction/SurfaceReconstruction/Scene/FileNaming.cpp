@@ -47,3 +47,4 @@ const char *FileNaming::CAMERA_META_FILE_NAME = "meta.ini";
 const char *FileNaming::IMAGE_TAG_COLOR = "undist";
 const char *FileNaming::IMAGE_TAG_COLOR_S0 = "undistorted";
 const char *FileNaming::IMAGE_TAG_DEPTH = "depth";
+const char *FileNaming::IMAGE_TAG_VIEWS = "views";

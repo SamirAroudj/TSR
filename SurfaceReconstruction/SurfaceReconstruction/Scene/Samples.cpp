@@ -118,12 +118,11 @@ void Samples::addToAABB(Vector3 AABB[2], const uint32 sampleIdx) const
 	AABB[1] = AABB[1].maximum(sampleMax);
 }
 
-void Samples::addSamplesFromMeshes(const vector<FlexibleMesh *> &meshes)
+void Samples::addSamplesFromMeshes(const vector<FlexibleMesh *> &meshes, const vector<vector<uint32>> *cameraIndices)
 {
-	assert(mMaxCamsPerSample <= 1);
-	if (mMaxCamsPerSample > 1)
-		throw Exception("Not implemented."); // todo
-	mMaxCamsPerSample = 1; // todo
+	if (!cameraIndices && mMaxCamsPerSample != 1)
+		throw Exception("Invalid visibility constraints for addSamplesFromMeshes!");
+	assert(cameraIndices || (1 == mMaxCamsPerSample));
 
 	// compute number of new samples
 	uint32 additionalSampleCount = 0;
@@ -151,7 +150,8 @@ void Samples::addSamplesFromMeshes(const vector<FlexibleMesh *> &meshes)
 		const Vector3 *positions = mesh.getPositions();
 		const Real *scales = mesh.getScales();
 		const Real confidence = 1.0f; // todo: how to get reasonable confidence values?
-		const uint32 parentCameras[1] = { meshIdx };
+		const uint32 referenceCamera[1] = { meshIdx };
+		const uint32 *parentCameras = (cameraIndices ? (*cameraIndices)[meshIdx].data() : referenceCamera);
 
 		const uint32 vertexCount = mesh.getVertexCount();
 		for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx, ++nextSampleIdx)
@@ -160,6 +160,9 @@ void Samples::addSamplesFromMeshes(const vector<FlexibleMesh *> &meshes)
 			setSample(nextSampleIdx,
 				colors[vertexIdx], normals[vertexIdx], positions[vertexIdx], 
 				confidence, scales[vertexIdx], parentCameras);
+
+			if (cameraIndices)
+				parentCameras += mMaxCamsPerSample;
 		}
 	}
 	

@@ -45,7 +45,8 @@ namespace SurfaceReconstruction
 		@param sampleIdx Identifies the sample. Must be a global index relative to the list of all scene samples.**/
 		void addToAABB(Math::Vector3 AABB[2], const uint32 sampleIdx) const;
 
-		void addSamplesFromMeshes(const std::vector<FlexibleMesh *> &meshes);
+		void addSamplesFromMeshes(const std::vector<FlexibleMesh *> &meshes,
+			const std::vector<std::vector<uint32>> *cameraIndices = NULL);
 
 		/** Checks whether sample properties look valid. */
 		void check() const;

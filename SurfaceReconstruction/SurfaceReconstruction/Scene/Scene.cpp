@@ -13,6 +13,7 @@
 #include "Platform/Utilities/ParametersManager.h"
 #include "SurfaceReconstruction/Image/ColorImage.h"
 #include "SurfaceReconstruction/Image/DepthImage.h"
+#include "SurfaceReconstruction/Image/ViewsImage.h"
 #include "SurfaceReconstruction/Geometry/StaticMesh.h"
 #include "SurfaceReconstruction/Refinement/FSSFRefiner.h"
 #ifdef PCS_REFINEMENT
@@ -522,7 +523,19 @@ void Scene::loadViewMeshes(const vector<uint32> &imageScales)
 			
 			depthImage->setDepthConvention(mCameras.getCamera(cameraIdx), DepthImage::DEPTH_ALONG_RAY);
 			//depthImage->erode(5);
+			
+			try
+			{
+				const Path fileName = getRelativeImageFileName(viewID, FileNaming::IMAGE_TAG_VIEWS, scale, false);
+				ViewsImage *viewsImage = ViewsImage::request(fileName.getCString(), fileName);
 
+				view IDs to camera indices;
+			}
+			catch (FileException &exception)
+			{
+				cout << "Could not load views IDs for camera " << cameraIdx << " and scale " << scale << ".\n";
+				cout << "Using only reference views for visibility constraints." << endl;
+			}
 			//const ViewsImage *viewsImage = ???;
 			//if (!viewsImage)
 			//	continue;

@@ -51,10 +51,12 @@ namespace SurfaceReconstruction
 		@return Returns true if trianglePS is completely within the image. (Each vertex is within the rectangle [0, width) x [0, height). */
 		inline bool contains(const Math::Vector2 trianglePS[3]) const;
 
+		inline uint32 getChannelCount() const;
+
 		inline const Utilities::ImgSize &getSize() const;
 
 	protected:
-		Image(const Utilities::ImgSize &size, const std::string &resourceName);
+		Image(const Utilities::ImgSize &size, const uint32 &channelCount, const std::string &resourceName);
 		virtual ~Image();
 
 		virtual void clear() = 0;
@@ -68,25 +70,31 @@ namespace SurfaceReconstruction
 
 	protected:
 		Utilities::ImgSize mSize;
+		uint32 mChannelCount;
 	};
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	///   inline function definitions   ////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	
-	inline void Image::setPathToImages(const Storage::Path &path)
-	{
-		msResourcePath = path;
-	}
 
 	bool Image::contains(const Math::Vector2 trianglePS[3]) const
 	{
 		return Image::contains(trianglePS, mSize);
 	}
 
+	inline uint32 Image::getChannelCount() const
+	{
+		return mChannelCount;
+	}
+
 	inline const Utilities::ImgSize &Image::getSize() const
 	{
 		return mSize;
+	}	
+
+	inline void Image::setPathToImages(const Storage::Path &path)
+	{
+		msResourcePath = path;
 	}
 }
 #endif // _COLOR_IMAGE_H_

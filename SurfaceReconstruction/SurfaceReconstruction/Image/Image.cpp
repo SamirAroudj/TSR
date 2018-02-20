@@ -107,7 +107,6 @@ void Image::saveAsMVEFloatImage(const Path &fileName, const bool relativePath,
 	floatData = NULL;
 }
 
-
  void *Image::loadMVEI(MVEIHeader &header, const Path &fileName, const bool relativePath)
 {
 	// load MVE image
@@ -149,13 +148,13 @@ void Image::saveAsMVEI(const Path &fileName, const bool relativePath,
 		throw FileException("Could not write MVE image content to file.", targetFileName);
 }
 
-Image::Image(const ImgSize &size, const string &resourceName) :
-	VolatileResource<Image>(resourceName), mSize(size)
+Image::Image(const ImgSize &size, const uint32 &channelCount, const string &resourceName) :
+	VolatileResource<Image>(resourceName), mSize(size), mChannelCount(channelCount)
 {
 
 }
 
-Image::Image(const Image &copy) : VolatileResource<Image>(""), mSize(copy.mSize)
+Image::Image(const Image &copy) : VolatileResource<Image>(""), mSize(copy.mSize), mChannelCount(copy.mChannelCount)
 {
 	assert(false);
 }
