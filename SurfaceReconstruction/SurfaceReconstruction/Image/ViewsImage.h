@@ -10,6 +10,7 @@
 #ifndef _VIEWS_IMAGE_H_
 #define _VIEWS_IMAGE_H_
 
+#include <cassert>
 #include "SurfaceReconstruction/Image/Image.h"
 #include "Platform/Utilities/Size2.h"
 
@@ -24,7 +25,7 @@ namespace SurfaceReconstruction
 		static ViewsImage *request(const std::string &resourceName, const Storage::Path &imageFileName);
 
 	public:
-			
+		inline uint32 get(const uint32 &pixelIdx, const uint32 &channelIdx) const;
 
 	protected:
 		ViewsImage(const std::string &resourceName, const Storage::Path &imageFileName);
@@ -39,6 +40,12 @@ namespace SurfaceReconstruction
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	///   inline function definitions   ////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	inline uint32 ViewsImage::get(const uint32 &pixelIdx, const uint32 &channelIdx) const
+	{
+		assert(channelIdx < mChannelCount);
+		return mViewIDs[mChannelCount * pixelIdx + channelIdx];
+	}
 
 }
 

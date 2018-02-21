@@ -45,8 +45,12 @@ namespace SurfaceReconstruction
 		@param sampleIdx Identifies the sample. Must be a global index relative to the list of all scene samples.**/
 		void addToAABB(Math::Vector3 AABB[2], const uint32 sampleIdx) const;
 
-		void addSamplesFromMeshes(const std::vector<FlexibleMesh *> &meshes,
-			const std::vector<std::vector<uint32>> *cameraIndices = NULL);
+		/** todo */
+		void addSamplesViaClouds(const std::vector<Storage::Path> &plyCloudFileNames, const std::vector<uint32> &viewToCameraIndices,
+			const Math::Matrix3x3 &inputOrientation, const Math::Vector3 &inputOrigin);
+
+		void addSamplesViaMeshes(const std::vector<FlexibleMesh *> &meshes,
+			const std::vector<uint32> *const *cameraIndices = NULL, const uint32 *camerasPerSamples = NULL);
 
 		/** Checks whether sample properties look valid. */
 		void check() const;
@@ -183,10 +187,6 @@ namespace SurfaceReconstruction
 		/** todo */
 		void loadFromFile(const Storage::Path &fileName);
 
-		/** todo */
-		void loadClouds(const std::vector<Storage::Path> &plyCloudFileNames, const std::vector<uint32> &viewToCameraIndices,
-			const Math::Matrix3x3 &inputOrientation, const Math::Vector3 &inputOrigin);
-
 		/** Adds normal noise to a Sample object.
 		@param Contains three Gaussian distributions to add positional ([0]) & angular ([1]) noise as well as noise to the sample object's scale ([2]).
 		@param sampleIdx Identifies the sample. Must be a global index relative to the list of all scene samples.*/
@@ -205,6 +205,15 @@ namespace SurfaceReconstruction
 		@return The returned position is relative to the specified Sample object's local coordinate system. (origin = sample center, normal = x-axis)*/
 		Math::Vector3 toSampleSpace(const Math::Vector3 &pWS, const uint32 sampleIdx) const;
 
+		/** Potentially increases the maximum number of cameras indices per sample if camerasPerSample is larger than the current internally stored maximum number of camera indices per sample.
+			The function does not reduce the maximum number of linked cameras to avoid throwing links away.	
+			If the internal maximum is increased then the links accessible via getParentCameraIndices() are increased to n = (getCount() * newMaximum) links by
+			inserting invalid links which can be properly set later.
+		@param camerasPerSample The maximum of camerasPerSample and the current internally stored maximum number of camerasPerSample is used as new maximum
+			to define how much mermory is reserved for links between samples and cameras.
+		@return Returns true if the number of links is increased otherwise false is returned. */
+		bool updateMaxCamerasPerSample(const uint32 camerasPerSample);
+
 	private:
 		/** Copy constructor is forbidden. Don't use it. */
 		inline Samples(const Samples &other);
@@ -216,6 +225,19 @@ namespace SurfaceReconstruction
 		uint32 addSample();
 		
 		/** todo */
+		void addSamplesViaCloud(const Storage::Path &plyCloudFileName);
+
+		/** todo
+		@return Returns the number of loaded samples. */
+		uint32 addSamplesViaCloud(Utilities::PlyFile &file, const Storage::Path &fileName, const Graphics::VerticesDescription &verticesFormat);
+		
+		void addSamplesViaMesh(const FlexibleMesh &mesh,
+			const uint32 &referenceCameraIdx, const uint32 *cameraIndices = NULL, const uint32 &camerasPerSample = 0);
+
+		void checkLinkCount(const uint64 &newSampleCount, const uint32 &newMaxCamerasPerSample) const;
+		void checkSampleCount(const uint64 &newSampleCount) const;
+
+		/** todo */
 		void computeAABB();
 
 		/** Computes the number of valid sample to parent camera links stored in mParentCameras. */
@@ -226,14 +248,6 @@ namespace SurfaceReconstruction
 
 		/** todo */
 		void invalidateParentCameras(const uint32 sampleIdx);
-		
-		/** todo */
-		void loadCloud(const Storage::Path &plyCloudFileName);
-
-		/** todo
-		@return Returns the number of loaded samples. */
-		uint32 loadCloud(Utilities::PlyFile &file, const Storage::Path &fileName, const Graphics::VerticesDescription &verticesFormat,
-			const uint32 maxAdditionalCount);
 
 		/** todo */
 		void popBackSample();
@@ -243,7 +257,7 @@ namespace SurfaceReconstruction
 			const Graphics::ElementsDescription::TYPES type, const Graphics::VerticesDescription::SEMANTICS semantic);
 
 		/** todo */
-		void reserve(const size_t sampleCount);
+		void reserve(const uint64 sampleCount);
 
 		/** todo */
 		void resize(const uint32 sampleCount);
@@ -252,7 +266,7 @@ namespace SurfaceReconstruction
 		inline void set(const uint32 targetIdx, const Samples &sourceSamples, const uint32 sourceIdx);
 
 		void setSample(const uint32 targetIdx, const Math::Vector3 &color, const Math::Vector3 &normal, const Math::Vector3 &positionWS,
-			const Real confidence, const Real scale, const uint32 *parentCameraIDs);
+			const Real &confidence, const Real &scale, const uint32 *parentCameras, const uint32 &parentCameraCount);
 
 		/** Sets the scale of the specified sample which is the average distance to its neighbors which were captured by the same camera. (~= sampling granularity)
 		@param scale The scale of the specified sample is the average distance to its neighbors which were captured by the same camera. (~= sampling granularity)
@@ -270,7 +284,9 @@ namespace SurfaceReconstruction
 		void transform(const uint32 sampleIdx, const Math::Matrix3x3 &transformation, const Math::Vector3 &translation);
 
 		/** todo */
-		void tansformViewToParentCameraLinks(const std::vector<uint32> &viewToCameraIndices);
+		void transformViewToParentCameraLinks(const std::vector<uint32> &viewToCameraIndices);
+
+		void updateMaxCamerasPerSample(const Graphics::VerticesDescription &verticesFormat);
 
 	public:
 		static const char *MAX_RELATIVE_SAMPLING_DISTANCE; /// Name of the user parameter for mMaxRelativeSamplingDistance
@@ -429,7 +445,8 @@ namespace SurfaceReconstruction
 	inline void Samples::set(const uint32 targetIdx, const Samples &source, const uint32 sourceIdx)
 	{
 		setSample(targetIdx, source.mColors[sourceIdx], source.mNormals[sourceIdx], source.mPositions[sourceIdx],
-			source.mConfidences[sourceIdx], source.mScales[sourceIdx], source.mParentCameras.data() + sourceIdx * source.mMaxCamsPerSample);
+			source.mConfidences[sourceIdx], source.mScales[sourceIdx],
+			source.mParentCameras.data() + sourceIdx * source.mMaxCamsPerSample, source.mMaxCamsPerSample);
 	}
 
 	inline void Samples::setScale(const Real scale, const uint32 sampleIdx)

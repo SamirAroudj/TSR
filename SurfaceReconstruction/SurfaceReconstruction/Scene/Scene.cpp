@@ -204,17 +204,6 @@ bool Scene::reconstruct()
 	}
 	refine(RECONSTRUCTION_VIA_SAMPLES);
 
-	//// further refinement?
-	//if (!mPCSRefiner && mReconstructions[RECONSTRUCTION_VIA_SAMPLES])
-	//{
-
-	//	mPCSRefiner = new PCSRefiner(*mReconstructions[RECONSTRUCTION_VIA_SAMPLES]);
-	//	mPCSRefiner->registerObserver(this);
-	//	if (observers)
-	//		mFSSFRefiner->registerObservers(*observers);
-	//	refine(RECONSTRUCTION_VIA_PCS);
-	//}
-
 	return true;
 }
 
@@ -492,7 +481,8 @@ void Scene::createFSSFRefiner()
 }
 
 
-void Scene::loadViewMeshes(const vector<uint32> &imageScales)
+void Scene::loadDepthMeshes(const vector<uint32> &imageScales,
+	vector<vector<uint32> *> *cameraIndices, vector<uint32> *camerasPerSamples)
 {
 	// load the corresponding images for all views at all scales
 	const uint32 scaleCount = (uint32) imageScales.size();
@@ -500,6 +490,13 @@ void Scene::loadViewMeshes(const vector<uint32> &imageScales)
 	vector<vector<uint32>> vertexNeighbors;
 	vector<uint32> indices;
 	vector<uint32> pixelToVertexIndices;
+
+	const bool outputLinks = (cameraIndices && camerasPerSamples);
+	if (outputLinks)
+	{
+		cameraIndices->reserve(cameraCount * scaleCount);
+		camerasPerSamples->reserve(cameraCount * scaleCount);
+	}
 
 	for (uint32 cameraIdx = 0; cameraIdx < cameraCount; ++cameraIdx)
 	{
@@ -520,29 +517,59 @@ void Scene::loadViewMeshes(const vector<uint32> &imageScales)
 			DepthImage *depthImage = getDepthImage(viewID, FileNaming::IMAGE_TAG_DEPTH, scale);
 			if (!depthImage)
 				continue;
-			
+
 			depthImage->setDepthConvention(mCameras.getCamera(cameraIdx), DepthImage::DEPTH_ALONG_RAY);
-			//depthImage->erode(5);
-			
-			try
-			{
-				const Path fileName = getRelativeImageFileName(viewID, FileNaming::IMAGE_TAG_VIEWS, scale, false);
-				ViewsImage *viewsImage = ViewsImage::request(fileName.getCString(), fileName);
-
-				view IDs to camera indices;
-			}
-			catch (FileException &exception)
-			{
-				cout << "Could not load views IDs for camera " << cameraIdx << " and scale " << scale << ".\n";
-				cout << "Using only reference views for visibility constraints." << endl;
-			}
-			//const ViewsImage *viewsImage = ???;
-			//if (!viewsImage)
-			//	continue;
-
 			FlexibleMesh *mesh = depthImage->triangulate(pixelToVertexIndices, vertexNeighbors, indices, camera, colorImage);
-			mViewMeshes.push_back(mesh);
+			mDepthMeshes.push_back(mesh);
+			
+			if (outputLinks)
+				loadCameraIndices(*cameraIndices, *camerasPerSamples, pixelToVertexIndices, mesh->getVertexCount(), cameraIdx, scale);
 		}
+	}
+}
+
+void Scene::loadCameraIndices(vector<vector<uint32> *> &cameraIndices, vector<uint32> &camerasPerSamples,
+	const vector<uint32> &pixelToVertexIndices, const uint32 &vertexCount, const uint32 &cameraIdx, const uint32 &scale) const
+{
+	cameraIndices.resize(cameraIndices.size() + 1, NULL);
+	camerasPerSamples.resize(cameraIndices.size(), 0);
+	uint32 &camerasPerSample = camerasPerSamples.back();
+
+	// either views image available -> new camera indices vector for mesh for cmaera cameraIdx or missing image -> invalid pointer instead of vector
+	try
+	{
+		// load views image
+		const uint32 viewID = mCameras.getViewID(cameraIdx);
+		const Path fileName = getRelativeImageFileName(viewID, FileNaming::IMAGE_TAG_VIEWS, scale, false);
+		ViewsImage *viewsImage = ViewsImage::request(fileName.getCString(), fileName);
+
+		// reserve memory & update camerasPerSamples
+		camerasPerSample = viewsImage->getChannelCount();
+		cameraIndices.back() = new vector<uint32>(vertexCount * camerasPerSample, Cameras::INVALID_ID);
+
+		// set view indices
+		const uint32 pixelCount = (uint32) pixelToVertexIndices.size();
+		for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
+		{
+			const uint32 vertexIdx = pixelToVertexIndices[pixelIdx]; 
+			if (Triangle::INVALID_INDEX == vertexIdx)
+				continue;
+
+			// set camera indices for the current vertex
+			uint32 *sampleCameras = cameraIndices.back()->data() + camerasPerSample * vertexIdx;
+			for (uint32 channelIdx = 0; channelIdx < camerasPerSample; ++channelIdx)
+			{
+				const uint32 &parentViewID = viewsImage->get(pixelIdx, channelIdx);
+				if (Cameras::INVALID_ID != parentViewID)
+					sampleCameras[channelIdx] = mViewToCameraIndices[parentViewID];
+			}
+		}
+	}
+	catch (FileException &exception)
+	{
+		cout << exception.getMessage() << " " << exception.getFileName() << "\n";
+		cout << "Could not load views IDs for camera " << cameraIdx << " and scale " << scale << ".\n";
+		cout << "Using only reference views for visibility constraints.\n" << flush;
 	}
 }
 
@@ -625,12 +652,12 @@ void Scene::clear()
 	mOccupancy = NULL;
 	mTree = NULL;
 
-	// free view meshes
-	const uint32 meshCount = (uint32) mViewMeshes.size();
+	// free triangulated depth maps / depth meshes
+	const uint32 meshCount = (uint32) mDepthMeshes.size();
 	for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
-		delete mViewMeshes[meshIdx];
-	mViewMeshes.clear();
-	mViewMeshes.shrink_to_fit();
+		delete mDepthMeshes[meshIdx];
+	mDepthMeshes.clear();
+	mDepthMeshes.shrink_to_fit();
 
 	// release samples & cameras
 	mSamples.clear();

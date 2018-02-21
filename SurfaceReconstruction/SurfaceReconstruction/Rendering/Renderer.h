@@ -385,7 +385,7 @@ namespace SurfaceReconstruction
 
 	inline void Renderer::showPreviousEdgeNeighbors()
 	{
-		if (Edge::INVALID_IDX == mShownEdge)
+		if (Edge::INVALID_INDEX == mShownEdge)
 			return;
 
 		--mShownEdge;
@@ -403,7 +403,7 @@ namespace SurfaceReconstruction
 
 	inline void Renderer::showPreviousTriangleNeighbors()
 	{
-		if (Triangle::INVALID_IDX == mShownTriangle)
+		if (Triangle::INVALID_INDEX == mShownTriangle)
 			return;
 
 		--mShownTriangle;

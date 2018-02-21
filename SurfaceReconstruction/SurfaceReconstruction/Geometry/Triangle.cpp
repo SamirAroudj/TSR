@@ -15,7 +15,7 @@ using namespace FailureHandling;
 using namespace std;
 using namespace SurfaceReconstruction;
 
-const uint32 Triangle::INVALID_IDX = (uint32) -1;
+const uint32 Triangle::INVALID_INDEX = (uint32) -1;
 
 bool Triangle::areAdjacent(const uint32 triangleVertices0[3], const uint32 triangleVertices1[3])
 {
@@ -90,7 +90,7 @@ uint32 Triangle::getOtherVertex(const uint32 indices[3], const uint32 index0, co
 		cerr << "Candidates " << index0 << ", " << index1 << "\n";
 		cerr << endl;
 
-		return Vertex::INVALID_IDX;
+		return Vertex::INVALID_INDEX;
 	}
 
 	// return the index which is opposite to index 0 and index 1
@@ -98,7 +98,7 @@ uint32 Triangle::getOtherVertex(const uint32 indices[3], const uint32 index0, co
 		if (!equal[0][i] && !equal[1][i])
 			return indices[i];
 
-	return Vertex::INVALID_IDX;
+	return Vertex::INVALID_INDEX;
 }
 
 void Triangle::getVerticesInWindingOrder(uint32 ordered[2], const uint32 triangle[3], const uint32 unordered[2])

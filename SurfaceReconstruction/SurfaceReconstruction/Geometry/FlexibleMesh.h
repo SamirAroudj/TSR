@@ -357,7 +357,7 @@ namespace SurfaceReconstruction
 	inline const Edge *FlexibleMesh::getEdge(const uint32 edgeVertexIdx0, const uint32 edgeVertexIdx1) const
 	{
 		const uint32 edgeIdx = getEdgeIndex(edgeVertexIdx0, edgeVertexIdx1);
-		if (Edge::INVALID_IDX == edgeIdx)
+		if (Edge::INVALID_INDEX == edgeIdx)
 			return NULL;
 		return mEdges.data() + edgeIdx;
 	}

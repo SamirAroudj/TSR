@@ -12,4 +12,4 @@
 using namespace Math;
 using namespace SurfaceReconstruction;
 
-const uint32 Vertex::INVALID_IDX = (uint32) -1;
+const uint32 Vertex::INVALID_INDEX = (uint32) -1;

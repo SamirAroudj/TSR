@@ -357,7 +357,7 @@ void Mesh::loadVertices(PlyFile &file, const VerticesDescription &verticesFormat
 	// get data format
 	const ElementsSemantics &semantics = verticesFormat.getSemantics();
 	const ElementsSyntax &syntax = verticesFormat.getTypeStructure();
-	const uint32 propertyCount = (uint32) syntax.size();
+	const uint32 propertyCount = verticesFormat.getPropertyCount();
 	const uint32 vertexCount = verticesFormat.getElementCount();
 
 	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)

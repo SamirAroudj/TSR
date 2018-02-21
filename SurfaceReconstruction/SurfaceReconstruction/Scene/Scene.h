@@ -64,9 +64,7 @@ namespace SurfaceReconstruction
 		@param sampleOffsets todo*/
 		void eraseSamples(const bool *inliers, const bool saveResults);
 
-		/** Creates a Tree object to spatially organize the scene and reorder its samples according to the tree structure.
-		@return Returns true if reconstruction is succesful.*/
-		bool reconstruct();
+		inline const std::vector<FlexibleMesh *> getDepthMeshes() const;
 
 		/** todo Returns path to folder wheher results are written to files.
 			The scene name is additionally appended to the folder. */
@@ -99,8 +97,6 @@ namespace SurfaceReconstruction
 
 		inline Storage::Path getViewFolder(const uint32 &viewID) const;
 
-		inline const std::vector<FlexibleMesh *> getViewMeshes() const;
-
 		/** Returns the path pointing to the directory containing all views folders of this scene. 
 		@return Returns the folder which contains all view folders view0000, view0001, ... etc.*/
 		inline Storage::Path getViewsFolder() const;
@@ -113,6 +109,10 @@ namespace SurfaceReconstruction
 		@return Returns all exisiting cameras of this Scene object.*/
 		inline const Cameras &getCameras() const;
 		
+		/** Creates a Tree object to spatially organize the scene and reorder its samples according to the tree structure.
+		@return Returns true if reconstruction is succesful.*/
+		bool reconstruct();
+
 		/** todo */
 		void refine(const ReconstructionType type);
 
@@ -140,11 +140,15 @@ namespace SurfaceReconstruction
 		/** Gets synthetic scene description from a parameters file.
 		@param fileName Describes where to create the scene, what data to load, how to create the scene, etc.*/
 		virtual bool getParameters(const Storage::Path &fileName);
+		
+		void loadCameraIndices(std::vector<std::vector<uint32> *> &cameraIndices, std::vector<uint32> &camerasPerSamples,
+			const std::vector<uint32> &pixelToVertexIndices, const uint32 &vertexCount, const uint32 &cameraIdx, const uint32 &scale) const;
+
+		void loadDepthMeshes(const std::vector<uint32> &imagesScales,
+			std::vector<std::vector<uint32> *> *cameraIndices = NULL, std::vector<uint32> *camerasPerSamples = NULL);
 
 		/** todo */
 		void loadFromFile(const Storage::Path &rootFolder, const Storage::Path &FSSFReconstruction);
-
-		void loadViewMeshes(const std::vector<uint32> &imagesScales);
 
 		/** todo */
 		void setRootFolder(const Storage::Path &rootFolder);
@@ -171,8 +175,9 @@ namespace SurfaceReconstruction
 	protected:
 		Cameras mCameras;											/// Contains all the camera data for all registered views. They represent projective captures measuring surfaces and creating samples.
 		Samples mSamples;											/// Represents all scene samples.
+
+		std::vector<FlexibleMesh *> mDepthMeshes;					/// Triangulated depth maps - one mesh per camera / depth map.
 		std::vector<IReconstructorObserver *> mRefinerObservers;	/// get updates from mesh refiners
-		std::vector<FlexibleMesh *> mViewMeshes;					/// Triangulated depth maps - one mesh per registered view.
 		std::vector<uint32> mViewToCameraIndices;					/// Links from views to camera indices. Views (a view's images) might not be registered which is why there might be no camera.
 
 		Storage::Path mFolder;				/// Defines the root scene folder. Contains scene data and is the parent folder of the folders like views containing sub folders for each view with their images. 
@@ -203,6 +208,11 @@ namespace SurfaceReconstruction
 	inline const Cameras &Scene::getCameras() const
 	{
 		return mCameras;
+	}
+
+	inline const std::vector<FlexibleMesh *> Scene::getDepthMeshes() const
+	{
+		return mDepthMeshes;
 	}
 
 	inline const FSSFRefiner *Scene::getFSSFRefiner() const
@@ -256,11 +266,6 @@ namespace SurfaceReconstruction
 	inline Storage::Path Scene::getViewFolder(const uint32 &viewID) const
 	{
 		return Storage::Path::appendChild(getViewsFolder(), getRelativeViewFolder(viewID));
-	}
-
-	inline const std::vector<FlexibleMesh *> Scene::getViewMeshes() const
-	{
-		return mViewMeshes;
 	}
 
 	inline Storage::Path Scene::getViewsFolder() const

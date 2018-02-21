@@ -472,7 +472,7 @@ void TSR::createNewScene(const uint32 sceneCreationType, const vector<string> &a
 	//#ifdef _DEBUG
 		if (Platform::Window::exists())
 		{
-			const vector<FlexibleMesh *> &meshes = mScene->getViewMeshes();
+			const vector<FlexibleMesh *> &meshes = mScene->getDepthMeshes();
 			const uint32 meshCount = (uint32) meshes.size();
 			for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
 				mMeshRenderer->uploadData(*meshes[meshIdx]);

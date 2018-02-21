@@ -60,7 +60,7 @@ const Real Renderer::NORMAL_SIZE = (Real) 0.2;
 const Real Renderer::CAMERA_SIZE = (Real) 0.1; 
 
 TreeIntersectionTriangle::TreeIntersectionTriangle() :
-	mTriangleIdx(Triangle::INVALID_IDX)
+	mTriangleIdx(Triangle::INVALID_INDEX)
 {
 
 }
@@ -502,7 +502,7 @@ void Renderer::renderEdgeNeighbors(const FlexibleMesh &mesh) const
 void Renderer::renderTreeIntersectionTriangle(const FlexibleMesh &mesh) const
 {
 	// check triangle
-	if (Triangle::INVALID_IDX == mInterTriangle.mTriangleIdx)
+	if (Triangle::INVALID_INDEX == mInterTriangle.mTriangleIdx)
 		return;
 
 	// get tree & refiener
@@ -1270,7 +1270,7 @@ void Renderer::showTreeIntersectionTriangle(const uint32 triangleIdx)
 	// check triangle choice & update mInterTriangle
 	if (triangleIdx >= triangleCount)
 	{
-		mInterTriangle.mTriangleIdx = Triangle::INVALID_IDX;
+		mInterTriangle.mTriangleIdx = Triangle::INVALID_INDEX;
 		mInterTriangle.mLeaves.clear();
 		return;
 	}

@@ -59,7 +59,7 @@ void FlexibleMesh::computeOffsetsForFiltering(uint32 *vertexOffsets, uint32 *edg
 			const Edge &edge = edges[globalEdgeIdx];
 			const uint32 *triangles = edge.getTriangleIndices();
 			for (uint32 sideIdx = 0; sideIdx < 2; ++sideIdx)
-				if (Triangle::INVALID_IDX != triangles[sideIdx]) // invalid neighbor triangle anyway?
+				if (Triangle::INVALID_INDEX != triangles[sideIdx]) // invalid neighbor triangle anyway?
 					doomedTriangles[triangles[sideIdx]] = 1; // delete this triangle as its edge is deleted
 		}
 	}
@@ -93,7 +93,7 @@ void FlexibleMesh::computeOffsetsForFiltering(uint32 *vertexOffsets, uint32 *edg
 
 				// does the edge have 0 neighbor triangles?
 				const uint32 otherTriangleIdx = edge.getOtherTriangle((uint32) triangleIdx);
-				if (Triangle::INVALID_IDX == otherTriangleIdx || doomedTriangles[otherTriangleIdx])
+				if (Triangle::INVALID_INDEX == otherTriangleIdx || doomedTriangles[otherTriangleIdx])
 					doomedEdges[globalEdgeIdx] = 1;
 			}
 		}
@@ -394,8 +394,8 @@ void FlexibleMesh::mergeEdges(vector<uint32> &edgesWithNewIndices, const vector<
 	for (uint32 edgeIdx = 0; edgeIdx < oldEdgeCount; ++edgeIdx)
 	{
 		const Edge &edge = mEdges[edgeIdx];
-		if ((Triangle::INVALID_IDX == edge.getTriangleIndices()[0] && Triangle::INVALID_IDX == edge.getTriangleIndices()[1]) &&
-			(Vertex::INVALID_IDX != edge.getVertexIndices()[0] && Vertex::INVALID_IDX != edge.getVertexIndices()[1]))
+		if ((Triangle::INVALID_INDEX == edge.getTriangleIndices()[0] && Triangle::INVALID_INDEX == edge.getTriangleIndices()[1]) &&
+			(Vertex::INVALID_INDEX != edge.getVertexIndices()[0] && Vertex::INVALID_INDEX != edge.getVertexIndices()[1]))
 		{
 			cerr << "This is not supposed to happen0: " << edgeIdx << " " << edge.getVertexIndices()[0] << " " << edge.getVertexIndices()[1] << endl;
 		}
@@ -408,8 +408,8 @@ void FlexibleMesh::mergeEdges(vector<uint32> &edgesWithNewIndices, const vector<
 	for (uint32 edgeIdx = 0; edgeIdx < newEdgeCount; ++edgeIdx)
 	{
 		const Edge &edge = mEdges[edgeIdx];
-		if ((Triangle::INVALID_IDX == edge.getTriangleIndices()[0] && Triangle::INVALID_IDX == edge.getTriangleIndices()[1]) &&
-			(Vertex::INVALID_IDX != edge.getVertexIndices()[0] && Vertex::INVALID_IDX != edge.getVertexIndices()[1]))
+		if ((Triangle::INVALID_INDEX == edge.getTriangleIndices()[0] && Triangle::INVALID_INDEX == edge.getTriangleIndices()[1]) &&
+			(Vertex::INVALID_INDEX != edge.getVertexIndices()[0] && Vertex::INVALID_INDEX != edge.getVertexIndices()[1]))
 		{
 			cerr << "This is not supposed to happen1: " << edgeIdx << " " << edge.getVertexIndices()[0] << " " << edge.getVertexIndices()[1] << endl;
 		}
@@ -528,7 +528,7 @@ bool FlexibleMesh::isInvalidEdgeMerge(const uint32 keptV, const uint32 keptE[2],
 			// is a triangle corner moved by the replacement?
 			const uint32 *oldIndices = mIndices.data() + 3 * triangleIdx;
 			uint32 movingCornerIdx = Triangle::getLocalVertexIdx(oldIndices, doomedV);
-			if (Vertex::INVALID_IDX == movingCornerIdx)
+			if (Vertex::INVALID_INDEX == movingCornerIdx)
 				continue;
 
 			// edge conflict?
@@ -536,7 +536,7 @@ bool FlexibleMesh::isInvalidEdgeMerge(const uint32 keptV, const uint32 keptE[2],
 			for (uint32 localEdgeIdx = 0; localEdgeIdx < 2; ++localEdgeIdx)
 			{
 				const uint32 globalEdgeIdx = getEdgeIndex(keptV, newEdgeNeighbors[localEdgeIdx]);
-				if (Edge::INVALID_IDX == globalEdgeIdx || keptE[0] == globalEdgeIdx || keptE[1] == globalEdgeIdx)
+				if (Edge::INVALID_INDEX == globalEdgeIdx || keptE[0] == globalEdgeIdx || keptE[1] == globalEdgeIdx)
 					continue;
 
 				return true;
@@ -614,8 +614,8 @@ void FlexibleMesh::markDoomedElements(uint32 *globalDoomedVertices, uint32 *glob
 		globalDoomedEdges[globalIdx] = 1;
 
 		Edge &edge = mEdges[globalIdx];
-		edge.setTriangles(Triangle::INVALID_IDX, Triangle::INVALID_IDX);
-		edge.setVertices(Vertex::INVALID_IDX, Vertex::INVALID_IDX);
+		edge.setTriangles(Triangle::INVALID_INDEX, Triangle::INVALID_INDEX);
+		edge.setVertices(Vertex::INVALID_INDEX, Vertex::INVALID_INDEX);
 	}
 
 	// doomed triangles
@@ -625,7 +625,7 @@ void FlexibleMesh::markDoomedElements(uint32 *globalDoomedVertices, uint32 *glob
 		globalDoomedTriangles[globalIdx] = 1;
 
 		uint32 *indices = mIndices.data() + 3 * globalIdx;
-		indices[0] = indices[1] = indices[2] = Vertex::INVALID_IDX;
+		indices[0] = indices[1] = indices[2] = Vertex::INVALID_INDEX;
 	}
 }
 
@@ -738,7 +738,7 @@ void FlexibleMesh::subdivideEdge(const uint32 oldEdgeIdx)
 	{
 		// get & check triangle idx
 		const uint32 oldTriangleIdx = oldET[edgeSideIdx];
-		if (Triangle::INVALID_IDX == oldTriangleIdx)
+		if (Triangle::INVALID_INDEX == oldTriangleIdx)
 			continue;
 			
 		// old triangle & index of its vertex opposite to the split edge
@@ -759,7 +759,7 @@ void FlexibleMesh::shrinkOldEdgeSplitTriangles(const uint32 newVertexIdx, const 
 {
 	// remove invalid edge connectivity of the old triangle and its old neighbor triangle adjacent to oldEV[1]
 	const uint32 invalidOuterEdge = getEdgeIndex(oldEV[1], oldOppoV);
-	mEdges[invalidOuterEdge].replaceTriangle(oldTriangleIdx, Triangle::INVALID_IDX);
+	mEdges[invalidOuterEdge].replaceTriangle(oldTriangleIdx, Triangle::INVALID_INDEX);
 
 	// update indices create 2 new edges
 	// reassign / shrink two old triangles
@@ -819,7 +819,7 @@ void FlexibleMesh::subdivideTriangles(vector<uint32> &doomedOnes, vector<uint32>
 		doomedOnes.pop_back();
 		for (uint32 i = 0; i < 3; ++i)
 		{
-			if (Triangle::INVALID_IDX == oldNeighborTriangles[i])
+			if (Triangle::INVALID_INDEX == oldNeighborTriangles[i])
 				continue;
 
 			Array<uint32>::deleteFirstBySwapWithBack(doomedOnes, oldNeighborTriangles[i]);
@@ -880,7 +880,7 @@ void FlexibleMesh::gatherIndicesForSplit(uint32 newVertexIndices[6], uint32 oldV
 	for (uint32 i = 0; i < 3; ++i)
 	{
 		uint32 &oldIdx = oldVertexIndices[i + 3];
-		oldIdx = Vertex::INVALID_IDX;
+		oldIdx = Vertex::INVALID_INDEX;
 		if (Triangle::isInvalidIndex(oldNeighborTriangles[i]))
 			continue;
 
@@ -987,7 +987,7 @@ void FlexibleMesh::reassignOldEdges(const uint32 newVertexIndices[3], const uint
 
 		// completely reassign edge globalEdgeIdx
 		Edge &edge = mEdges[globalEdgeIdx];
-		edge.setTriangles(triangleIdx, Triangle::INVALID_IDX);
+		edge.setTriangles(triangleIdx, Triangle::INVALID_INDEX);
 		edge.setVertices(newV0, newV1);
 
 		mVerticesToEdges[newV0].push_back(globalEdgeIdx);
@@ -1022,8 +1022,8 @@ void FlexibleMesh::replaceNeighborTriangle(const uint32 triangleIdx,
 	getEdgeIndices(edgeIndices, triangleIdx);
 
 	// keep connectivity to one neighbor triangle 
-	uint32 replacedVertex = Vertex::INVALID_IDX;
-	uint32 keptEdgeIdx = Edge::INVALID_IDX;
+	uint32 replacedVertex = Vertex::INVALID_INDEX;
+	uint32 keptEdgeIdx = Edge::INVALID_INDEX;
 	for (uint32 localEdgeIdx = 0; localEdgeIdx < 3; ++localEdgeIdx)
 	{
 		// get & check edge index
@@ -1036,10 +1036,10 @@ void FlexibleMesh::replaceNeighborTriangle(const uint32 triangleIdx,
 		assert(edge.getTriangleIndices()[0] == triangleIdx || edge.getTriangleIndices()[1] == triangleIdx);
 
 		// only keep connectivity to one neighbor - other two neighbors will be created later
-		if (Edge::INVALID_IDX != keptEdgeIdx)
+		if (Edge::INVALID_INDEX != keptEdgeIdx)
 		{
 			// invalidate other edge link
-			edge.replaceTriangle(triangleIdx, Triangle::INVALID_IDX);
+			edge.replaceTriangle(triangleIdx, Triangle::INVALID_INDEX);
 			continue;
 		}
 
@@ -1075,7 +1075,7 @@ bool FlexibleMesh::getAdjacentTriangleNormals(Math::Vector3 &n0, Math::Vector3 &
 {
 	// does the edge exist?
 	const uint32 edgeIdx = getEdgeIndex(edgeVertexIdx0, edgeVertexIdx1);
-	if (Edge::INVALID_IDX == edgeIdx)
+	if (Edge::INVALID_INDEX == edgeIdx)
 		return false;
 
 	// get the edge & its triangle indices
@@ -1122,7 +1122,7 @@ uint32 FlexibleMesh::getEdgeIndex(const uint32 vertexIdx0, const uint32 vertexId
 			return edgeIdx;
 	}
 
-	return Edge::INVALID_IDX;
+	return Edge::INVALID_INDEX;
 }
 
 void FlexibleMesh::getEdgeIndices(uint32 edgeIndices[3], const uint32 triangleIdx) const
@@ -1520,12 +1520,12 @@ void FlexibleMesh::updateEdgeLinks(const uint32 *vertexOffsets, const uint32 *tr
 
 		// update links to triangles
 		const uint32 *oldTriangles = edge.getTriangleIndices();
-		uint32 newTriangleIndices[2] = { Triangle::INVALID_IDX, Triangle::INVALID_IDX };
+		uint32 newTriangleIndices[2] = { Triangle::INVALID_INDEX, Triangle::INVALID_INDEX };
 		
 		for (uint32 sideIdx = 0; sideIdx < 2; ++sideIdx)
 		{
 			const uint32 old = oldTriangles[sideIdx];
-			if (Triangle::INVALID_IDX == old)
+			if (Triangle::INVALID_INDEX == old)
 				continue;
 
 			if (triangleOffsets[old] == triangleOffsets[old + 1])
@@ -1594,10 +1594,10 @@ void FlexibleMesh::fillHoles()
 		const uint32 *triangles = edge.getTriangleIndices();
 
 		// not a hole border edge?
-		if (Triangle::INVALID_IDX != triangles[0] && Triangle::INVALID_IDX != triangles[1])
+		if (Triangle::INVALID_INDEX != triangles[0] && Triangle::INVALID_INDEX != triangles[1])
 			continue;
 
-		const uint32 existingSide = (triangles[1] != Triangle::INVALID_IDX);
+		const uint32 existingSide = (triangles[1] != Triangle::INVALID_INDEX);
 		const uint32 *triangle = getTriangle(triangles[existingSide]);
 		uint32 orderedVertices[2];
 		Triangle::getVerticesInWindingOrder(orderedVertices, triangle, edge.getVertexIndices());
@@ -2120,8 +2120,8 @@ void FlexibleMesh::checkEdges() const
 //
 //		// is there a problem?
 //		bool error = false;
-//		error |= Triangle::INVALID_IDX == triangles[0] || Triangle::INVALID_IDX == triangles[1] ||
-//				 Vertex::INVALID_IDX == vertices[0] || Vertex::INVALID_IDX == vertices[1];
+//		error |= Triangle::INVALID_INDEX == triangles[0] || Triangle::INVALID_INDEX == triangles[1] ||
+//				 Vertex::INVALID_INDEX == vertices[0] || Vertex::INVALID_INDEX == vertices[1];
 //		if (doomedVertices)
 //			error |= (doomedVertices[vertices[0]] || doomedVertices[vertices[1]]);
 //		if (doomedTriangles)
@@ -2179,7 +2179,7 @@ void FlexibleMesh::checkEdges() const
 //				continue;
 //
 //			const uint32 *triangle = getTriangle((uint32) triangleIdx);
-//			const bool error = (Vertex::INVALID_IDX == triangle[0] || Vertex::INVALID_IDX == triangle[1] || Vertex::INVALID_IDX == triangle[2]);
+//			const bool error = (Vertex::INVALID_INDEX == triangle[0] || Vertex::INVALID_INDEX == triangle[1] || Vertex::INVALID_INDEX == triangle[2]);
 //			if (!error)
 //				continue;
 //			

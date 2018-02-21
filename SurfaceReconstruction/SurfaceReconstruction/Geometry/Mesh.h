@@ -26,7 +26,7 @@ namespace SurfaceReconstruction
 		static void computeAABB(Math::Vector3 &min, Math::Vector3 &max, const Math::Vector3 *positions, const uint32 vertexCount);
 		
 		static Real computeAverageDistance(const Math::Vector3 &center, const Math::Vector3 *positions, const uint32 *neighborIndices, const uint32 indexCount,
-			const uint32 skipIdx = Vertex::INVALID_IDX);
+			const uint32 skipIdx = Vertex::INVALID_INDEX);
 
 		static void computeNormalsOfTriangles(Math::Vector3 *normals, 
 			const Math::Vector3 *positions, const uint32 *indices, const uint32 indexCount);

@@ -36,23 +36,28 @@ const char *CapturedScene::PARAMETER_NAME_PLY_FILE = "plyFile";
 CapturedScene::CapturedScene(const Path &metaFileName, const vector<IReconstructorObserver *> &observers) :
 	Scene(observers)
 {
-	// load what scene / what data to be loaded
+	// load what scene / what data to be loaded & cameras
 	vector<Path> plyCloudFileNames;
 	vector<uint32> imageScales;
 	loadMetaData(plyCloudFileNames, imageScales, metaFileName);
-
-	// load data
 	loadCameras();
-	loadViewMeshes(imageScales);
-	if (mViewMeshes.empty())
+
+	// load image-based data
 	{
-		mSamples.loadClouds(plyCloudFileNames, mViewToCameraIndices, mInputOrientation, mInputOrigin);
+		vector<vector<uint32> *> cameraIndices;
+		vector<uint32> camerasPerSamples;
+		loadDepthMeshes(imageScales, &cameraIndices, &camerasPerSamples);
+		mSamples.addSamplesViaMeshes(mDepthMeshes, cameraIndices.data(), camerasPerSamples.data());
+
+		// free camera indices
+		for (uint32 i = 0; i < cameraIndices.size(); ++i)
+			delete cameraIndices[i];
+		cameraIndices.clear();
+		camerasPerSamples.clear();
 	}
-	else
-	{
-		mSamples.setMaxCamerasPerSample(todo);
-		mSamples.addSamplesFromMeshes(mViewMeshes, cameraIndices);
-	}
+
+	// load samples via ply files
+	mSamples.addSamplesViaClouds(plyCloudFileNames, mViewToCameraIndices, mInputOrientation, mInputOrigin);
 }
 
 void CapturedScene::loadMetaData(vector<Path> &plyCloudFileNames, vector<uint32> &imageScales,

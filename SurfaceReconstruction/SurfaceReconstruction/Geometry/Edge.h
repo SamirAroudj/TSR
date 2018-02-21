@@ -46,7 +46,7 @@ namespace SurfaceReconstruction
 		inline void setVertices(const uint32 vertex0, const uint32 vertex1);
 
 	public:
-		static const uint32 INVALID_IDX;
+		static const uint32 INVALID_INDEX;
 
 	private:
 		uint32 mTriangles[2];
@@ -61,15 +61,15 @@ namespace SurfaceReconstruction
 	
 	inline Edge::Edge()
 	{
-		mTriangles[0] = Triangle::INVALID_IDX;
-		mTriangles[1] = Triangle::INVALID_IDX;
+		mTriangles[0] = Triangle::INVALID_INDEX;
+		mTriangles[1] = Triangle::INVALID_INDEX;
 
 		mVertices[0] = (uint32) -1;
 		mVertices[1] = (uint32) -1;
 	}
 
 	inline Edge::Edge(const uint32 vertex0, const uint32 vertex1, const uint32 triangleIdx) :
-		Edge(vertex0, vertex1, triangleIdx, Triangle::INVALID_IDX)
+		Edge(vertex0, vertex1, triangleIdx, Triangle::INVALID_INDEX)
 	{
 	
 	}
@@ -104,7 +104,7 @@ namespace SurfaceReconstruction
 
 	inline bool Edge::hasTwoNeighbors() const
 	{
-		return (mTriangles[0] != Triangle::INVALID_IDX) && (mTriangles[1] != Triangle::INVALID_IDX);
+		return (mTriangles[0] != Triangle::INVALID_INDEX) && (mTriangles[1] != Triangle::INVALID_INDEX);
 	}
 
 	inline bool Edge::isAdjacentToVertex(const uint32 vertexIdx) const
@@ -114,7 +114,7 @@ namespace SurfaceReconstruction
 	
 	inline bool Edge::isInvalidIndex(const uint32 edgeIdx)
 	{
-		return (INVALID_IDX == edgeIdx);
+		return (INVALID_INDEX == edgeIdx);
 	}
 
 	inline void Edge::setTriangles(const uint32 triangle0, const uint32 triangle1)

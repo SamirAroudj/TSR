@@ -22,7 +22,7 @@ namespace SurfaceReconstruction
 		inline bool operator <(const Vertex &rhs) const;
 
 	public:
-		static const uint32 INVALID_IDX;
+		static const uint32 INVALID_INDEX;
 
 	public:
 		Math::Vector3 mColor;

@@ -176,7 +176,7 @@ void FSSFRefiner::kernelInterpolation()
 			
 			// get matching confidence for linked pair and current surface estimate
 			getProjectedSample(projectedSample, localPairIdx, sampleIdx);
-			if (Triangle::INVALID_IDX == projectedSample.mSurfel.mTriangleIdx || projectedSample.mConfidence <= EPSILON)
+			if (Triangle::INVALID_INDEX == projectedSample.mSurfel.mTriangleIdx || projectedSample.mConfidence <= EPSILON)
 				continue;
 		
 			// apply local refinement starting from hit surfel
@@ -200,7 +200,7 @@ void FSSFRefiner::getProjectedSample(ProjectedSample &projectedSample,
 	uint32 localSamplingCoords[2];
 	uint32 localRayIdx = 0;
 
-	projectedSample.mSurfel.mTriangleIdx = Triangle::INVALID_IDX;
+	projectedSample.mSurfel.mTriangleIdx = Triangle::INVALID_INDEX;
 	projectedSample.mConfidence = 0.0f;
 	for (localSamplingCoords[1] = 0; localSamplingCoords[1] < mParams.mRaysPerLinkedPair[1]; ++localSamplingCoords[1])
 	{

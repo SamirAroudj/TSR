@@ -236,7 +236,7 @@ void RayTracer::render(GeometryMap *geometryMap, const ImgSize &size, const Pinh
 			surfel.mPosition.set(REAL_MAX, REAL_MAX, REAL_MAX);
 			surfel.mBaryCoords[0] = REAL_MAX;
 			surfel.mBaryCoords[1] = REAL_MAX;
-			surfel.mTriangleIdx = Triangle::INVALID_IDX;
+			surfel.mTriangleIdx = Triangle::INVALID_INDEX;
 		}
 	}
 	

@@ -274,7 +274,7 @@ uint32 DepthImage::triangulateBlock(vector<uint32> &indices, vector<uint32> &pix
 		return vertexCount;
 
 	// find proper triangles to be created within the block
-	uint32 triangleIndices[2] = { Triangle::INVALID_IDX, Triangle::INVALID_IDX };
+	uint32 triangleIndices[2] = { Triangle::INVALID_INDEX, Triangle::INVALID_INDEX };
 	switch (mask)
 	{
 		case 7:  triangleIndices[0] = 0; break;
@@ -334,7 +334,7 @@ uint32 DepthImage::triangulateBlock(vector<uint32> &indices, vector<uint32> &pix
 			const uint32 edgeEnd0 = edgeIdx;
 			const uint32 edgeEnd1 = (edgeIdx + 1) % 3;
 			if (isDepthDiscontinuity(footprints, blockDepths, triangle[edgeEnd0], triangle[edgeEnd1]))
-				triangleIdx = Triangle::INVALID_IDX;
+				triangleIdx = Triangle::INVALID_INDEX;
 		}
 	}
 
@@ -416,7 +416,7 @@ void DepthImage::setVertexPositions(FlexibleMesh &mesh, const vector<uint32> &pi
 	{
 		// triangulated back projected depth value?
 		const uint32 vertexIdx = pixelToVertexIndices[pixelIdx];
-		if (Vertex::INVALID_IDX == vertexIdx)
+		if (Vertex::INVALID_INDEX == vertexIdx)
 			continue;
 		
 		// compute direction of ray through the current pixel (relative to world space)
@@ -450,7 +450,7 @@ void DepthImage::setVertexColors(FlexibleMesh &mesh,
 	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
 	{
 		const uint32 vertexIdx = pixelToVertexIndices[pixelIdx];
-		if (Vertex::INVALID_IDX == vertexIdx)
+		if (Vertex::INVALID_INDEX == vertexIdx)
 			continue;
 
 		// copy color
