@@ -161,10 +161,13 @@ void SyntheticScene::createAndSaveSamples()
 	createSyntheticImages();
 	
 	// view meshes from synthetic images
+	vector<vector<uint32> *> cameraIndices;
+	vector<uint32> camerasPerSamples;
 	vector<uint32> scales;
 	scales.push_back(0); // load s0 images & depth maps
-	loadDepthMeshes(scales);
-	mSamples.addSamplesViaMeshes(mDepthMeshes);
+
+	loadDepthMeshes(cameraIndices, camerasPerSamples, scales);
+	mSamples.addSamplesViaMeshes(mDepthMeshes, cameraIndices, camerasPerSamples);
 }
 
 void SyntheticScene::createSyntheticImages()

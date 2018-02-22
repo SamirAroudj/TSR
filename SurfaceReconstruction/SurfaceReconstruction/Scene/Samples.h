@@ -50,7 +50,7 @@ namespace SurfaceReconstruction
 			const Math::Matrix3x3 &inputOrientation, const Math::Vector3 &inputOrigin);
 
 		void addSamplesViaMeshes(const std::vector<FlexibleMesh *> &meshes,
-			const std::vector<uint32> *const *cameraIndices = NULL, const uint32 *camerasPerSamples = NULL);
+			const std::vector<std::vector<uint32> *> &cameraIndices, const std::vector<uint32> &camerasPerSamples);
 
 		/** Checks whether sample properties look valid. */
 		void check() const;
@@ -223,6 +223,9 @@ namespace SurfaceReconstruction
 
 		/** todo */
 		uint32 addSample();
+
+		inline uint32 addSample(const Math::Vector3 &color, const Math::Vector3 &normal, const Math::Vector3 &positionWS,
+			const Real &confidence, const Real &scale, const uint32 *parentCameras, const uint32 &parentCameraCount);
 		
 		/** todo */
 		void addSamplesViaCloud(const Storage::Path &plyCloudFileName);
@@ -231,8 +234,7 @@ namespace SurfaceReconstruction
 		@return Returns the number of loaded samples. */
 		uint32 addSamplesViaCloud(Utilities::PlyFile &file, const Storage::Path &fileName, const Graphics::VerticesDescription &verticesFormat);
 		
-		void addSamplesViaMesh(const FlexibleMesh &mesh,
-			const uint32 &referenceCameraIdx, const uint32 *cameraIndices = NULL, const uint32 &camerasPerSample = 0);
+		void addSamplesViaMesh(const FlexibleMesh &mesh, const std::vector<uint32> &cameraIndices, const uint32 &camerasPerSample);
 
 		void checkLinkCount(const uint64 &newSampleCount, const uint32 &newMaxCamerasPerSample) const;
 		void checkSampleCount(const uint64 &newSampleCount) const;
@@ -318,6 +320,14 @@ namespace SurfaceReconstruction
 		Samples(0)
 	{
 		assert(false);
+	}
+
+	inline uint32 Samples::addSample(const Math::Vector3 &color, const Math::Vector3 &normal, const Math::Vector3 &positionWS,
+		const Real &confidence, const Real &scale, const uint32 *parentCameras, const uint32 &parentCameraCount)
+	{
+		const uint32 &sampleIdx = addSample();
+		setSample(sampleIdx, color, normal, positionWS, confidence, scale, parentCameras, parentCameraCount);
+		return sampleIdx;
 	}
 
 	inline bool Samples::empty() const

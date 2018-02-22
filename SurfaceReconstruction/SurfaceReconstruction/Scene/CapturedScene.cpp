@@ -46,14 +46,12 @@ CapturedScene::CapturedScene(const Path &metaFileName, const vector<IReconstruct
 	{
 		vector<vector<uint32> *> cameraIndices;
 		vector<uint32> camerasPerSamples;
-		loadDepthMeshes(imageScales, &cameraIndices, &camerasPerSamples);
-		mSamples.addSamplesViaMeshes(mDepthMeshes, cameraIndices.data(), camerasPerSamples.data());
+		loadDepthMeshes(cameraIndices, camerasPerSamples, imageScales);
+		mSamples.addSamplesViaMeshes(mDepthMeshes, cameraIndices, camerasPerSamples);
 
 		// free camera indices
 		for (uint32 i = 0; i < cameraIndices.size(); ++i)
 			delete cameraIndices[i];
-		cameraIndices.clear();
-		camerasPerSamples.clear();
 	}
 
 	// load samples via ply files

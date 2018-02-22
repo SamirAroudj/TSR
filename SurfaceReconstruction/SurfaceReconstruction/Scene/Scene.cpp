@@ -481,23 +481,19 @@ void Scene::createFSSFRefiner()
 }
 
 
-void Scene::loadDepthMeshes(const vector<uint32> &imageScales,
-	vector<vector<uint32> *> *cameraIndices, vector<uint32> *camerasPerSamples)
+void Scene::loadDepthMeshes(vector<vector<uint32> *> &cameraIndices, vector<uint32> &camerasPerSamples, const vector<uint32> &imageScales)
 {
 	// load the corresponding images for all views at all scales
 	const uint32 scaleCount = (uint32) imageScales.size();
 	const uint32 cameraCount = mCameras.getCount();
-	const uint32 imageCount = cameraCount * scaleCount;
 	vector<vector<uint32>> vertexNeighbors;
 	vector<uint32> indices;
 	vector<uint32> pixelToVertexIndices;
 
-	const bool outputLinks = (cameraIndices && camerasPerSamples);
-	if (outputLinks)
-	{
-		cameraIndices->reserve(imageCount);
-		camerasPerSamples->reserve(imageCount);
-	}
+	// reserve memory for visibility information
+	const uint32 imageCount = cameraCount * scaleCount;
+	cameraIndices.reserve(imageCount);
+	camerasPerSamples.reserve(imageCount);
 
 	for (uint32 cameraIdx = 0; cameraIdx < cameraCount; ++cameraIdx)
 	{
@@ -523,8 +519,7 @@ void Scene::loadDepthMeshes(const vector<uint32> &imageScales,
 			FlexibleMesh *mesh = depthImage->triangulate(pixelToVertexIndices, vertexNeighbors, indices, camera, colorImage);
 			mDepthMeshes.push_back(mesh);
 			
-			if (outputLinks)
-				loadCameraIndices(*cameraIndices, *camerasPerSamples, pixelToVertexIndices, mesh->getVertexCount(), cameraIdx, scale);
+			loadCameraIndices(cameraIndices, camerasPerSamples, pixelToVertexIndices, mesh->getVertexCount(), cameraIdx, scale);
 		}
 	}
 }
@@ -568,9 +563,12 @@ void Scene::loadCameraIndices(vector<vector<uint32> *> &cameraIndices, vector<ui
 	}
 	catch (FileException &exception)
 	{
+		camerasPerSample = 1;
+		cameraIndices.back() = new vector<uint32>(vertexCount, cameraIdx);
+
 		cout << exception.getMessage() << " " << exception.getFileName() << "\n";
 		cout << "Could not load views IDs for camera " << cameraIdx << " and scale " << scale << ".\n";
-		cout << "Using only reference views for visibility constraints.\n" << flush;
+		cout << "Using only reference view for visibility constraints.\n" << flush;
 	}
 }
 

@@ -53,8 +53,7 @@ namespace SurfaceReconstruction
 		inline const uint8 *getPixels() const;
 
 	protected:
-		ColorImage(const std::string &resourceName, const Storage::Path &imageFileName);
-		ColorImage(uint8 *pixels, const Utilities::ImgSize &size, const Graphics::Texture::Format format, const std::string &resourceName);
+		ColorImage(uint8 *&pixels, const Utilities::ImgSize &size, const Graphics::Texture::Format format, const std::string &resourceName);
 		virtual ~ColorImage();
 
 		void checkFormat();

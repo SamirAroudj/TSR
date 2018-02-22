@@ -28,7 +28,7 @@ namespace SurfaceReconstruction
 		inline uint32 get(const uint32 &pixelIdx, const uint32 &channelIdx) const;
 
 	protected:
-		ViewsImage(const std::string &resourceName, const Storage::Path &imageFileName);
+		ViewsImage(uint32 *&viewIDs, const Utilities::ImgSize &size, const uint32 &channelCount, const std::string &resourceName);
 		virtual ~ViewsImage();
 
 		virtual void clear();

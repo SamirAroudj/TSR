@@ -222,21 +222,19 @@ void Samples::readSampleProperty(PlyFile &file, const uint32 sampleIdx,
 }
 
 void Samples::addSamplesViaMeshes(const vector<FlexibleMesh *> &meshes,
-	const vector<uint32> *const *cameraIndices, const uint32 *camerasPerSamples)
+	const vector<vector<uint32> *> &cameraIndices, const vector<uint32> &camerasPerSamples)
 {
 	// only reference cameras (one camera for each sample) or larger camera set via cameraIndices?
-	const bool inputLinks = (cameraIndices && camerasPerSamples);
+	assert(meshes.size() == cameraIndices.size() && meshes.size() == camerasPerSamples.size());
 	const uint32 meshCount = (uint32) meshes.size();
-	if (inputLinks)
-		for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
-			updateMaxCamerasPerSample(camerasPerSamples[meshIdx]);
-	else
-		updateMaxCamerasPerSample(1);
+	for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
+		updateMaxCamerasPerSample(camerasPerSamples[meshIdx]);
 
 	// compute number of new samples
 	uint64 additionalSampleCount = 0;
 	for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
-		additionalSampleCount += meshes[meshIdx]->getVertexCount();
+		if (meshes[meshIdx])
+			additionalSampleCount += meshes[meshIdx]->getVertexCount();
 
 	// check sample & link count & reserve memory
 	const uint64 newSampleCount = additionalSampleCount + getCount();
@@ -245,18 +243,16 @@ void Samples::addSamplesViaMeshes(const vector<FlexibleMesh *> &meshes,
 	reserve(newSampleCount);
 
 	// create and add samples for each mesh
-	if (!inputLinks)
+	for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
 	{
-		for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
-			addSamplesViaMesh(*meshes[meshIdx], meshIdx);
-	}
-	else
-	{
-		for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
+		const vector<uint32> *const meshCameraIndices = cameraIndices[meshIdx];
+		if (!meshCameraIndices || !meshes[meshIdx])
 		{
-			const vector<uint32> *meshCameraIndices = cameraIndices[meshIdx];
-			addSamplesViaMesh(*meshes[meshIdx], meshIdx, (meshCameraIndices ? meshCameraIndices->data() : NULL), camerasPerSamples[meshIdx]);
+			cerr << "Could not add samples for a mesh, index: " << meshIdx << "\n." << flush;
+			continue;
 		}
+
+		addSamplesViaMesh(*meshes[meshIdx], *meshCameraIndices, camerasPerSamples[meshIdx]);
 	}
 	
 	check();
@@ -264,29 +260,16 @@ void Samples::addSamplesViaMeshes(const vector<FlexibleMesh *> &meshes,
 	computeAABB();
 }
 
-void Samples::addSamplesViaMesh(const FlexibleMesh &mesh, const uint32 &referenceCameraIdx, const uint32 *cameraIndices, const uint32 &cameraIndicesBlockSize)
+void Samples::addSamplesViaMesh(const FlexibleMesh &mesh, const std::vector<uint32> &cameraIndices, const uint32 &camerasPerSample)
 {
+	const uint32 *sampleParents = cameraIndices.data();
 	const Real confidence = 1.0f; // todo: how to get reasonable confidence values?
-
-	// only reference camera or larger set of cameras for this sample?
-	const uint32 referenceCamera[1] = { referenceCameraIdx };
-	const uint32 *parentCameras = (cameraIndices ? cameraIndices : referenceCamera);
-	const uint32 camerasPerSample = (cameraIndices ? cameraIndicesBlockSize : 1);
-
+	
 	// add a sample for each mesh vertex
 	const uint32 vertexCount = mesh.getVertexCount();
-	uint32 nextSampleIdx = getCount();
-
-	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx, ++nextSampleIdx)
-	{
-		addSample();
-		setSample(nextSampleIdx,
-			mesh.getColor(vertexIdx), mesh.getNormal(vertexIdx), mesh.getPosition(vertexIdx), 
-			confidence, mesh.getScale(vertexIdx), parentCameras, camerasPerSample);
-
-		if (cameraIndices)
-			parentCameras += camerasPerSample;
-	}
+	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx, sampleParents += camerasPerSample)
+		addSample(mesh.getColor(vertexIdx), mesh.getNormal(vertexIdx), mesh.getPosition(vertexIdx), 
+				  confidence, mesh.getScale(vertexIdx), sampleParents, camerasPerSample);
 }
 
 void Samples::check() const

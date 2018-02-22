@@ -12,6 +12,7 @@
 #include "SurfaceReconstruction/Image/ViewsImage.h"
 
 using namespace FailureHandling;
+using namespace std;
 using namespace SurfaceReconstruction;
 using namespace Utilities;
 
@@ -27,16 +28,18 @@ ViewsImage *ViewsImage::request(const std::string &resourceName, const Storage::
 		throw FileException("An image of another type than ViewsImage but with the same resource name already exists!", imageFileName);
 	}
 
-	return new ViewsImage(resourceName, imageFileName);
+	// load it from file
+	MVEIHeader header;
+	uint32 *viewIDs = reinterpret_cast<uint32 *>(Image::loadMVEI(header, imageFileName, true));
+	if (!viewIDs)
+		return NULL;
+	return new ViewsImage(viewIDs, header.mSize, header.mChannelCount, resourceName);
 }
 
-ViewsImage::ViewsImage(const std::string &resourceName, const Storage::Path &imageFileName) :
-	Image(ImgSize(0,0), 0, resourceName), mViewIDs(NULL)
+ViewsImage::ViewsImage(uint32 *&viewIDs, const ImgSize &size, const uint32 &channelCount, const string &resourceName) :
+	Image(size, channelCount, resourceName), mViewIDs(viewIDs)
 {
-	MVEIHeader header;
-	mViewIDs = (uint32 *) Image::loadMVEI(header, imageFileName, true);
-	mSize = header.mSize;
-	mChannelCount = header.mChannelCount;
+	viewIDs = NULL;
 }
 
 ViewsImage::~ViewsImage()

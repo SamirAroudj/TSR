@@ -68,7 +68,7 @@ void DepthImage::findExtrema(Real &minimum, Real &maximum, const Real *depths, c
 	}
 }
 
-DepthImage *DepthImage::request(const string &resourceName, const Path &imageFileName)
+DepthImage *DepthImage::request(const string &resourceName, const Path &relativeImageFileName)
 {
 	// exists?
 	Image *image = Image::request(resourceName);
@@ -77,43 +77,48 @@ DepthImage *DepthImage::request(const string &resourceName, const Path &imageFil
 		DepthImage *depthImage = dynamic_cast<DepthImage *>(image);
 		if (depthImage)
 			return depthImage;
-		throw FileException("An image of another type than DepthImage but with the same resource name already exists!", imageFileName);
+		throw FileException("An image of another type than DepthImage but with the same resource name already exists!", relativeImageFileName);
 	}
+	
+	// not existing -> load & create it
+	MVEIHeader header;
+	Real *depths = DepthImage::loadDepths(header, relativeImageFileName);
+	if (!depths)
+		return NULL;
 
-	// not existing -> create it
-	return new DepthImage(resourceName, imageFileName);
+	return new DepthImage(depths, header.mSize, resourceName);
 }
 
-DepthImage::DepthImage(const string &resourceName, const Path &imageFileName) :
-	Image(ImgSize(0, 0), 0, resourceName), mDepths(NULL), mDepthConvention(DEPTH_ALONG_RAY)
+DepthImage::DepthImage(Real *&depths, const ImgSize &size, const string &resourceName) :
+	Image(size, 1, resourceName), mDepths(depths), mDepthConvention(DEPTH_ALONG_RAY)
 {
-	// get complete file name
-	const Path folder(VolatileResource<Image>::getPathToResources());
-	const Path fileName = Path::appendChild(folder, imageFileName);
+	depths = NULL;
+}
 
+Real *DepthImage::loadDepths(MVEIHeader &header, const Path &relativeImageFileName)
+{
 	// load image header and body
-	MVEIHeader header;
-	void *data = Image::loadMVEI(header, imageFileName, true);
-	mSize = header.mSize;
-	mChannelCount = header.mChannelCount;
+	void *data = Image::loadMVEI(header, relativeImageFileName, true);
 
 	// check header
 	if (header.mChannelCount != 1)
-		throw FileException("Unsupported channel count for a depth map!", imageFileName);
+		throw FileException("Unsupported channel count for a depth map!", relativeImageFileName);
 	if (MVEIHeader::MVE_FLOAT != header.mType && MVEIHeader::MVE_DOUBLE != header.mType)
-		throw FileException("Unsupported depth type. Only floating point numbers (IEEE 754, single or double precision) are supported!", imageFileName);
+		throw FileException("Unsupported depth type. Only floating point numbers (IEEE 754, single or double precision) are supported!", relativeImageFileName);
 
 	// simply keep the data or do we need to convert the depths?
 	const uint32 pixelCount = header.mSize.getElementCount();
-	mDepths = reinterpret_cast<Real *>(data);
+	Real *depths = reinterpret_cast<Real *>(data);
 
 	#ifdef DOUBLE_PRECISION
 		if (MVEIHeader::MVE_FLOAT == header.mType)
-			mDepths = Converter::toFirstFromSecond<double, float>(data, pixelCount);
+			depths = Converter::toFirstFromSecond<double, float>(data, pixelCount);
 	#else
 		if (MVEIHeader::MVE_DOUBLE == header.mType)
-			mDepths = Converter::toFirstFromSecond<float, double>(data, pixelCount);
+			depths = Converter::toFirstFromSecond<float, double>(data, pixelCount);
 	#endif // DOUBLE_PRECISION
+
+	return depths;
 }
 
 void DepthImage::erode(const uint32 &borderWidth)
@@ -500,16 +505,6 @@ void DepthImage::setDepthConvention(const PinholeCamera &camera, const DepthConv
 	}
 
 	mDepthConvention = targetConvention;
-}
-
-DepthImage::DepthImage(Real *depths, const ImgSize &size, const string &resourceName) :
-	Image(size, 1, resourceName), mDepths(NULL), mDepthConvention(DEPTH_ALONG_RAY)
-{
-	// copy depths
-	const uint32 elementCount = size.getElementCount();
-
-	mDepths = new Real[elementCount];
-	memcpy(mDepths, depths, sizeof(Real) * elementCount);
 }
 
 DepthImage::~DepthImage()

@@ -144,8 +144,8 @@ namespace SurfaceReconstruction
 		void loadCameraIndices(std::vector<std::vector<uint32> *> &cameraIndices, std::vector<uint32> &camerasPerSamples,
 			const std::vector<uint32> &pixelToVertexIndices, const uint32 &vertexCount, const uint32 &cameraIdx, const uint32 &scale) const;
 
-		void loadDepthMeshes(const std::vector<uint32> &imagesScales,
-			std::vector<std::vector<uint32> *> *cameraIndices = NULL, std::vector<uint32> *camerasPerSamples = NULL);
+		void loadDepthMeshes(std::vector<std::vector<uint32> *> &cameraIndices, std::vector<uint32> &camerasPerSamples,
+			const std::vector<uint32> &imagesScales);
 
 		/** todo */
 		void loadFromFile(const Storage::Path &rootFolder, const Storage::Path &FSSFReconstruction);

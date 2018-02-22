@@ -75,29 +75,26 @@ ColorImage *ColorImage::request(const string &resourceName, const Path &imageFil
 		throw FileException("An image of another type than ColorImage but with the same resource name already exists!", imageFileName);
 	}
 
-	return new ColorImage(resourceName, imageFileName);
-}
-
-ColorImage::ColorImage(const string &resourceName, const Path &imageFileName) :
-	Image(ImgSize(0, 0), 0, resourceName), mPixels(NULL), mFormat(Texture::FORMAT_NUM_OF)
-{
+	// load data
 	// get complete file name
 	const Path &folder = VolatileResource<Image>::getPathToResources();
 	const Path fileName = Path::appendChild(folder, imageFileName);
 	
 	// load data
-	mPixels = ImageManager::getSingleton().loadPNG(mSize, mFormat, fileName, false);
-	if (!mPixels)
-		throw FileCorruptionException("Could not load pixel RGB values from PNG file!", imageFileName);
-	mChannelCount = Texture::getChannelCount(mFormat);
+	ImgSize size;
+	Texture::Format format;
+	uint8 *pixels = ImageManager::getSingleton().loadPNG(size, format, fileName, false);
+	if (!pixels)
+		return NULL;
 
-	checkFormat();
+	return new ColorImage(pixels, size, format, resourceName);
 }
 
-ColorImage::ColorImage(uint8 *pixels, const ImgSize &size, const Graphics::Texture::Format format, const string &resourceName) :
+ColorImage::ColorImage(uint8 *&pixels, const ImgSize &size, const Graphics::Texture::Format format, const string &resourceName) :
 	Image(size, Texture::getChannelCount(format), resourceName), mPixels(pixels), mFormat(format)
 {
 	checkFormat();
+	pixels = NULL;
 }
 
 void ColorImage::checkFormat()

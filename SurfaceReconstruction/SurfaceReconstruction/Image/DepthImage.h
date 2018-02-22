@@ -62,8 +62,10 @@ namespace SurfaceReconstruction
 		void setDepthConvention(const Graphics::PinholeCamera &camera, const DepthConvention &targetConvention);
 
 	protected:
-		DepthImage(const std::string &resourceName, const Storage::Path &imageFileName);
-		DepthImage(Real *depths, const Utilities::ImgSize &size, const std::string &resourceName);
+		static Real *loadDepths(MVEIHeader &header, const Storage::Path &relativeImageFileName);
+
+	protected:
+		DepthImage(Real *&depths, const Utilities::ImgSize &size, const std::string &resourceName);
 		virtual ~DepthImage();
 
 		virtual void clear();
