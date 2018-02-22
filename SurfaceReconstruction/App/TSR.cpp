@@ -469,7 +469,7 @@ void TSR::createNewScene(const uint32 sceneCreationType, const vector<string> &a
 	}
 
 	// render all view meshes from depth maps
-	//#ifdef _DEBUG
+	#ifdef _DEBUG
 		if (Platform::Window::exists())
 		{
 			const vector<FlexibleMesh *> &meshes = mScene->getDepthMeshes();
@@ -477,7 +477,7 @@ void TSR::createNewScene(const uint32 sceneCreationType, const vector<string> &a
 			for (uint32 meshIdx = 0; meshIdx < meshCount; ++meshIdx)
 				mMeshRenderer->uploadData(*meshes[meshIdx]);
 		}	
-	//#endif // _DEBUG
+	#endif // _DEBUG
 }
 
 void TSR::resetCamera()
