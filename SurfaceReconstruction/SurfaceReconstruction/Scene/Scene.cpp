@@ -487,6 +487,7 @@ void Scene::loadDepthMeshes(const vector<uint32> &imageScales,
 	// load the corresponding images for all views at all scales
 	const uint32 scaleCount = (uint32) imageScales.size();
 	const uint32 cameraCount = mCameras.getCount();
+	const uint32 imageCount = cameraCount * scaleCount;
 	vector<vector<uint32>> vertexNeighbors;
 	vector<uint32> indices;
 	vector<uint32> pixelToVertexIndices;
@@ -494,8 +495,8 @@ void Scene::loadDepthMeshes(const vector<uint32> &imageScales,
 	const bool outputLinks = (cameraIndices && camerasPerSamples);
 	if (outputLinks)
 	{
-		cameraIndices->reserve(cameraCount * scaleCount);
-		camerasPerSamples->reserve(cameraCount * scaleCount);
+		cameraIndices->reserve(imageCount);
+		camerasPerSamples->reserve(imageCount);
 	}
 
 	for (uint32 cameraIdx = 0; cameraIdx < cameraCount; ++cameraIdx)
