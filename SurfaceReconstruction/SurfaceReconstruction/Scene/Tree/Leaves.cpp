@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -12,7 +12,6 @@
 #include "SurfaceReconstruction/Scene/Tree/Nodes.h"
 
 using namespace Math;
-using namespace Platform;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;

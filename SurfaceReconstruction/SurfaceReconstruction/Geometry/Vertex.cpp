@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -12,4 +12,4 @@
 using namespace Math;
 using namespace SurfaceReconstruction;
 
-const uint32 Vertex::INVALID_IDX = (uint32) -1;
+const uint32 Vertex::INVALID_INDEX = (uint32) -1;

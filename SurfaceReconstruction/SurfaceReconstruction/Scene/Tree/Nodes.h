@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -22,7 +22,6 @@ namespace SurfaceReconstruction
 	// forward declarations
 	class Occupancy;
 	class Samples;
-	struct ViewCone;
 
 	/// This class models objects which are single parts / nodes of Tree instances. 
 	class Nodes
@@ -43,7 +42,7 @@ namespace SurfaceReconstruction
 		static inline bool isInvalidNodeIdx(const uint32 nodeIdx);
 
 	public:
-		Nodes(Samples *&reorderdSamples, const Scope &rootScope);
+		Nodes(const Scope &rootScope);
 		Nodes(const Storage::Path &fileName);
 
 		/** todo */
@@ -95,7 +94,7 @@ namespace SurfaceReconstruction
 		@param rootScope todo*/
 		void balance(const Scope &rootScope);
 
-		uint32 computeReorderedAddresses(std::vector<uint32> &newOrder,
+		uint32 computeTargetIndices(uint32 *targetIndices,
 			const uint32 nodeIdx, const uint32 nextFreeAddress) const;
 
 		/** todo */
@@ -116,17 +115,15 @@ namespace SurfaceReconstruction
 
 		bool fittingSamplingNodeCenter(const Math::Vector3 &nodeCoordsWS, const Real childSize, const bool positiveSide, const uint32 sampleIdx) const;
 
-		void replaceChildBlock(uint32 **targets, const uint32 targetsOffsetIdx, const uint32 *const *sources, const uint32 sourcesOffset, const uint32 parentIdx);
-		
 		/** Reorders nodes in memory for higher cache coherence.
 			Also Sets sample start and end indices (sample area in memory) for each node according to the NEW ORDER. */
 		void reorder();
 
-		void reorder(const std::vector<uint32> &newOrder);
+		void reorder(const uint32 *targetIndices);
 
 		/** todo *
 		@return Returns a copy of the scene samples, but reordered in memory according to tree structure. */
-		Samples *reorderSamplesAndFillNodes(const Scope &rootScope);
+		void reorderSamplesAndFillNodes(const Scope &rootScope);
 
 		/** Reserves memory for nodeCount nodes.
 		@param nodeCount Memory for nodeCount nodes is reserved. */

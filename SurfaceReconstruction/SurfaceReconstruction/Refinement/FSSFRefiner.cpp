@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -10,25 +10,25 @@
 #include <iostream>
 #include <omp.h>
 #include "CollisionDetection/CollisionDetection.h"
-#include "Platform/Platform.h"
+#include "Graphics/ColorMap.h"
+#include "Platform/Utilities/HelperFunctions.h"
+#include "Platform/Utilities/RandomManager.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/IslesEraser.h"
 #include "SurfaceReconstruction/Geometry/StaticMesh.h"
 #include "SurfaceReconstruction/Refinement/FSSFParameters.h"
 #include "SurfaceReconstruction/Refinement/FSSFRefiner.h"
 #include "SurfaceReconstruction/Refinement/MeshDijkstra.h"
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 #include "SurfaceReconstruction/Scene/Tree/LeavesIterator.h"
 #include "SurfaceReconstruction/Scene/Tree/Tree.h"
 #include "SurfaceReconstruction/Scene/Tree/TriangleNodesChecker.h"
-#include "SurfaceReconstruction/Scene/View.h"
 #include "SurfaceReconstruction/SurfaceExtraction/Occupancy.h"
-#include "Utilities/HelperFunctions.h"
-#include "Utilities/RandomManager.h"
 
 using namespace CollisionDetection;
+using namespace Graphics;
 using namespace Math;
-using namespace Platform;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;
@@ -68,7 +68,7 @@ FSSFRefiner::FSSFRefiner() :
 	//mLocalEdgeWeights = new vector<Real>[maxNumThreads];
 
 	// for median surfel confidence searches within projected sample areas
-	const size_t patternSize = mParams.mRaysPerViewSamplePair.getElementCount();
+	const size_t patternSize = mParams.mRaysPerLinkedPair.getElementCount();
 	mLocalConfidences = new vector<Real>[maxNumThreads];
 
 	for (uint32 threadIdx = 0; threadIdx < maxNumThreads; ++threadIdx)
@@ -89,8 +89,8 @@ void FSSFRefiner::refine()
 	}
 
 	// prepare mesh
-	for (uint32 iteration = 0; iteration < mParams.mIterationCountInitialSmoothing; ++iteration)
-		mMesh.umbrellaSmooth(mVectorField.data(), mWeightField.data(), mParams.mUmbrellaSmoothingLambdaHigh);
+	for (uint32 iteration = 0; iteration < mParams.mSmoothingInitialIterCount; ++iteration)
+		mMesh.smoothByUmbrellaOp(mVectorField.data(), mWeightField.data(), mParams.mSmoothingUmbrellaLambdaHigh);
 
 	bool converged = false;
 	for (uint32 iteration = 0; !converged; ++iteration)
@@ -127,6 +127,11 @@ bool FSSFRefiner::doRefinementStep(const uint32 iteration)
 	if (stop)
 		return true;
 
+	// frequency-based smoothing term
+	// (non-shrinking) smoothing
+	for (uint32 i = 0; i < mParams.mSmoothingTaubinIterCount; ++i)
+		mMesh.smoothByTaubinOp(mVectorField.data(), mWeightField.data());
+
 	subdivideMesh();
 	mMesh.checkEdges();
 
@@ -147,7 +152,7 @@ void FSSFRefiner::kernelInterpolation()
 	cout << "Summing of weighted quantities via surface kernels." << endl;
 	const Scene &scene = Scene::getSingleton();
 	const Samples &samples = scene.getSamples();
-	const uint32 pairCount = samples.getMaxViewConeCount();
+	const uint32 pairCount = samples.getMaxParentLinkCount();
 	
 	// ray trace scene from sensors to samples in batches
 	for (uint32 startPairIdx = 0; startPairIdx < pairCount; startPairIdx += EMBREE_PAIR_BATCH_SIZE)
@@ -156,8 +161,8 @@ void FSSFRefiner::kernelInterpolation()
 		uint32 batchSize = EMBREE_PAIR_BATCH_SIZE;
 		if (batchSize + startPairIdx > pairCount)
 			batchSize = pairCount - startPairIdx;
-		mRayTracer.findIntersectionsForViewSamplePairs(true, startPairIdx, startPairIdx + batchSize,
-			EMBREE_RAY_BATCH_SIZE, mParams.mRaysPerViewSamplePair, mParams.mOrientSamplingPatternLikeView);
+		mRayTracer.findIntersectionsForCamSamplePairs(false, startPairIdx, startPairIdx + batchSize,
+			EMBREE_RAY_BATCH_SIZE, mParams.mRaysPerLinkedPair, mParams.mOrientSamplingPattern);
 
 		// process ray tracing results
 		cout << "Processing projected samples." << endl;
@@ -169,9 +174,9 @@ void FSSFRefiner::kernelInterpolation()
 			const uint32 sampleIdx = samples.getSampleIdx(globalPairIdx);
 			ProjectedSample projectedSample;
 			
-			// get matching confidence for linked view sample pair and current surface estimate
+			// get matching confidence for linked pair and current surface estimate
 			getProjectedSample(projectedSample, localPairIdx, sampleIdx);
-			if (Triangle::INVALID_IDX == projectedSample.mSurfel.mTriangleIdx || projectedSample.mConfidence <= EPSILON)
+			if (Triangle::INVALID_INDEX == projectedSample.mSurfel.mTriangleIdx || projectedSample.mConfidence <= EPSILON)
 				continue;
 		
 			// apply local refinement starting from hit surfel
@@ -189,20 +194,20 @@ void FSSFRefiner::getProjectedSample(ProjectedSample &projectedSample,
 {
 	// compute weighted mean matching confidence from all ray hits / sampled surfels within projeced sample area
 	const Samples &samples = Scene::getSingleton().getSamples();
-	const uint32 patternSize = mParams.mRaysPerViewSamplePair.getElementCount();
+	const uint32 patternSize = mParams.mRaysPerLinkedPair.getElementCount();
 	const uint32 startRayIdx = localPairIdx * patternSize;
 	vector<Real> &localConfidences = mLocalConfidences[omp_get_thread_num()];
 	uint32 localSamplingCoords[2];
 	uint32 localRayIdx = 0;
 
-	projectedSample.mSurfel.mTriangleIdx = Triangle::INVALID_IDX;
+	projectedSample.mSurfel.mTriangleIdx = Triangle::INVALID_INDEX;
 	projectedSample.mConfidence = 0.0f;
-	for (localSamplingCoords[1] = 0; localSamplingCoords[1] < mParams.mRaysPerViewSamplePair[1]; ++localSamplingCoords[1])
+	for (localSamplingCoords[1] = 0; localSamplingCoords[1] < mParams.mRaysPerLinkedPair[1]; ++localSamplingCoords[1])
 	{
-		for (localSamplingCoords[0] = 0; localSamplingCoords[0] < mParams.mRaysPerViewSamplePair[0]; ++localSamplingCoords[0], ++localRayIdx)
+		for (localSamplingCoords[0] = 0; localSamplingCoords[0] < mParams.mRaysPerLinkedPair[0]; ++localSamplingCoords[0], ++localRayIdx)
 		{
 			const uint32 rayIdx = startRayIdx + localRayIdx;
-			const Vector2 offset = RayTracer::getRelativeSamplingOffset(localSamplingCoords, mParams.mRaysPerViewSamplePair);
+			const Vector2 offset = RayTracer::getRelativeSamplingOffset(localSamplingCoords, mParams.mRaysPerLinkedPair);
 
 			// sample confidence & (ray hit, sample) mismatch confidence -> kernel weight factor
 			localConfidences[localRayIdx] = 0.0f;
@@ -216,7 +221,7 @@ void FSSFRefiner::getProjectedSample(ProjectedSample &projectedSample,
 			// matching confidence
 			const Real projectionConfidence = getProjectionConfidence(currentSurfelWS, sampleIdx);
 			localConfidences[localRayIdx] = projectionConfidence;
-			
+	
 			// output surfel if in center && not a low confidence
 			if (offset.getLengthSquared() >= EPSILON * EPSILON)
 				continue;
@@ -244,8 +249,8 @@ Real FSSFRefiner::getProjectionConfidence(const Surfel &surfelWS, const uint32 s
 	const Vector3 &sampleNormalWS = samples.getNormalWS(sampleIdx);
 	const Vector3 &samplePosWS = samples.getPositionWS(sampleIdx);
 	const Real &sampleScale = samples.getScale(sampleIdx);
-	const Real angularSupport = mParams.mSupportSampleMaxAngleDifference;
-	const Real distanceSupport = mParams.mSupportSampleDistanceBandwidth * sampleScale;
+	const Real angularSupport = mParams.mProjectionConfidenceMaxAngleDifference;
+	const Real distanceSupport = mParams.mProjectionConfidenceDistanceBandwidth * sampleScale;
 
 	// probability according to angular distance
 	const Real dotProduct = sampleNormalWS.dotProduct(surfelWS.mNormal);
@@ -429,7 +434,7 @@ void FSSFRefiner::addFloatingScaleQuantities(Vector3 *targetColor, Vector3 &targ
 	//const Real lengthSq = correction.getLengthSquared();
 	//const Real loss = logr(1.0f + lengthSq);
 	//const Real loss = correction.getLength();
-	const Real loss = logr(1.0f + correction.getLength());
+	const Real loss = correction.getLength();
 	#pragma omp atomic
 	targetSumOfSurfaceErrors += loss * weight;
 
@@ -618,7 +623,7 @@ void FSSFRefiner::enforceRegularGeometry(const uint32 iteration)
 	// deletion of unsupported small parts
 	enforceRegularGeometryForOutliers(iteration);
 	
-	mMesh.umbrellaSmooth(mVectorField.data(), mWeightField.data(), mParams.mUmbrellaSmoothingLambdaLow);
+	mMesh.smoothByUmbrellaOp(mVectorField.data(), mWeightField.data(), mParams.mSmoothingUmbrellaLambdaLow);
 	updateObservers(iteration, "FSSFMoreRegular", IReconstructorObserver::RECONSTRUCTION_VIA_SAMPLES);
 }
 
@@ -794,34 +799,40 @@ bool FSSFRefiner::moveSpikyGeometryBack()
 
 void FSSFRefiner::enforceRegularGeometryForOutliers(const uint32 iteration)
 {
-	// any outliers?
-	cout << "Finding outlier vertices." << endl;
-	findOutliersUsingReliability();
+	// find outlier isles for deletion
+	{
+		// any outliers?
+		cout << "Finding outlier vertices." << endl;
+		findOutliersUsingReliability();
 
-	// outlier isles which will be replaced by flat geometry?
-	IslesEraser outlierFinder(mMesh, mVertexStates.data(), OUTLIER);
-	if (!outlierFinder.hasFoundTooSmallIsle(mParams.mOutlierIsleMinKeepingSize))
-		return;
+		// outlier isles which will be replaced by flat geometry?
+		IslesEraser outlierFinder(mMesh, mVertexStates.data(), OUTLIER);
+		if (!outlierFinder.hasFoundTooSmallIsle(mParams.mOutlierIsleMinKeepingSize))
+			return;
 
-	// nice isles for easy deletion & easy hole filling
-	maskLargeOutlierIsles(outlierFinder);
-	createWellFormedOutlierIsles();
-	saveOutlierColoredMesh(iteration);
+		// nice isles for easy deletion & easy hole filling
+		maskLargeOutlierIsles(outlierFinder);
+		createWellFormedOutlierIsles();
+		saveOutlierColoredMesh(iteration);
+	}
 
-	// offsets for removal of small isles of outliers
-	IslesEraser outlierEraser(mMesh, mVertexStates.data(), OUTLIER);
-	if (!outlierEraser.computeOffsets(mParams.mOutlierIsleMinKeepingSize))
-		return;
+	// delete bad geometry
+	{
+		// offsets for removal of small isles of outliers
+		IslesEraser outlierEraser(mMesh, mVertexStates.data(), OUTLIER);
+		if (!outlierEraser.computeOffsets(mParams.mOutlierIsleMinKeepingSize))
+			return;
 
-	// replace bad geometry by simple & flat geometry
-	const vector<vector<uint32>> &holeBorders = outlierEraser.computeRingBordersOfDoomedIsles();
-	mMesh.deleteGeometry(outlierEraser.getVertexOffsets(), outlierEraser.getEdgeOffsets(), outlierEraser.getTriangleOffsets());
-	fillHoles(holeBorders);
-	mMesh.checkEdges();
+		// replace bad geometry by simple & flat geometry
+		const vector<vector<uint32>> &holeBorders = outlierEraser.computeRingBordersOfDoomedIsles();
+		mMesh.deleteGeometry(outlierEraser.getVertexOffsets(), outlierEraser.getEdgeOffsets(), outlierEraser.getTriangleOffsets());
+		fillHoles(holeBorders);
+		mMesh.checkEdges();
 
-	// remove small, isolated geometry & smooth spiky stuff
-	mMesh.deleteIsolatedGeometry(Scene::getSingleton().getMinIsleSize());
-	mMesh.checkEdges();
+		// remove small, isolated outlier geometry
+		mMesh.deleteIsolatedGeometry(Scene::getSingleton().getMinIsleSize());
+		mMesh.checkEdges();
+	}
 }
 
 void FSSFRefiner::findOutliersUsingReliability()
@@ -1071,7 +1082,7 @@ void FSSFRefiner::fillHoles(const vector<vector<uint32>> &holeBorders)
 	{
 		#pragma omp parallel for
 		for (int64 i = firstHoleFillingVertex; i < newVertexCount; ++i)
-			mVectorField[i] = mMesh.computeUmbrellaSmoothingMovement((uint32) i, mParams.mUmbrellaSmoothingLambdaHigh);
+			mVectorField[i] = mMesh.computeUmbrellaSmoothingMovement((uint32) i, mParams.mSmoothingUmbrellaLambdaHigh);
 
 		#pragma omp parallel for
 		for (int64 i = firstHoleFillingVertex; i < newVertexCount; ++i)
@@ -1172,7 +1183,7 @@ void FSSFRefiner::findMergingEdges()
 			mEdgeMergeCandidates.push_back(edgeIdx);
 	}
 
-	Utilities::removeDuplicates(mEdgeMergeCandidates);
+	Array<uint32>::removeDuplicates(mEdgeMergeCandidates);
 }
 
 uint32 *FSSFRefiner::getEdgeMergeTriangleSearchSet(uint32 &triangleCount)
@@ -1200,7 +1211,7 @@ uint32 *FSSFRefiner::getEdgeMergeTriangleSearchSet(uint32 &triangleCount)
 	}
 		
 	mLeftEdgeMergeCandidates.clear();
-	Utilities::removeDuplicates(mLeftTriangleMergeCandidates);
+	Array<uint32>::removeDuplicates(mLeftTriangleMergeCandidates);
 	triangleCount = (uint32) mLeftTriangleMergeCandidates.size();
 	return mLeftTriangleMergeCandidates.data();
 }
@@ -1212,58 +1223,61 @@ bool FSSFRefiner::computeErrorStatistics(const uint32 iteration)
 	const vector<uint32> *verticesToEdges = mMesh.getVerticesToEdges();
 	const uint32 vertexCount = mMesh.getVertexCount();
 	
-	// average scales of vertex neighborhoods
-	vector<Real> temp[2];
-	temp[0].resize(vertexCount);
-	temp[1].resize(vertexCount);
-	mMesh.computeScalesViaEdgeDistances();
-	memcpy(temp[0].data(), mMesh.getScales(), sizeof(Real) * vertexCount);
+	//// average scales of vertex neighborhoods
+	//vector<Real> temp[2];
+	//temp[0].resize(vertexCount);
+	//temp[1].resize(vertexCount);
+	//mMesh.computeScalesViaEdgeDistances();
+	//memcpy(temp[0].data(), mMesh.getScales(), sizeof(Real) * vertexCount);
 
-	uint32 sourceIdx = 0;
-	for (uint32 smoothingIt = 0; smoothingIt < 3; ++smoothingIt, sourceIdx = !sourceIdx)
-	{
-		#pragma omp parallel for
-		for (int64 i = 0; i < vertexCount; ++i)
-		{
-			const uint32 vertexIdx = (uint32) i;
-			const vector<uint32> &localEdges = verticesToEdges[vertexIdx];
-			const uint32 edgeCount = (uint32) localEdges.size();
-			Real &avgScale = temp[!sourceIdx][vertexIdx];
+	//// for each vertex: average scale
+	//uint32 sourceIdx = 0;
+	//for (uint32 smoothingIt = 0; smoothingIt < 3; ++smoothingIt, sourceIdx = !sourceIdx)
+	//{
+	//	#pragma omp parallel for
+	//	for (int64 i = 0; i < vertexCount; ++i)
+	//	{
+	//		const uint32 vertexIdx = (uint32) i;
+	//		const vector<uint32> &localEdges = verticesToEdges[vertexIdx];
+	//		const uint32 edgeCount = (uint32) localEdges.size();
+	//		Real &avgScale = temp[!sourceIdx][vertexIdx];
 
-			avgScale = temp[sourceIdx][vertexIdx];
-			for (uint32 edgeIdx = 0; edgeIdx < edgeCount; ++edgeIdx)
-			{
-				const uint32 neighborIdx = edges[localEdges[edgeIdx]].getOtherVertex(vertexIdx);
-				avgScale += temp[sourceIdx][neighborIdx];
-			}
+	//		avgScale = temp[sourceIdx][vertexIdx];
+	//		for (uint32 edgeIdx = 0; edgeIdx < edgeCount; ++edgeIdx)
+	//		{
+	//			const uint32 neighborIdx = edges[localEdges[edgeIdx]].getOtherVertex(vertexIdx);
+	//			avgScale += temp[sourceIdx][neighborIdx];
+	//		}
 
-			avgScale /= (edgeCount + 1);
-		}
-	}
+	//		avgScale /= (edgeCount + 1);
+	//	}
+	//}
 
-	// errors relative to vertex scales / mesh resolution
-	mRelativeSurfaceErrors.resize(vertexCount);
-	#pragma omp parallel for
-	for (int64 i = 0; i < vertexCount; ++i)
-	{
-		const uint32 vertexIdx = (uint32) i;
-		mRelativeSurfaceErrors[vertexIdx] = mSurfaceErrors[vertexIdx] / temp[sourceIdx][vertexIdx];
-	}
+	//// errors relative to vertex scales / mesh resolution
+	//mRelativeSurfaceErrors.resize(vertexCount);
+	//#pragma omp parallel for
+	//for (int64 i = 0; i < vertexCount; ++i)
+	//{
+	//	const uint32 vertexIdx = (uint32) i;
+	//	mRelativeSurfaceErrors[vertexIdx] = mSurfaceErrors[vertexIdx] / temp[sourceIdx][vertexIdx];
+	//}
 
 	// error statistics
 	const uint32 arrayCount = 1;
-	const Real *errors[arrayCount] = { mSurfaceErrors.data() };
+	const Real *bestErrors[arrayCount] = { mBestSurfaceErrors.data() };
 	const Real *weights[arrayCount] = { mWeightField.data() };
 	const uint32 sizes[arrayCount] = { vertexCount };
-	mStatistics.processIteration(errors, weights, sizes, arrayCount, mParams.mSupportWeakThreshold);
+	mStatistics.processIteration(bestErrors, weights, sizes, arrayCount, mParams.mSupportWeakThreshold);
 
 	// save statistics
 	const Path &folder = Scene::getSingleton().getResultsFolder();
 	const Path fileName = Path::appendChild(folder, "ErrorStatistics.txt");
 	mStatistics.saveToFile(fileName);
 	
-	outputErrorColoredMesh(temp[0], mSurfaceErrors.data(), iteration, "absoluteErrors");
-	outputErrorColoredMesh(temp[0], mRelativeSurfaceErrors.data(), iteration, "RelativeErrors");
+	mMesh.computeNormalsWeightedByAngles();
+	//outputErrorColoredMesh(mAverageAngles[0].data(), mBestSurfaceErrors.data(), iteration, "absoluteErrorsBest");
+	//outputErrorColoredMesh(mAverageAngles[0].data(), mSurfaceErrors.data(), iteration, "absoluteErrors");
+	//outputErrorColoredMesh(temp[0], mRelativeSurfaceErrors.data(), iteration, "RelativeErrors");
 
 	return mStatistics.hasConverged();
 }
@@ -1297,7 +1311,7 @@ void FSSFRefiner::findSubdivisionEdges()
 	mSubdivisionEdges.clear();
 	findSubdivisionEdgesViaNodes();
 	//findSubdivisionEdgesViaErrors();
-	removeDuplicates(mSubdivisionEdges);
+	Array<uint32>::removeDuplicates(mSubdivisionEdges);
 }
 
 void FSSFRefiner::findSubdivisionEdgesViaNodes()
@@ -1514,14 +1528,14 @@ bool FSSFRefiner::smoothIsleUntilConvergence(const vector<uint32> &isle)
 		const vector<uint32> &edgeIndices = mMesh.getVerticesToEdges()[vertexIdx];
 		const uint32 edgeCount = (uint32) edgeIndices.size();
 
-		Real weight = (REAL_MAX == mSurfaceErrors[vertexIdx] ? EPSILON : 1.0f / (EPSILON + mSurfaceErrors[vertexIdx]));
+		Real weight = (REAL_MAX == mBestSurfaceErrors[vertexIdx] ? EPSILON : 1.0f / (EPSILON + mBestSurfaceErrors[vertexIdx]));
 		Vector3 target = oldPos * weight;
 		Real sumOfWeights = weight;
 
 		for (uint32 localEdgeIdx = 0; localEdgeIdx < edgeCount; ++localEdgeIdx)
 		{
 			const uint32 neighborVertexIdx = edges[edgeIndices[localEdgeIdx]].getOtherVertex(vertexIdx);
-			weight = (REAL_MAX == mSurfaceErrors[vertexIdx] ? EPSILON : 1.0f / (EPSILON + mSurfaceErrors[vertexIdx]));
+			weight = (REAL_MAX == mBestSurfaceErrors[vertexIdx] ? EPSILON : 1.0f / (EPSILON + mBestSurfaceErrors[vertexIdx]));
 			target += mMesh.getPosition(neighborVertexIdx) * weight;
 			sumOfWeights += weight;
 		}
@@ -1559,14 +1573,14 @@ void FSSFRefiner::onFilterData(
 {
 	MeshRefiner::onFilterData(vertexOffsets, vertexOffsetCount, edgeOffsets, edgeOffsetCount, triangleOffsets, triangleOffsetCount);
 	
-	FlexibleMesh::filterData<Vector3>(mBestPositions, vertexOffsets);
-	FlexibleMesh::filterData<Real>(mBestSurfaceErrors, vertexOffsets);
-	FlexibleMesh::filterData<Real>(mSurfaceErrors, vertexOffsets);
-	FlexibleMesh::filterData<uint8>(mVertexStates, vertexOffsets);
+	Array<Vector3>::compaction(mBestPositions, vertexOffsets);
+	Array<Real>::compaction(mBestSurfaceErrors, vertexOffsets);
+	Array<Real>::compaction(mSurfaceErrors, vertexOffsets);
+	Array<uint8>::compaction(mVertexStates, vertexOffsets);
 
-	//FlexibleMesh::filterData<Vector3>(mEdgeVectorField, edgeOffsets);
-	//FlexibleMesh::filterData<Real>(mEdgeScales, edgeOffsets);
-	//FlexibleMesh::filterData<Real>(mEdgeWeights, edgeOffsets);
+	//Array::compaction<Vector3>(mEdgeVectorField, edgeOffsets);
+	//Array::compaction<Real>(mEdgeScales, edgeOffsets);
+	//Array::compaction<Real>(mEdgeWeights, edgeOffsets);
 }
 
 void FSSFRefiner::onEdgeMerging(const uint32 targetVertex, const uint32 edgeVertex0, const uint32 edgeVertex1)
@@ -1707,7 +1721,7 @@ void FSSFRefiner::findInlierSamples(bool *inliers)
 	const Scene &scene = Scene::getSingleton();
 	const Samples &samples = scene.getSamples();
 	const uint32 sampleCount = samples.getCount();
-	const uint32 pairCount = samples.getMaxViewConeCount();
+	const uint32 pairCount = samples.getMaxParentLinkCount();
 
 	// create scene & set initial states
 	mRayTracer.createStaticScene(mMesh.getPositions(), mMesh.getVertexCount(), mMesh.getIndices(), mMesh.getIndexCount(), true);
@@ -1720,14 +1734,14 @@ void FSSFRefiner::findInlierSamples(bool *inliers)
 		uint32 batchSize = EMBREE_PAIR_BATCH_SIZE;
 		if (batchSize + startPairIdx > pairCount)
 			batchSize = pairCount - startPairIdx;
-		mRayTracer.findIntersectionsForViewSamplePairs(true, startPairIdx, startPairIdx + batchSize, 
-			EMBREE_RAY_BATCH_SIZE, mParams.mRaysPerViewSamplePair, mParams.mOrientSamplingPatternLikeView);
+		mRayTracer.findIntersectionsForCamSamplePairs(true, startPairIdx, startPairIdx + batchSize, 
+			EMBREE_RAY_BATCH_SIZE, mParams.mRaysPerLinkedPair, mParams.mOrientSamplingPattern);
 	
 		// process intersections
 		#pragma omp parallel for schedule(dynamic, OMP_PAIR_BATCH_SIZE)
 		for (int64 i = 0; i < batchSize; ++i)
 		{
-			// get view sample pair data
+			// get linked pair data
 			const uint32 localPairIdx = (uint32) i;
 			const uint32 globalPairIdx = startPairIdx + localPairIdx;
 			const uint32 sampleIdx = samples.getSampleIdx(globalPairIdx);
@@ -1815,7 +1829,7 @@ FSSFRefiner::FSSFRefiner(const FSSFRefiner &copy) :
 	assert(false);
 }
 
-void FSSFRefiner::outputErrorColoredMesh(vector<Real> &temp, const Real *errors, const uint32 iteration, const string &coreName) const
+void FSSFRefiner::outputErrorColoredMesh(Real *tempVertexColors, const Real *errors, const uint32 iteration, const string &coreName) const
 {
 	cout << "Saving reconstruction with error-based colors." << endl;
 
@@ -1826,39 +1840,50 @@ void FSSFRefiner::outputErrorColoredMesh(vector<Real> &temp, const Real *errors,
 		return;
 	
 	// compute & save scalar errors & find minimum & maximum
-	temp.resize(mMesh.getVertexCount());
 	#pragma omp parallel for
 	for (int64 i = 0; i < vertexCount; ++i)
 	{
 		const uint32 vertexIdx = (uint32) i;
 
 		if (!isBad(vertexIdx))
-			temp[vertexIdx] = errors[vertexIdx];
+			tempVertexColors[vertexIdx] = errors[vertexIdx];
 		else
-			temp[vertexIdx] = 0.0f;
+			tempVertexColors[vertexIdx] = 0.0f;
 	}
 
 	// find nth element as maximum
-	vector<Real>::iterator it = temp.begin() + (uint32) (temp.size() * 0.9f);
-	std::nth_element(temp.begin(), it, temp.end());
-	const Real maximum = *it;
+	const Real percentile = 0.9f;
+	Real *begin = tempVertexColors;
+	Real *nthElement = begin + (uint32) (vertexCount * percentile);
+	Real *end = tempVertexColors + vertexCount;
+	std::nth_element(begin, nthElement, end);
+	const Real maximum = *nthElement;
 	
-	StaticMesh staticMesh(mMesh.getColors(), mMesh.getNormals(), mMesh.getPositions(), mMesh.getScales(), mMesh.getIndices(),
-		vertexCount, indexCount);
+	StaticMesh staticMesh(mMesh.getColors(), mMesh.getNormals(), mMesh.getPositions(), mMesh.getScales(),
+		mMesh.getIndices(),	vertexCount, indexCount);
 
 	// compute error colors
 	cout << "Computing error-based colors." << endl;
-	const Real scaleFactor = 1.0f / maximum;
+	const Real scaleFactor = 255.0f / maximum;
+	const Color &badColor = ColorMap::VIRIDIS[255];
+
 	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
 	{
-		const Real error = errors[vertexIdx];
-		const Real colorFactor = clamp<Real>(error * scaleFactor, 1.0f, 0.0f);
+		Vector3 &vertexColor = staticMesh.getColor(vertexIdx);
 
-		Vector3 &color = staticMesh.getColor(vertexIdx);
+		// bad vertex -> worst error color
 		if (isBad(vertexIdx))
-			color.set(1.0f, 0.5f, 0.5f);
-		else
-			color.set(colorFactor, 0.5f, 0.5f);
+		{
+			vertexColor.set(badColor.getRed(), badColor.getGreen(), badColor.getBlue());
+			continue;
+		}
+
+		// error color depending on error value
+		const Real error = errors[vertexIdx];
+		const Real colorIdx = error * scaleFactor;
+		const Color color = ColorMap::getViridisColorLinearly(colorIdx);
+
+		vertexColor.set(color.getRed(), color.getGreen(), color.getBlue());
 	}
 
 	FSSFRefiner::saveMesh(staticMesh, iteration, coreName.data());

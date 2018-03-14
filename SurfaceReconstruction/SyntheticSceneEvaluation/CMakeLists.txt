@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2017 by Author: Aroudj, Samir
+# Copyright (C) 2018 by Author: Aroudj, Samir
 # TU Darmstadt - Graphics, Capture and Massively Parallel Computing
 # All rights reserved.
 #
@@ -44,7 +44,6 @@ add_executable(${appName} ${sourceCode})
 set(requiredLibs ${requiredLibs}
 	SurfaceReconstruction
 	Graphics
-	Utilities	
 	Platform
 	CollisionDetection
 	${mathLibName}	

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -10,13 +10,13 @@
 #include "Graphics/Color.h"
 #include "Math/MathHelper.h"
 #include "Platform/Storage/File.h"
+#include "Platform/Utilities/PlyFile.h"
 #include "SurfaceReconstruction/Geometry/Mesh.h"
-#include "Utilities/PlyFile.h"
+#include "SurfaceReconstruction/Scene/FileNaming.h"
 
 using namespace FailureHandling;
 using namespace Graphics;
 using namespace Math;
-using namespace Platform;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;
@@ -24,6 +24,26 @@ using namespace Utilities;
 
 // Mesh constants
 const uint32 Mesh::FILE_VERSION = 0;
+
+void Mesh::applyMovementField(const Vector3 *vectorField)
+{
+	//cout << "Applying vertex movements." << endl;
+	const Vector3 *positions = getPositions();
+	const int64 vertexCount = getVertexCount();
+
+	#pragma omp parallel for
+	for (int64 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
+	{
+		const Vector3 &move = vectorField[vertexIdx];
+		const Vector3 &oldP = positions[vertexIdx];
+
+		if (move.hasNaNComponent())
+			continue;
+
+		const Vector3 newP = oldP + move;
+		getPosition((uint32) vertexIdx) = newP;
+	}
+}
 
 void Mesh::computeAABB(Vector3 &min, Vector3 &max, const Vector3 *positions, const uint32 vertexCount)
 {
@@ -251,11 +271,11 @@ void Mesh::loadFromFile(const Path &fileName)
 {
 	clear();	
 	
-	const string plyEnding = ".ply";
+	const string plyEnding = FileNaming::ENDING_PLY;
 	const string &name = fileName.getString();
 	const uint32 nameLength = (uint32) name.length();
 	
-	// ".Mesh" or ".ply"?
+	// FileNaming::ENDING_MESH or FileNaming::ENDING_PLY?
 	string fileNameEnding = name.substr(nameLength - plyEnding.size(), plyEnding.size());
 	const bool fromPly = (fileNameEnding == plyEnding);
 	
@@ -265,7 +285,7 @@ void Mesh::loadFromFile(const Path &fileName)
 		return;
 	}
 	
-	const string meshEnding = ".Mesh";
+	const string meshEnding = FileNaming::ENDING_MESH;
 	fileNameEnding = name.substr(nameLength - meshEnding.size(), meshEnding.size());
 	const bool fromMesh = (fileNameEnding == meshEnding);
 	if (fromMesh)
@@ -337,7 +357,7 @@ void Mesh::loadVertices(PlyFile &file, const VerticesDescription &verticesFormat
 	// get data format
 	const ElementsSemantics &semantics = verticesFormat.getSemantics();
 	const ElementsSyntax &syntax = verticesFormat.getTypeStructure();
-	const uint32 propertyCount = (uint32) syntax.size();
+	const uint32 propertyCount = verticesFormat.getPropertyCount();
 	const uint32 vertexCount = verticesFormat.getElementCount();
 
 	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
@@ -348,11 +368,11 @@ void Mesh::loadVertices(PlyFile &file, const VerticesDescription &verticesFormat
 		Vector2 *uvCoords = NULL; //mUVCoords + vertexIdx;
 		Real *confidence = NULL; //mConfidences + vertexIdx;
 		Real *scale = getScales() + vertexIdx;
-		uint32 *viewIDs = NULL; // mViewIDs + viewsPerSample * vertexIdx;
+		uint32 *parentIDs = NULL; // parentIDs + parentsPerSample * vertexIdx;
 
 		color->set(0.5f, 0.5f, 0.5f);
 		for (uint32 propertyIdx = 0; propertyIdx < propertyCount; ++propertyIdx)
-			file.readVertexProperty(color, normal, position, uvCoords, confidence, scale, viewIDs,
+			file.readVertexProperty(color, normal, position, uvCoords, confidence, scale, parentIDs,
 				syntax[propertyIdx], (VerticesDescription::SEMANTICS) semantics[propertyIdx]);
 	}
 }
@@ -371,7 +391,7 @@ void Mesh::saveToFile(const Path &fileNameBeginning, const bool saveAsPly, const
 	// save in ply file format?
 	if (saveAsPly)
 	{
-		const Path fileName = Path::extendLeafName(fileNameBeginning, ".ply");
+		const Path fileName = Path::extendLeafName(fileNameBeginning, FileNaming::ENDING_PLY);
 		cout << "Saving " << fileName << "\n";
 
 		PlyFile file(fileName, File::CREATE_WRITING, true);
@@ -383,7 +403,7 @@ void Mesh::saveToFile(const Path &fileNameBeginning, const bool saveAsPly, const
 	// save in internal file format?
 	if (saveAsMesh)
 	{
-		const Path fileName = Path::extendLeafName(fileNameBeginning, ".Mesh");
+		const Path fileName = Path::extendLeafName(fileNameBeginning, FileNaming::ENDING_MESH);
 		cout << "Saving " << fileName << "\n";
 
 		File file(fileName, File::CREATE_WRITING, true, FILE_VERSION);
@@ -405,23 +425,58 @@ void Mesh::saveToFile(const Path &fileNameBeginning, const bool saveAsPly, const
 	cout << flush;
 }
 
-void Mesh::umbrellaSmooth(Vector3 *movementField, Real *weightField, const Real smoothingLambda)
+
+void Mesh::smoothByTaubinOp(Math::Vector3 *movementField, Real *weightField, const Real passBandEigenvalue, const Real smoothingLambda)
 {
-	const uint32 vertexCount = getVertexCount();
-	computeUmbrellaSmoothingMovementField(movementField, weightField, smoothingLambda);
+	// transfer function parameters: f(k) = (1 - smothingLambda * k) * (1 - smoothingMy * k) for Taubin operator
+	Real temp = 1 - smoothingLambda * passBandEigenvalue;
+	temp = 1.0f - 1.0f / temp;
+	const Real smoothingMy = temp / passBandEigenvalue;
 	
-	#pragma omp parallel for
-	for (int64 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
-		getPosition((uint32) vertexIdx) += movementField[vertexIdx];
+	// 1. the shrinking step
+	{
+		smoothByUmbrellaOp(movementField, weightField, smoothingLambda);
+	}
+
+	// 2. the un-shrinking step 
+	{
+		// compute laplacian again for each vertex
+		const uint32 vertexCount = getVertexCount();
+		computeLaplacianVectorField(movementField, weightField);
+
+		// Taubin (un-shrinking) vector field
+		#pragma omp parallel for
+		for (int64 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
+		{
+			const Vector3 laplacian = movementField[vertexIdx];
+			movementField[vertexIdx] = laplacian * smoothingMy;
+		}
+
+		applyMovementField(movementField);
+	}
 }
 
-void Mesh::computeUmbrellaSmoothingMovementField(Vector3 *movementField, Real *weightField, const Real smoothingLambda)
+void Mesh::smoothByUmbrellaOp(Vector3 *movementField, Real *weightField, const Real smoothingLambda)
+{
+	// compute laplacian for each vertex
+	const uint32 vertexCount = getVertexCount();
+	computeLaplacianVectorField(movementField, weightField);
+
+	// umbrella smoothing vector field
+	#pragma omp parallel for
+	for (int64 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
+		movementField[vertexIdx] *= smoothingLambda;
+
+	applyMovementField(movementField);
+}
+
+void Mesh::computeLaplacianVectorField(Vector3 *laplacianVectorField, Real *weightField)
 {
 	// zero movments & weights
 	const uint32 vertexCount = getVertexCount();
 	#pragma omp parallel for
 	for (int64 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
-		movementField[vertexIdx].set(0.0f, 0.0f, 0.0f);
+		laplacianVectorField[vertexIdx].set(0.0f, 0.0f, 0.0f);
 
 	#pragma omp parallel for
 	for (int64 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
@@ -436,7 +491,7 @@ void Mesh::computeUmbrellaSmoothingMovementField(Vector3 *movementField, Real *w
 	{
 		const uint32 *triangle = indices + i;
 		for (uint32 cornerIdx = 0; cornerIdx < 3; ++cornerIdx)
-			prepareUmbrellaSmoothing(movementField, weightField, triangle[cornerIdx], triangle[(cornerIdx + 1) % 3]);
+			prepareLaplacianSmoothing(laplacianVectorField, weightField, triangle[cornerIdx], triangle[(cornerIdx + 1) % 3]);
 	}
 
 	// normalize weighted sums and subtract vertex positions to get umbrella operator movements
@@ -448,14 +503,14 @@ void Mesh::computeUmbrellaSmoothingMovementField(Vector3 *movementField, Real *w
 		if (sumOfWeights < EPSILON)
 			continue;
 
-		const Vector3 &weightedSum = movementField[vertexIdx];
+		const Vector3 &weightedSum = laplacianVectorField[vertexIdx];
 		const Vector3 &position = getPosition(vertexIdx);
-		const Vector3 umbrellaMovement = (weightedSum / sumOfWeights) - position;
-		movementField[vertexIdx] = umbrellaMovement * smoothingLambda;
+		const Vector3 laplacian = (weightedSum / sumOfWeights) - position;
+		laplacianVectorField[vertexIdx] = laplacian;
 	}
 }
 
-void Mesh::prepareUmbrellaSmoothing(Vector3 *movementField, Real *weightField, const uint32 vertexIdx0, const uint32 vertexIdx1) const
+void Mesh::prepareLaplacianSmoothing(Vector3 *movementField, Real *weightField, const uint32 vertexIdx0, const uint32 vertexIdx1) const
 {
 	// vertex positions
 	const Vector3 *positions = getPositions();
@@ -463,7 +518,7 @@ void Mesh::prepareUmbrellaSmoothing(Vector3 *movementField, Real *weightField, c
 	const Vector3 &position1 = positions[vertexIdx1];
 
 	// weight & movments
-	const Real weight = computeUmbrellaSmoothingWeight(position0, position1);
+	const Real weight = 1.0f;//computeLaplacianWeight(position0, position1);
 	const Vector3 t0 = position1 * weight;
 	const Vector3 t1 = position0 * weight;
 

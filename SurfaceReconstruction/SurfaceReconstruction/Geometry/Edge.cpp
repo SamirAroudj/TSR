@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -15,12 +15,12 @@ using namespace FailureHandling;
 using namespace std;
 using namespace SurfaceReconstruction;
 
-const uint32 Edge::INVALID_IDX = (uint32) -1;
+const uint32 Edge::INVALID_INDEX = (uint32) -1;
 
 void Edge::addTriangle(const uint32 triangleIdx)
 {
 	// allowed: up to 1 triangle assigned before addTriangle
-	if (Triangle::INVALID_IDX != mTriangles[1])
+	if (Triangle::INVALID_INDEX != mTriangles[1])
 	{
 		cout << "Exception!\n";
 		cout << "Cannot add triangle:\n";

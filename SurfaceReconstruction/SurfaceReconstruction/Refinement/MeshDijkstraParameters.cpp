@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -9,14 +9,14 @@
 
 #include "Math/MathHelper.h"
 #include "Platform/FailureHandling/Exception.h"
-#include "Platform/ParametersManager.h"
+#include "Platform/Utilities/ParametersManager.h"
 #include "SurfaceReconstruction/Refinement/MeshDijkstraParameters.h"
 
 using namespace FailureHandling;
 using namespace Math;
-using namespace Platform;
 using namespace std;
 using namespace SurfaceReconstruction;
+using namespace Utilities;
 
 MeshDijkstraParameters::MeshDijkstraParameters()
 {

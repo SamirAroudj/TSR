@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -7,15 +7,13 @@
  * of the BSD 3-Clause license. See the License.txt file for details.
  */
 
-#include "Graphics/ImageManager.h"
 #include "Math/MathHelper.h"
-#include "SurfaceReconstruction/Image/Image.h"
+#include "Platform/Utilities/HelperFunctions.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/Triangle.h"
 #include "SurfaceReconstruction/Refinement/MeshRefiner.h"
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
-#include "SurfaceReconstruction/Scene/View.h"
-#include "Utilities/HelperFunctions.h"
 
 using namespace Graphics;
 using namespace FailureHandling;
@@ -68,44 +66,8 @@ void MeshRefiner::clear()
 
 void MeshRefiner::applyMovementField()
 {
-	//cout << "Applying vertex movements." << endl;
-	const Vector3 *positions = mMesh.getPositions();
-	const int64 vertexCount = mVectorField.size();
-
-	#pragma omp parallel for
-	for (int64 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
-	{
-		const Vector3 &move = mVectorField[vertexIdx];
-		const Vector3 &oldP = positions[vertexIdx];
-
-		if (move.hasNaNComponent())
-			continue;
-
-		const Vector3 &newP = oldP + move;
-		mMesh.setPosition(newP, (uint32) vertexIdx);
-	}
-
+	mMesh.applyMovementField(mVectorField.data());
 	doSelfCheck();
-}
-
-void MeshRefiner::findDepthExtrema(Real &minDepth, Real &maxDepth, const Real *depthMap, const uint32 pixelCount)
-{
-	minDepth = REAL_MAX;
-	maxDepth = -REAL_MAX;
-
-	for (uint32 pixelIdx = 0; pixelIdx < pixelCount; ++pixelIdx)
-	{
-		// valid depth?
-		const Real depth = depthMap[pixelIdx];
-		if (-REAL_MAX == depth || REAL_MAX == depth)
-			continue;
-
-		// update min & max
-		if (depth > maxDepth)
-			maxDepth = depth;
-		if (depth < minDepth)
-			minDepth = depth;
-	}
 }
 
 void MeshRefiner::onEdgeMerging(const uint32 targetVertex, const uint32 edgeVertex0, const uint32 edgeVertex1)
@@ -131,8 +93,8 @@ void MeshRefiner::onFilterData(
 	const uint32 *edgeOffsets, const uint32 edgeCount,
 	const uint32 *triangleOffsets, const uint32 triangleCount)
 {
-	FlexibleMesh::filterData<Vector3>(mVectorField, vertexOffsets);
-	FlexibleMesh::filterData<Real>(mWeightField, vertexOffsets);
+	Array<Vector3>::compaction(mVectorField, vertexOffsets);
+	Array<Real>::compaction(mWeightField, vertexOffsets);
 }
 
 void MeshRefiner::onNewElements(

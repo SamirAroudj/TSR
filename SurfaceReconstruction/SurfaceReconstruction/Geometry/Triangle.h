@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -34,7 +34,7 @@ namespace SurfaceReconstruction
 		inline static bool isInvalidIndex(const uint32 triangleIdx);
 
 	public:
-		static const uint32 INVALID_IDX;
+		static const uint32 INVALID_INDEX;
 	}; 
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -47,12 +47,12 @@ namespace SurfaceReconstruction
 		for (uint32 cornerIdx = 0; cornerIdx < 3; ++cornerIdx)
 			if (indices[cornerIdx] == globalVertexIdx)
 				return cornerIdx;
-		return Vertex::INVALID_IDX;
+		return Vertex::INVALID_INDEX;
 	}
 
 	inline bool Triangle::isInvalidIndex(const uint32 triangleIdx)
 	{
-		return (INVALID_IDX == triangleIdx);
+		return (INVALID_INDEX == triangleIdx);
 	}
 }
 

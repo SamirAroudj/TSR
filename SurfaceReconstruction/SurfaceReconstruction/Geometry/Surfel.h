@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -14,7 +14,7 @@
 
 namespace SurfaceReconstruction
 {
-	/** Represents a point which was reprojected from a pixel a view onto some mesh. */
+	/** Represents a point which was reprojected from a pixel aaccording to some camera or projective device onto some mesh. */
 	struct Surfel
 	{
 	public:

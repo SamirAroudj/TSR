@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -12,13 +12,13 @@
 
 #include <cassert>
 #include "Platform/DataTypes.h"
-#include "Utilities/Size2.h"
+#include "Platform/Utilities/Size2.h"
 
 // todo comments
 
 namespace SurfaceReconstruction
 {
-	class Image;
+	class ColorImage;
 
 	class Filter
 	{
@@ -46,7 +46,7 @@ namespace SurfaceReconstruction
 
 		inline Real getCoefficient(const int32 relativeX, const int32 relativeY) const;
 
-		uint8 getConvolution(const uint32 x, const uint32 y, const uint32 channel, const Image &image) const;
+		uint8 getConvolution(const uint32 x, const uint32 y, const uint32 channel, const ColorImage &image) const;
 
 		inline const Utilities::ImgSize &getEnvSize() const;
 		inline Utilities::ImgSize getSize() const;

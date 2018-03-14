@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -14,8 +14,8 @@
 #include "SurfaceReconstruction/Geometry/Mesh.h"
 #include "SurfaceReconstruction/Geometry/RayTracer.h" 
 #include "SurfaceReconstruction/Geometry/Triangle.h"
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
-#include "SurfaceReconstruction/Scene/View.h"
 
 using namespace FailureHandling;
 using namespace Graphics;
@@ -188,7 +188,7 @@ void RayTracer::freeScene()
 	mScene = NULL;
 }
 
-void RayTracer::renderFromView(GeometryMap *geometryMap, const ImgSize &size, const PinholeCamera &camera, const Matrix3x3 &HPSToNNRayDirWS, const bool backFaceCulling)
+void RayTracer::render(GeometryMap *geometryMap, const ImgSize &size, const PinholeCamera &camera, const Matrix3x3 &HPSToNNRayDirWS, const bool backFaceCulling)
 {
 	// camera data for ray creations
 	const Vector4 &cameraOrigin = camera.getPosition();
@@ -213,7 +213,7 @@ void RayTracer::renderFromView(GeometryMap *geometryMap, const ImgSize &size, co
 		// ray direction
 		const uint32 x = (uint32) (rayIdx % size[0]);
 		const uint32 y = (uint32) (rayIdx / size[0]);
-		Vector3 rayDir = View::getRay(x, y, HPSToNNRayDirWS);
+		Vector3 rayDir = Cameras::getRay(x, y, HPSToNNRayDirWS);
 		ray.dir[0] = (float) rayDir.x;
 		ray.dir[1] = (float) rayDir.y;
 		ray.dir[2] = (float) -rayDir.z; // conversion: left-handed to right-handed system
@@ -236,7 +236,7 @@ void RayTracer::renderFromView(GeometryMap *geometryMap, const ImgSize &size, co
 			surfel.mPosition.set(REAL_MAX, REAL_MAX, REAL_MAX);
 			surfel.mBaryCoords[0] = REAL_MAX;
 			surfel.mBaryCoords[1] = REAL_MAX;
-			surfel.mTriangleIdx = Triangle::INVALID_IDX;
+			surfel.mTriangleIdx = Triangle::INVALID_INDEX;
 		}
 	}
 	
@@ -271,7 +271,7 @@ void RayTracer::findOcclusions(const Vector3 *positions, const uint32 positionCo
 	// gather rays
 	const int64 rayCount = positionCount;
 
-	// trace views from rayOrigin / camera to positions
+	// trace rays from rayOrigin / camera to positions
 	#pragma omp parallel for
 	for (int64 i = 0; i < rayCount; ++i)
 	{
@@ -368,20 +368,20 @@ bool RayTracer::findIntersection(Surfel &surfel, const Math::Vector3 &rayStartWS
 	return hitSomething;
 }
 
-void RayTracer::findIntersectionsForViewSamplePairs(
+void RayTracer::findIntersectionsForCamSamplePairs(
 	const bool backFaceCulling, const uint32 startPairIdx, const uint32 endPairIdx, const uint32 rayBatchSize,
-	const Utilities::Size2<uint32> &raysPerViewSamplePair, const bool orientLikeViews)
+	const Utilities::Size2<uint32> &raysPerLinkedPair, const bool orientSamplingPattern)
 {
-	cout << "findIntersectionsForViewSamplePairs" << endl;
+	cout << "findIntersectionsForCamSamplePairs" << endl;
 
 	// get scene data
 	const Scene &scene = Scene::getSingleton();
 	const Samples &samples = scene.getSamples();
-	const vector<View *> &views = scene.getViews();
+	const Cameras &cameras = scene.getCameras();
 
 	// configure ray tracer
 	const uint32 pairCount = endPairIdx - startPairIdx;
-	const uint32 raysPerPair = raysPerViewSamplePair.getElementCount();
+	const uint32 raysPerPair = raysPerLinkedPair.getElementCount();
 	const uint32 rayCount = pairCount * raysPerPair;
 
 	setMaximumRayCount(rayCount);
@@ -396,11 +396,11 @@ void RayTracer::findIntersectionsForViewSamplePairs(
 		const uint32 localPairIdx = rayIdx / raysPerPair;
 		const uint32 globalPairIdx = localPairIdx + startPairIdx;
 		const uint32 sampleIdx = samples.getSampleIdx(globalPairIdx);
-		const uint32 viewIdx = samples.getViewIdx(globalPairIdx);
+		const uint32 cameraIdx = samples.getCameraIdx(globalPairIdx);
 		
 		// valid ray?
 		RTCRay &ray = initializeRay(rayIdx, rayIdx);
-		if (!scene.isValidView(viewIdx))
+		if (!cameras.isValid(cameraIdx))
 		{
 			ray.geomID = RTC_INVALID_GEOMETRY_ID;
 			ray.tnear = FLT_MAX;
@@ -409,23 +409,22 @@ void RayTracer::findIntersectionsForViewSamplePairs(
 		}
 
 		// ray start position = camera center
-		const View &view = *(views[viewIdx]);
-		const Vector3 startPosWS = view.getPositionWS();
+		const Vector3 startPosWS = cameras.getPositionWS(cameraIdx);
 
 		ray.org[0] = (float)  startPosWS.x;
 		ray.org[1] = (float)  startPosWS.y;
 		ray.org[2] = (float) -startPosWS.z; // conversion: left-handed to right-handed system
 
-		// build coordinate system for supersampling pattern of current view sample pair
-		// sample coordinate system orientation: first basis vector is parallel to viewing direction
+		// build coordinate system for supersampling pattern of current linked pair
+		// sample coordinate system orientation: first basis vector is parallel to ray direction
 		const Vector3 &samplePosWS = samples.getPositionWS(sampleIdx);
 		const Real sampleScale = samples.getScale(sampleIdx);
 		Vector3 t0, t1;
 
-		if (orientLikeViews)
+		if (orientSamplingPattern)
 		{
 			// oriented like the sensor which captured the sample
-			const Quaternion &cameraOrientation = view.getCamera().getOrientation();		
+			const Quaternion &cameraOrientation = cameras.getCamera(cameraIdx).getOrientation();		
 			cameraOrientation.rotateVector(t0, Vector3(1.0f, 0.0f, 0.0f)); //cameraOrientation.rotateVector(t1, Vector3(0.0f, 1.0f, 0.0f));
 			cameraOrientation.rotateVector(t1, Vector3(0.0f, 1.0f, 0.0f));
 		}
@@ -440,10 +439,10 @@ void RayTracer::findIntersectionsForViewSamplePairs(
 
 		// get remaining data for sampling pattern
 		const uint32 localSamplingIdx = (rayIdx % raysPerPair);
-		const uint32 localSamplingCoords[2] = { localSamplingIdx % raysPerViewSamplePair[0], localSamplingIdx / raysPerViewSamplePair[1] };
+		const uint32 localSamplingCoords[2] = { localSamplingIdx % raysPerLinkedPair[0], localSamplingIdx / raysPerLinkedPair[1] };
 
 		// ray direction = towards sampling point of sampling pattern of sample patch
-		Vector2 offset = getRelativeSamplingOffset(localSamplingCoords, raysPerViewSamplePair);
+		Vector2 offset = getRelativeSamplingOffset(localSamplingCoords, raysPerLinkedPair);
 		offset *= sampleScale;
 
 		const Vector3 targetWS = samplePosWS + t0 * offset.x + t1 * offset.y;

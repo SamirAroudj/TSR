@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -23,10 +23,10 @@ namespace SurfaceReconstruction
 	public:
 		enum ReconstructionType
 		{
-			RECONSTRUCTION_VIA_OCCUPANCIES,			/// Reconstruction from free space and surface constraints (occupanccy scalar field of Occupancy object)
-			RECONSTRUCTION_VIA_PHOTOS,				/// Reconstruction which was improved by means of photos.
-			RECONSTRUCTION_VIA_SAMPLES,				/// Reconstruction from sample-based refinement of mCrust.
-			RECONSTRUCTION_TYPE_COUNT				/// Number of different reconstruction types.
+			RECONSTRUCTION_VIA_OCCUPANCIES,	/// Reconstruction from free space and surface constraints (occupanccy scalar field of Occupancy object)
+			RECONSTRUCTION_VIA_PCS,			/// Reconstruction which was improved by means of PCS.
+			RECONSTRUCTION_VIA_SAMPLES,		/// Reconstruction from sample-based refinement of mCrust.
+			RECONSTRUCTION_TYPE_COUNT		/// Number of different reconstruction types.
 		};
 
 	public:
@@ -39,9 +39,6 @@ namespace SurfaceReconstruction
 			This is only valid if the model asks for taking responsibility by setting the parameter responsible to true. */
 		virtual bool onNewReconstruction(FlexibleMesh *reconstruction,
 			const uint32 iteration, const std::string &text, const ReconstructionType type, const bool responsible) = 0;
-
-	public:
-		static const char *RECONSTRUCTION_TYPE_TEXTS[RECONSTRUCTION_TYPE_COUNT];	/// Texts for ReconstructionType enumeration.
 	};
 }
 

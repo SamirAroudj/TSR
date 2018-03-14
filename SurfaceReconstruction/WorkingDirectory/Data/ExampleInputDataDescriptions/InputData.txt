@@ -2,20 +2,17 @@
 string sceneFolder = C:\Dev\Scenes\WedgeComplex;
 
 // defines sensors' data for captured real world scenes, e.g., contains sensor device positions, currently supported: MVE format, see https://github.com/SamirAroudj/mve
-string relativeCamerasFileName = Results\Cameras.txt; 
-string imageTag = undistorted.png; // not used at the moment 
+//string relativeCamerasFileName = Results\Cameras.txt;
 
-// preprocess: points are transformed: x' = R^-1 * x - t with R^-1 from R from extrinsic angles and t from translationXYZ
-// R via 3 Euler angles
-Real extrinsicAngleX = 0.0f; // euler angle for the x-axis to rotate the input points before reconstruction, unit: radians
-Real extrinsicAngleY = 0.0f; // euler angle for the y-axis to rotate the input points before reconstruction, unit: radians
-Real extrinsicAngleZ = 0.0f; // euler angle for the z-axis to rotate the input points before reconstruction, unit: radians
+// preprocess: points are transformed into another "input" coordinate system with orientation R and origin p:
+// x' = R^t * (x - p) with R^t and R from extrinsic angles inputOrientation and p as inputOrigin
 
-// t
-Real translationX = 0.0f; // input points are moved translationX world units along the x-axis before reconstruction
-Real translationY = 0.0f; // input points are moved translationY world units along the x-axis before reconstruction
-Real translationZ = 0.0f; // input points are moved translationZ world units along the x-axis before reconstruction
+// coordinate system orientation R via 3 extrinsic Euler angles (x then y then z)
+Vector3 inputOrientation = { 0.0f, 0.0f, 0.0f }; // rotation matrix R from extrinsic angles (x then y then z), unit: radians
+
+// coordinate system origin p
+Vector3 inputOrigin = { 0.0f, 0.0f, 0.0f }; // input points are shifted by -t (before rotation via extrinsic angles)
 
 // multiple input point clouds are possible, format: string plyFile = <absolute point cloud ply file name>;
-string plyFile = C:\Dev\Scenes\WedgeComplex\Results\SceneSamples.ply; // view_id properties refer to camera file relativeCamerasFileName
-//string plyFile = C:\Dev\Scenes\WedgeComplex\Results\SceneSamples2.ply; 
+string plyFile = C:\Dev\Scenes\WedgeComplex\Results\Scene.ply; // view_id properties refer to camera file relativeCamerasFileName
+//string plyFile = C:\Dev\Scenes\WedgeComplex\Results\Scene2.ply;

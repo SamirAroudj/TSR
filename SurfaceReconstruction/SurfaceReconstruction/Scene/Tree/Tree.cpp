@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -8,13 +8,14 @@
  */
 #include <cstring>
 #include "Platform/FailureHandling/Exception.h"
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
+#include "SurfaceReconstruction/Scene/FileNaming.h"
 #include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 #include "SurfaceReconstruction/Scene/Tree/DualCells.h"
 #include "SurfaceReconstruction/Scene/Tree/Leaves.h"
 #include "SurfaceReconstruction/Scene/Tree/Nodes.h"
 #include "SurfaceReconstruction/Scene/Tree/Tree.h"
-#include "SurfaceReconstruction/Scene/View.h"
 
 using namespace FailureHandling;
 using namespace Math;
@@ -22,29 +23,23 @@ using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;
 
-Tree::Tree(Samples *&reorderedCopy) :
-	Tree()
+Tree::Tree() :
+	mNodes(NULL), mLeaves(NULL), mDualCells(NULL)
 {
 	cout << "Creating scene tree." << endl;
 	clear();
 
 	const Scope rootScope = getRootScope();
 
-	mNodes = new Nodes(reorderedCopy, rootScope);
+	mNodes = new Nodes(rootScope);
 	mLeaves = new Leaves(*mNodes, rootScope);
 	mDualCells = new DualCells(*mNodes, *mLeaves);
 }
 
 Tree::Tree(const Path &filesBeginning) :
-	Tree()
-{
-	loadFromFile(filesBeginning);
-}
-
-Tree::Tree() :
 	mNodes(NULL), mLeaves(NULL), mDualCells(NULL)
 {
-		
+	loadFromFile(filesBeginning);
 }
 
 Tree::~Tree()
@@ -126,14 +121,14 @@ void Tree::loadFromFile(const Path &filesBeginning)
 	cout << "Loading scene octree." << endl;
 	clear();
 
-	mNodes = new Nodes(Path::extendLeafName(filesBeginning, ".Nodes"));
-	mLeaves = new Leaves(*mNodes, Path::extendLeafName(filesBeginning, ".Leaves"));
-	mDualCells = new DualCells(*mNodes, *mLeaves, Path::extendLeafName(filesBeginning, ".DualCells"));
+	mNodes = new Nodes(Path::extendLeafName(filesBeginning, FileNaming::ENDING_NODES));
+	mLeaves = new Leaves(*mNodes, Path::extendLeafName(filesBeginning, FileNaming::ENDING_LEAVES));
+	mDualCells = new DualCells(*mNodes, *mLeaves, Path::extendLeafName(filesBeginning, FileNaming::ENDING_DUAL_CELLS));
 }
 
 void Tree::saveToFiles(const Path &filesBeginning) const
 {
-	mNodes->saveToFile(Path::extendLeafName(filesBeginning, ".Nodes"));
-	mLeaves->saveToFile(Path::extendLeafName(filesBeginning, ".Leaves"));
-	mDualCells->saveToFile(Path::extendLeafName(filesBeginning, ".DualCells"));
+	mNodes->saveToFile(Path::extendLeafName(filesBeginning, FileNaming::ENDING_NODES));
+	mLeaves->saveToFile(Path::extendLeafName(filesBeginning, FileNaming::ENDING_LEAVES));
+	mDualCells->saveToFile(Path::extendLeafName(filesBeginning, FileNaming::ENDING_DUAL_CELLS));
 }

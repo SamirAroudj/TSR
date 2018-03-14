@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2017 by Author: Aroudj, Samir
+# Copyright (C) 2018 by Author: Aroudj, Samir
 # TU Darmstadt - Graphics, Capture and Massively Parallel Computing
 # All rights reserved.
 #
@@ -17,6 +17,7 @@ set(geometryPath ${componentPath}/Geometry)
 set(refinementPath ${componentPath}/Refinement)
 set(renderingPath ${componentPath}/Rendering)
 set(scenePath ${componentPath}/Scene)
+set(sceneCameraPath ${scenePath}/Camera)
 set(sceneTreePath ${scenePath}/Tree)
 set(surfaceExtractionPath ${componentPath}/SurfaceExtraction)
 
@@ -49,8 +50,12 @@ set(geometryHeaderFiles
 
 # image sub namespace header files
 set(imageHeaderFiles
+	${imagePath}/ColorImage.h
+	${imagePath}/DepthImage.h
+	${imagePath}/ViewsImage.h
 	${imagePath}/Filter.h
 	${imagePath}/Image.h
+	${imagePath}/MVEIHeader.h
 )
 
 # refinement sub namespace header files
@@ -75,20 +80,28 @@ endif (PCS_REFINEMENT)
 
 # rendering sub namespace header files
 set(renderingHeaderFiles
+	${renderingPath}/MeshRenderer.h
 	${renderingPath}/Renderer.h	
 )
 
 # scene sub namespace header files
 set(sceneHeaderFiles
 	${scenePath}/CapturedScene.h
+	${scenePath}/FileNaming.h
 	${scenePath}/IReconstructorObserver.h
 	${scenePath}/Samples.h
 	${scenePath}/Scene.h
 	${scenePath}/SyntheticScene.h
-	${scenePath}/View.h
 )
 
-# scene tree sub namespace header files
+# Scene/Camera sub namespace header files
+set (sceneCameraHeaderFiles
+	${sceneCameraPath}/Cameras.h
+	${sceneCameraPath}/CameraData.h
+	${sceneCameraPath}/MVECameraIO.h
+)
+
+# scene/tree sub namespace header files
 set (sceneTreeHeaderFiles
 	${sceneTreePath}/DualCells.h
 	${sceneTreePath}/NodesChecker.h
@@ -104,13 +117,13 @@ set (sceneTreeHeaderFiles
 
 # surface extraction sub namespace header files
 set(surfaceExtractionHeaderFiles
-	${surfaceExtractionPath}/SphereNodeStatesChecker.h
+	${surfaceExtractionPath}/ConeNodesChecker.h
 	${surfaceExtractionPath}/DualMarchingCell.h
 	${surfaceExtractionPath}/DualMarchingCells.h
 	${surfaceExtractionPath}/EdgeVertexIndex.h
 	${surfaceExtractionPath}/LineChecker.h
 	${surfaceExtractionPath}/Occupancy.h
-	${surfaceExtractionPath}/ViewConeNodesChecker.h
+	${surfaceExtractionPath}/SphereNodeStatesChecker.h
 )
 
 # source files
@@ -130,8 +143,12 @@ set(geometrySourceFiles
 
 # image sub namespace source files
 set(imageSourceFiles
+	${imagePath}/ColorImage.cpp
+	${imagePath}/DepthImage.cpp
+	${imagePath}/ViewsImage.cpp
 	${imagePath}/Filter.cpp
 	${imagePath}/Image.cpp
+	${imagePath}/MVEIHeader.cpp
 )
 
 # refinement sub namespace source files
@@ -156,20 +173,27 @@ endif (PCS_REFINEMENT)
 
 # rendering sub namespace source files
 set(renderingSourceFiles
+	${renderingPath}/MeshRenderer.cpp
 	${renderingPath}/Renderer.cpp	
 )
 
 # scene sub namespace source files
 set(sceneSourceFiles
 	${scenePath}/CapturedScene.cpp
-	${scenePath}/IReconstructorObserver.cpp
+	${scenePath}/FileNaming.cpp
 	${scenePath}/Samples.cpp
 	${scenePath}/Scene.cpp
 	${scenePath}/SyntheticScene.cpp
-	${scenePath}/View.cpp
 )
 
-# scene tree sub namespace source files
+# Scene/Camera sub namespace ource files
+set (sceneCameraSourceFiles
+	${sceneCameraPath}/Cameras.cpp
+	${sceneCameraPath}/CameraData.cpp
+	${sceneCameraPath}/MVECameraIO.cpp
+)
+
+# scene/tree sub namespace source files
 set (sceneTreeSourceFiles
 	${sceneTreePath}/DualCells.cpp
 	${sceneTreePath}/Leaves.cpp
@@ -184,14 +208,14 @@ set (sceneTreeSourceFiles
 
 # surface extraction sub namespace source files
 set(surfaceExtractionSourceFiles	
-	${surfaceExtractionPath}/SphereNodeStatesChecker.cpp
+	${surfaceExtractionPath}/ConeNodesChecker.cpp
 	${surfaceExtractionPath}/DualMarchingCell.cpp
 	${surfaceExtractionPath}/DualMarchingCells.cpp	
 	${surfaceExtractionPath}/DualMarchingCellTables.cpp
 	${surfaceExtractionPath}/EdgeVertexIndex.cpp
 	${surfaceExtractionPath}/LineChecker.cpp
 	${surfaceExtractionPath}/Occupancy.cpp
-	${surfaceExtractionPath}/ViewConeNodesChecker.cpp
+	${surfaceExtractionPath}/SphereNodeStatesChecker.cpp
 )
 
 # gather all header files in headerFiles
@@ -202,6 +226,7 @@ set(headerFiles
 	${renderingHeaderFiles}
 	${sceneHeaderFiles}
 	${sceneTreeHeaderFiles}
+	${sceneCameraHeaderFiles}
 	${surfaceExtractionHeaderFiles}
 )
 
@@ -212,6 +237,7 @@ set(sourceFiles
 	${refinementSourceFiles}
 	${renderingSourceFiles}
 	${sceneSourceFiles}
+	${sceneCameraSourceFiles}
 	${sceneTreeSourceFiles}
 	${surfaceExtractionSourceFiles}
 )
@@ -232,5 +258,6 @@ source_group("Image" FILES ${imageHeaderFiles} ${imageSourceFiles})
 source_group("Refinement" FILES ${refinementHeaderFiles} ${refinementSourceFiles})
 source_group("Rendering" FILES ${renderingHeaderFiles} ${renderingSourceFiles})
 source_group("Scene" FILES ${sceneHeaderFiles} ${sceneSourceFiles})
+source_group("Scene\\Camera" FILES ${sceneCameraHeaderFiles} ${sceneCameraSourceFiles})
 source_group("Scene\\Tree" FILES ${sceneTreeHeaderFiles} ${sceneTreeSourceFiles})
 source_group("SurfaceExtraction" FILES ${surfaceExtractionHeaderFiles} ${surfaceExtractionSourceFiles})

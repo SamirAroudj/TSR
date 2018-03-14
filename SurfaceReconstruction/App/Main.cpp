@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -8,7 +8,7 @@
  */
 #include "App/TSR.h"
 #include "Platform/ResourceManagement/MemoryManager.h"
-#include "Utilities/HelperFunctions.h"
+#include "Platform/Utilities/HelperFunctions.h"
 
 using namespace Platform;
 using namespace std;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -183,7 +183,7 @@ namespace SurfaceReconstruction
 		
 
 		void outlierClosing();
-		void outputErrorColoredMesh(std::vector<Real> &temp, const Real *errors, const uint32 iteration, const std::string &coreName) const;
+		void outputErrorColoredMesh(Real *tempVertexColors, const Real *errors, const uint32 iteration, const std::string &coreName) const;
 
 		void processProjectedSample(const ProjectedSample &projectedSample, const uint32 sampleIdx);
 
@@ -233,7 +233,7 @@ namespace SurfaceReconstruction
 		std::vector<Math::Vector3> mBestPositions;
 		std::vector<Real> mBestSurfaceErrors;
 		std::vector<Real> mSurfaceErrors;		/// For each vertex: scalar, signed error along corresponding normal.
-		std::vector<Real> mRelativeSurfaceErrors; /// = mSurfaceErrors normalized by vertex scale values.
+		//std::vector<Real> mRelativeSurfaceErrors; /// = mSurfaceErrors normalized by vertex scale values.
 		std::vector<uint8> mVertexStates;		/// Contains data to identify vertex support, outliers, bad normals used for replacing geometry or smoothing for robustness.
 		std::vector<Real> mAverageAngles[2];
 

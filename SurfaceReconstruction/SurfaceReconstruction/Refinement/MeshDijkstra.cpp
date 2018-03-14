@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -130,13 +130,13 @@ bool MeshDijkstra::getStepGeometry(Vector3 &n, Vector3 &p0, Vector3 &p1,
 {
 	// edge exists?
 	const uint32 edgeIdx = mMesh->getEdgeIndex(v0Idx, v1Idx);
-	if (Edge::INVALID_IDX == edgeIdx)
+	if (Edge::INVALID_INDEX == edgeIdx)
 		return false;
 
 	// get & check edge triangles
 	const Edge &edge = mMesh->getEdges()[edgeIdx];
 	const uint32 *triangles = edge.getTriangleIndices();
-	if (Triangle::INVALID_IDX == triangles[0] || Triangle::INVALID_IDX == triangles[1])
+	if (Triangle::INVALID_INDEX == triangles[0] || Triangle::INVALID_INDEX == triangles[1])
 		return false;
 
 	// get adjacent triangle normals
@@ -160,7 +160,7 @@ void MeshDijkstra::buildStartSet(const Vector3 *startNormals, const uint32 *star
 	{
 		// create node
 		const uint32 globalVertexIdx = startVertices[localVertexIdx];
-		if (Vertex::INVALID_IDX == globalVertexIdx)
+		if (Vertex::INVALID_INDEX == globalVertexIdx)
 			continue;
 
 		const Vector3 &p = positions[globalVertexIdx];

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -36,14 +36,14 @@ namespace SurfaceReconstruction
 		enum NodeStateFlag
 		{
 			NODE_FLAG_SAMPLENESS	= 0x1 << 0,	/// Flag is set for leaves the center of which overlaps with a sample and inner nodes which have any child with that flag set.
-			NODE_FLAG_EMPTINESS		= 0x1 << 1	/// Flag is set for leaves the center of which overlaps with a view cone and inner nodes which have any child with that flag set.
+			NODE_FLAG_EMPTINESS		= 0x1 << 1	/// Flag is set for leaves the center of which overlaps with a cam to sample cone and inner nodes which have any child with that flag set.
 			//NODE_FLAG_EMPTY			= 0x1 << 2,	/// Flag is set for leaves with isEmpty(leafIdx) and for all inner nodes which only have empty children.
 			//NODE_FLAG_ANY_EMPTY		= 0x1 << 3	/// Flag is set for leaves with isEmpty(leafIdx) and for all inner nodes which have any empty child.
 		};
 
 	public:	
-		static bool getViewConeData(Math::Vector3 &viewPosWS, uint32 &sampleIdx,
-			const uint32 viewConeIdx, const uint32 *sampleOffsets = NULL);
+		static bool getCameraToSampleLinkData(Math::Vector3 &cameraPosWS, uint32 &sampleIdx,
+			const uint32 camToSampleLink, const uint32 *sampleOffsets = NULL);
 
 	public:
 		Occupancy(const Storage::Path &fileName);
@@ -51,7 +51,7 @@ namespace SurfaceReconstruction
 		~Occupancy();
 		
 		bool addKernel(Real &target,
-			const Math::Vector3 &leafCenter, const CollisionDetection::ObliqueCircularCone &viewCone, 
+			const Math::Vector3 &leafCenter, const CollisionDetection::ObliqueCircularCone &cone, 
 			const DataType type, const Real sampleConfidence, const bool negative) const;
 
 		inline void addSamples(const uint32 *chosenSamples, const uint32 count);
@@ -66,7 +66,7 @@ namespace SurfaceReconstruction
 
 		inline const DualMarchingCells *getCrust() const;
 
-		/** Returns the conditional probability density for having a view cone / empty space at leaf leafIdx.
+		/** Returns the conditional probability density for having a camera to sample cone / empty space at leaf leafIdx.
 		@param leafIdx todo.
 		@return todo */
 		Real getEmptinessCPD(const uint32 leafIdx) const;
@@ -91,7 +91,7 @@ namespace SurfaceReconstruction
 		
 	private:
 		static Real computeCircularDiscKernelFromSquared(const Real distanceToDiscCenterSquared, const Real discRadius);
-		static Real computeRayKernel(const Real distanceAlongRay, const Real viewConeLength);
+		static Real computeRayKernel(const Real distanceAlongRay, const Real coneLength);
 
 	private:
 		Occupancy();
@@ -117,8 +117,6 @@ namespace SurfaceReconstruction
 		inline bool isUnreliable(const uint32 leafIdx) const;
 		inline bool isUnreliable(const Real emptiness, const Real sampleness) const;
 
-		void initializeSampleness();
-
 		void loadFromFile(const Storage::Path &fileName);
 		
 		void onSamplesChanged(const bool remove, const uint32 *sampleIndices, const uint32 indexCount);
@@ -131,7 +129,7 @@ namespace SurfaceReconstruction
 		static const uint32 MAX_DEPTH_DIFFERENCE;
 		static const uint32 OMP_PRIOR_LEAF_BATCH_SIZE;
 		static const uint32 OMP_SAMPLE_BATCH_SIZE;
-		static const uint32 OMP_VIEW_CONE_BATCH_SIZE;
+		static const uint32 OMP_LINKED_PAIR_BATCH_SIZE;
 
 	private:
 		DualMarchingCells *mCrust;				/// This is used to get a coarse scene approximation from free space computations. It is later refined.

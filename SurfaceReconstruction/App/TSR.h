@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -11,6 +11,7 @@
 
 #include <vector>
 #include "Platform/Application.h"
+#include "SurfaceReconstruction/Rendering/MeshRenderer.h"
 #include "SurfaceReconstruction/Rendering/Renderer.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 
@@ -77,13 +78,14 @@ private:
 	void resetCamera();
 
 private:
-	Graphics::Camera3D *mCamera;					/// This is the one and only main rendering camera of the application.
+	Graphics::Camera3D *mCamera;						/// This is the one and only main rendering camera of the application.
 	
-	SurfaceReconstruction::Renderer *mRenderer;		/// Is used to draw data like ground truth surface, samples etc.
-	SurfaceReconstruction::Scene *mScene;			/// Represents the scene. (objects, cameras, views & required parameters)
+	SurfaceReconstruction::MeshRenderer *mMeshRenderer;	/// Renderer specialized on static meshes.
+	SurfaceReconstruction::Renderer *mRenderer;			/// Is used to draw data like ground truth surface, samples etc.
+	SurfaceReconstruction::Scene *mScene;				/// Represents the scene. (objects, cameras, views & required parameters)
 
-	Real mScale;									/// Defines camera zoom. Is used in a uniform scaling matrix to achieve the zoom effect.
-	uint32 mSceneIndex;								/// Identifies the scene file for the current scene to be used.
+	Real mScale;										/// Defines camera zoom. Is used in a uniform scaling matrix to achieve the zoom effect.
+	uint32 mSceneIndex;									/// Identifies the scene file for the current scene to be used.
 };
 
 #endif // _MY_APP_H_

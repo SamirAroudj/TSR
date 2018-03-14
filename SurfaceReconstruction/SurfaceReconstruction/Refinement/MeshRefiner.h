@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -15,21 +15,18 @@
 #include <vector>
 #include "Math/Vector2.h"
 #include "Math/Vector3.h"
+#include "Platform/Utilities/Size2.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/RayTracer.h"
 #include "SurfaceReconstruction/Scene/IReconstructorObserver.h"
-#include "Utilities/Size2.h"
 
 namespace SurfaceReconstruction
 {
 	class Mesh;
-	class View;
 
 	class MeshRefiner : public Patterns::Subject<IReconstructorObserver>, public IFlexibleMeshObserver
 	{
 	public:
-		static void findDepthExtrema(Real &minDepth, Real &maxDepth, const Real *depthMap, const uint32 pixelCount);
-
 		template <class T>
 		static void normalize(T *weightedSums, const Real *weights, const int64 arraySize,
 			const Real minimumWeight, const T &invalidWeightResult);

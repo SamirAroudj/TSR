@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -22,7 +22,7 @@ namespace SurfaceReconstruction
 		inline bool operator <(const Vertex &rhs) const;
 
 	public:
-		static const uint32 INVALID_IDX;
+		static const uint32 INVALID_INDEX;
 
 	public:
 		Math::Vector3 mColor;

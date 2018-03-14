@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -12,16 +12,16 @@
 #include <sstream>
 #include "Platform/FailureHandling/Exception.h"
 #include "Platform/Storage/File.h"
-#include "Platform/ParametersManager.h"
+#include "Platform/Utilities/ParametersManager.h"
 #include "SurfaceReconstruction/Refinement/FSSFRefiner.h"
 #include "SurfaceReconstruction/Refinement/FSSFStatistics.h"
 
 using namespace FailureHandling;
 using namespace Math;
-using namespace Platform;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;
+using namespace Utilities;
 
 const char *FSSFIterationStats::msErrorDescriptions[FSSFIterationStats::ERROR_TYPE_COUNT] =
 {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -15,7 +15,7 @@
 #include "Graphics/Color.h"
 #include "Graphics/GraphicsManager.h"
 #include "Math/MathCore.h"
-#include "Platform/ApplicationTimer.h"
+#include "Platform/Timing/ApplicationTimer.h"
 #include "SurfaceReconstruction/Geometry/FlexibleMesh.h"
 #include "SurfaceReconstruction/Geometry/StaticMesh.h"
 #include "SurfaceReconstruction/Refinement/FSSFRefiner.h"
@@ -24,6 +24,7 @@
 	#include "SurfaceReconstruction/Refinement/PCSRefiner.h"
 #endif // PCS_REFINEMENT
 #include "SurfaceReconstruction/Rendering/Renderer.h"
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 #include "SurfaceReconstruction/Scene/Tree/DualCells.h"
 #include "SurfaceReconstruction/Scene/Tree/Leaves.h"
@@ -32,14 +33,13 @@
 #include "SurfaceReconstruction/Scene/Tree/Tree.h"
 #include "SurfaceReconstruction/Scene/Tree/TriangleNodesChecker.h"
 #include "SurfaceReconstruction/Scene/SyntheticScene.h"
-#include "SurfaceReconstruction/Scene/View.h"
 #include "SurfaceReconstruction/SurfaceExtraction/Occupancy.h"
 
 using namespace Graphics;
 using namespace Math;
-using namespace Platform;
 using namespace SurfaceReconstruction;
 using namespace std;
+using namespace Timing;
 using namespace Utilities;
 
 // constants
@@ -54,13 +54,13 @@ const Color Renderer::COLOR_SURFACES[3] =	{
 												Color(0.5f, 0.5f, 0.5f, 0.5f),
 												Color(1.0f, 0.95f, 0.25f, 0.5f)
 											};
-const Color Renderer::COLOR_VIEW(0.9f, 0.025f, 0.9f, 1.0f);
+const Color Renderer::COLOR_CAMERA(0.9f, 0.025f, 0.9f, 1.0f);
 
 const Real Renderer::NORMAL_SIZE = (Real) 0.2;
-const Real Renderer::VIEW_SIZE = (Real) 0.1; 
+const Real Renderer::CAMERA_SIZE = (Real) 0.1; 
 
 TreeIntersectionTriangle::TreeIntersectionTriangle() :
-	mTriangleIdx(Triangle::INVALID_IDX)
+	mTriangleIdx(Triangle::INVALID_INDEX)
 {
 
 }
@@ -68,7 +68,7 @@ TreeIntersectionTriangle::TreeIntersectionTriangle() :
 Renderer::Renderer() :
 	mLightAzimuth(0.0f),
 
-	mHighlightedView(0),
+	mHighlightedCamera(0),
 	
 	mCrustFlags(0),
 	mLeafResultsFlags(0),
@@ -84,8 +84,8 @@ Renderer::Renderer() :
 	mShownSample((uint32) -1),
 	mShownTriangle((uint32) -1),
 	
+	mCameraRendering(CAMERA_RENDERING_ARROWS),
 	mSampleRendering(SAMPLE_RENDERING_INVISIBLE),
-	mViewRendering(VIEW_RENDERING_ARROWS),
 
 	mBackfaceCulling(true),
 	mShowGroundTruth(false),
@@ -103,36 +103,36 @@ Renderer::Renderer() :
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 
-	// configure shading
-	glShadeModel(GL_SMOOTH); // GL_FLAT
-	glEnable(GL_COLOR_MATERIAL);
-	glEnable(GL_NORMALIZE);
+	//// configure shading
+	//glShadeModel(GL_SMOOTH); // GL_FLAT
+	//glEnable(GL_COLOR_MATERIAL);
+	//glEnable(GL_NORMALIZE);
 
-	// lights
-	const float lightAmbient[4]		= { 0.3f, 0.3f, 0.3f, 1.0f };
-	const float lightDiffuse[4]		= { 0.2f, 0.2f, 0.2f, 1.0f };
-	const float lightSpecular[4]	= { 0.3f, 0.3f, 0.3f, 1.0f };
-	
-	glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmbient);
-	glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiffuse);
-	glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpecular);
-	glEnable(GL_LIGHT0);
+	//// lights
+	//const float lightAmbient[4]		= { 0.3f, 0.3f, 0.3f, 1.0f };
+	//const float lightDiffuse[4]		= { 0.2f, 0.2f, 0.2f, 1.0f };
+	//const float lightSpecular[4]	= { 0.3f, 0.3f, 0.3f, 1.0f };
+	//
+	//glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmbient);
+	//glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiffuse);
+	//glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpecular);
+	//glEnable(GL_LIGHT0);
 
-	glLightfv(GL_LIGHT1, GL_AMBIENT, lightAmbient);
-	glLightfv(GL_LIGHT1, GL_DIFFUSE, lightDiffuse);
-	glLightfv(GL_LIGHT1, GL_SPECULAR, lightSpecular);
-	glEnable(GL_LIGHT1);
+	//glLightfv(GL_LIGHT1, GL_AMBIENT, lightAmbient);
+	//glLightfv(GL_LIGHT1, GL_DIFFUSE, lightDiffuse);
+	//glLightfv(GL_LIGHT1, GL_SPECULAR, lightSpecular);
+	//glEnable(GL_LIGHT1);
 
-	glLightfv(GL_LIGHT2, GL_AMBIENT, lightAmbient);
-	glLightfv(GL_LIGHT2, GL_DIFFUSE, lightDiffuse);
-	glLightfv(GL_LIGHT2, GL_SPECULAR, lightSpecular);
-	glEnable(GL_LIGHT2);
+	//glLightfv(GL_LIGHT2, GL_AMBIENT, lightAmbient);
+	//glLightfv(GL_LIGHT2, GL_DIFFUSE, lightDiffuse);
+	//glLightfv(GL_LIGHT2, GL_SPECULAR, lightSpecular);
+	//glEnable(GL_LIGHT2);
 
-	// set point size & line width
-	mElementSizes[0] = 0.5f;
-	mElementSizes[1] = 0.5f;
-	glPointSize(mElementSizes[0]);
-	glLineWidth(mElementSizes[1]);
+	//// set point size & line width
+	//mElementSizes[0] = 0.5f;
+	//mElementSizes[1] = 0.5f;
+	//glPointSize(mElementSizes[0]);
+	//glLineWidth(mElementSizes[1]);
 }
 
 Renderer::~Renderer()
@@ -148,6 +148,7 @@ bool Renderer::onNewReconstruction(FlexibleMesh *mesh,
 
 void Renderer::render(const Real zoom)
 {
+	return;
 	const Camera3D *cam = Camera3D::getActiveCamera();
 	if (!cam)
 		return;
@@ -177,8 +178,8 @@ void Renderer::render(const Real zoom)
 	renderLeafResults();
 	renderTree();
 
-	// render samples & views
-	render(Scene::getSingleton().getViews());
+	// render samples & cameras
+	render(Scene::getSingleton().getCameras());
 	
 	// render ground truth & reconstruction
 	glEnable(GL_LIGHTING);
@@ -358,7 +359,7 @@ void Renderer::renderCursor(const Vector2 &cursorPosNDC, const Color &color, con
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 
-	// camera view & zoom matrix
+	// camera camera & zoom matrix
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
@@ -386,7 +387,7 @@ void Renderer::renderMeshRefinementData()
 		if (pcsRefiner)
 		{
 			// render mesh refinement gradient field?
-			if (MESH_REFINER_PHOTOCONSISTENCY_MOVEMENTS & mMeshRefinerFlags)
+			if (MESH_REFINER_PCS_MOVEMENTS & mMeshRefinerFlags)
 			{
 				const vector<Vector3> &movementField = pcsRefiner->getVectorField();
 				const FlexibleMesh &flexibleMesh = pcsRefiner->getFlexibleMesh();
@@ -501,7 +502,7 @@ void Renderer::renderEdgeNeighbors(const FlexibleMesh &mesh) const
 void Renderer::renderTreeIntersectionTriangle(const FlexibleMesh &mesh) const
 {
 	// check triangle
-	if (Triangle::INVALID_IDX == mInterTriangle.mTriangleIdx)
+	if (Triangle::INVALID_INDEX == mInterTriangle.mTriangleIdx)
 		return;
 
 	// get tree & refiener
@@ -719,15 +720,15 @@ void Renderer::renderLeafResults()
 	}
 }
 
-void Renderer::render(const vector<View *> &views)
+void Renderer::render(const Cameras &cameras)
 {
-	uint32 viewCount = (uint32) views.size();
-	if (0 == viewCount)
+	const uint32 cameraCount = cameras.getCount();
+	if (0 == cameraCount)
 		return;
 
-	// views
-	render(views, viewCount, COLOR_VIEW.getComponents());
-	render(views, mHighlightedView, COLOR_HIGHLIGHTED.getComponents());
+	// cameras
+	render(cameras, cameraCount, COLOR_CAMERA.getComponents());
+	render(cameras, mHighlightedCamera, COLOR_HIGHLIGHTED.getComponents());
 
 	if (SAMPLE_RENDERING_INVISIBLE == mSampleRendering)
 		return;
@@ -735,37 +736,31 @@ void Renderer::render(const vector<View *> &views)
 	renderSamples();
 }
 
-void Renderer::render(const vector<View *> views, uint32 viewIdx, const float *color)
+void Renderer::render(const Cameras &cameras, uint32 cameraIdx, const float *color)
 {
-	// render views?
-	if (VIEW_RENDERING_INVISIBLE == mViewRendering)
+	// render cameras?
+	if (CAMERA_RENDERING_INVISIBLE == mCameraRendering)
 		return;
 
-	// render a single view or all of them?
-	uint32 endIdx	= (uint32) views.size();
+	// render a single camera or all of them?
+	uint32 endIdx	= cameras.getCount();
 	uint32 startIdx	= 0;
-	if (viewIdx < endIdx)
+	if (cameraIdx < endIdx)
 	{
-		startIdx	= viewIdx;
-		endIdx		= viewIdx + 1;
+		startIdx	= cameraIdx;
+		endIdx		= cameraIdx + 1;
 	}
 
 	// color
 	glColor4fv(color);
 
-	// render only points at view origins?
-	if (VIEW_RENDERING_POINTS == mViewRendering)
+	// render only points at camera origins?
+	if (CAMERA_RENDERING_POINTS == mCameraRendering)
 	{
 		glBegin(GL_POINTS);
-			for (uint32 viewIdx = startIdx; viewIdx < endIdx; ++viewIdx)
+			for (uint32 cameraIdx = startIdx; cameraIdx < endIdx; ++cameraIdx)
 			{
-				// get & check view
-				const View *view = views[viewIdx];
-				if (!view)
-					continue;
-
-				const Vector4 &p0 = view->getCamera().getPosition();
-
+				const Vector3 p0 = cameras.getPositionWS(cameraIdx);
 				glVertex3r(p0.x, p0.y, p0.z);
 			}
 		glEnd();
@@ -773,24 +768,20 @@ void Renderer::render(const vector<View *> views, uint32 viewIdx, const float *c
 		return;
 	}
 
-	// render views as arrows to show their positions and orientations
-	if (VIEW_RENDERING_ARROWS == mViewRendering)
+	// render cameras as arrows to show their positions and orientations
+	if (CAMERA_RENDERING_ARROWS == mCameraRendering)
 	{
 		glBegin(GL_LINES);
-			for (uint32 viewIdx = startIdx; viewIdx < endIdx; ++viewIdx)
+			for (uint32 cameraIdx = startIdx; cameraIdx < endIdx; ++cameraIdx)
 			{
-				// get & check view
-				const View *view = views[viewIdx];
-				if (!view)
-					continue;
-
-				const PinholeCamera &cam = view->getCamera();
+				// get pinhole camera
+				const PinholeCamera &cam = cameras.getCamera(cameraIdx);
 				const Matrix4x4	&viewMatrix	= cam.getViewMatrix();
 
-				const Vector3 orthogonal0	= Vector3(viewMatrix.m00, viewMatrix.m10, viewMatrix.m20) * VIEW_SIZE * 0.15f;
-				const Vector3 orthogonal1	= Vector3(viewMatrix.m01, viewMatrix.m11, viewMatrix.m21) * VIEW_SIZE * 0.15f;
-				const Vector3 base			= view->getViewDirection() * VIEW_SIZE;
-				const Vector3 p0			= Vector3(cam.getPosition().x, cam.getPosition().y, cam.getPosition().z);
+				const Vector3 orthogonal0 = Vector3(viewMatrix.m00, viewMatrix.m10, viewMatrix.m20) * CAMERA_SIZE * 0.15f;
+				const Vector3 orthogonal1 = Vector3(viewMatrix.m01, viewMatrix.m11, viewMatrix.m21) * CAMERA_SIZE * 0.15f;
+				const Vector3 base = cameras.getViewDirection(cameraIdx) * CAMERA_SIZE;
+				const Vector3 p0 = cameras.getPositionWS(cameraIdx);
 
 				renderArrowVertices(p0, base, orthogonal0, orthogonal1);
 			}
@@ -799,29 +790,29 @@ void Renderer::render(const vector<View *> views, uint32 viewIdx, const float *c
 		return;
 	}
 
-	if (VIEW_RENDERING_RAY_BUNDLES == mViewRendering)
+	if (CAMERA_RENDERING_RAY_BUNDLES == mCameraRendering)
 	{
 		// get sample data
 		const Scene &scene = Scene::getSingleton();
 		const Samples &samples = scene.getSamples();
-		const uint32 viewConeCount = samples.getMaxViewConeCount();
+		const Cameras &cameras = scene.getCameras();
+		const uint32 coneCount = samples.getMaxParentLinkCount();
 
 		glBegin(GL_LINES);
-			for (uint32 viewConeIdx = 0; viewConeIdx < viewConeCount; ++viewConeIdx)
+			for (uint32 camToSampleLink = 0; camToSampleLink < coneCount; ++camToSampleLink)
 			{
 				// get samples
-				const uint32 sampleIdx = samples.getSampleIdx(viewConeIdx);
+				const uint32 sampleIdx = samples.getSampleIdx(camToSampleLink);
 				const Vector3 &s = samples.getPositionWS(sampleIdx);
 		
-				// get & check view idx
-				uint32 viewIdx = samples.getViewIdx(viewConeIdx);
-				if (viewIdx < startIdx || viewIdx >= endIdx || !scene.isValidView(viewIdx))
+				// get & check camera idx
+				uint32 cameraIdx = samples.getCameraIdx(camToSampleLink);
+				if (cameraIdx < startIdx || cameraIdx >= endIdx || !cameras.isValid(cameraIdx))
 					continue;
 
-				// get view data
-				const View &view = *views[viewIdx];
-				const Vector3 viewDir = view.getViewDirection();
-				const Vector4 &p0 = view.getCamera().getPosition();
+				// get camera data
+				const Vector3 viewDir = cameras.getViewDirection(cameraIdx);
+				const Vector3 p0 = cameras.getPositionWS(cameraIdx);
 
 				glVertex3r(s.x, s.y, s.z);
 				glVertex3r(p0.x, p0.y, p0.z);
@@ -914,7 +905,7 @@ void Renderer::renderSamplesOfChosenNode() const
 }
 
 void Renderer::renderSample(const uint32 sampleIdx,
-	const bool highlighted, SAMPLE_RENDERING sampleRendering) const
+	const bool highlighted, SampleRendering sampleRendering) const
 {
 	const Samples &samples = Scene::getSingleton().getSamples();
 
@@ -1279,7 +1270,7 @@ void Renderer::showTreeIntersectionTriangle(const uint32 triangleIdx)
 	// check triangle choice & update mInterTriangle
 	if (triangleIdx >= triangleCount)
 	{
-		mInterTriangle.mTriangleIdx = Triangle::INVALID_IDX;
+		mInterTriangle.mTriangleIdx = Triangle::INVALID_INDEX;
 		mInterTriangle.mLeaves.clear();
 		return;
 	}

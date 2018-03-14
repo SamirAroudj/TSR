@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -14,35 +14,34 @@
 #include "Math/MathCore.h"
 #include "Math/Vector4.h"
 #include "Platform/FailureHandling/FileCorruptionException.h"
-#include "Platform/ParametersManager.h"
 #include "Platform/Storage/File.h"
+#include "Platform/Utilities/HelperFunctions.h"
+#include "Platform/Utilities/ParametersManager.h"
+#include "SurfaceReconstruction/Scene/Camera/Cameras.h"
+#include "SurfaceReconstruction/Scene/Samples.h"
 #include "SurfaceReconstruction/Scene/Scene.h"
 #include "SurfaceReconstruction/Scene/Tree/Leaves.h"
 #include "SurfaceReconstruction/Scene/Tree/LeavesIterator.h"
 #include "SurfaceReconstruction/Scene/Tree/SphereNodesChecker.h"
 #include "SurfaceReconstruction/Scene/Tree/Tree.h"
-#include "SurfaceReconstruction/SurfaceExtraction/ViewConeNodesChecker.h"
-#include "SurfaceReconstruction/Scene/Samples.h"
-#include "SurfaceReconstruction/Scene/View.h"
+#include "SurfaceReconstruction/SurfaceExtraction/ConeNodesChecker.h"
 #include "SurfaceReconstruction/SurfaceExtraction/DualMarchingCells.h"
 #include "SurfaceReconstruction/SurfaceExtraction/LineChecker.h"
 #include "SurfaceReconstruction/SurfaceExtraction/Occupancy.h"
 #include "SurfaceReconstruction/SurfaceExtraction/SphereNodeStatesChecker.h"
-#include "Utilities/HelperFunctions.h"
 
 using namespace CollisionDetection;
 using namespace FailureHandling;
 using namespace Graphics;
 using namespace Math;
-using namespace Platform;
 using namespace std;
 using namespace Storage;
 using namespace SurfaceReconstruction;
 using namespace Utilities;
 
 // Possible kernel functions for occupancy scalar field computation:
-/** Enables switching between different functions to compute partial free space weights within view to sample cones
-	whereas such a function is always defined as orthogonal to the central ray of the view cone it belongs to. */
+/** Enables switching between different functions to compute partial free space weights within cam to sample cones
+	whereas such a function is always defined as orthogonal to the central ray of the cam to sample cone it belongs to. */
 //#define CONE_PCD_KERNEL_CONSTANT									// No tangential falloff (kernel = 1 / kernel area)
 //#define CONE_PCD_KERNEL_POLY_6									// Use Muller's 2D Poly6 kernel
 //#define CONE_PCD_KERNEL_CUBIC										// Cubic function
@@ -54,7 +53,7 @@ using namespace Utilities;
 
 
 /** Enables switching between different functions to compute partial free space weights within vie to sample cones
-	whereas such a function is always defined along central view cone ray direction. */
+	whereas such a function is always defined along central cam to sample cone ray direction. */
 //#define CONE_RAY_KERNEL_LINE			// Use a line holding f(R)=0.
 //#define CONE_RAY_KERNEL_POS_PARABLE		// Use a positive parable holding f(R)=0 & f'(R)=0.
 #define CONE_RAY_KERNEL_NEG_PARABLE	// Use a negative parable holding f(R)=0 & f'(0)=0.
@@ -74,7 +73,7 @@ const uint32 Occupancy::MAX_DEPTH_DIFFERENCE = 3;
 
 const uint32 Occupancy::OMP_PRIOR_LEAF_BATCH_SIZE = 0x1 << 9;
 const uint32 Occupancy::OMP_SAMPLE_BATCH_SIZE = 0x1 << 7;
-const uint32 Occupancy::OMP_VIEW_CONE_BATCH_SIZE = 0x1 << 7;
+const uint32 Occupancy::OMP_LINKED_PAIR_BATCH_SIZE = 0x1 << 7;
 
 Occupancy::Occupancy(const Tree *tree) :
 	Occupancy()
@@ -167,14 +166,14 @@ void Occupancy::updateKernels(const bool forRemoval, const DataType dataType, co
 			counts[threadIdx] = 0.0f;
 	}
 
-	// evaluate each view cone kernel for dataType PDF
-	int64 viewConeCount = (chosenSamples ? samples.getViewsPerSample() * chosenSampleCount : samples.getMaxViewConeCount());
-	#pragma omp parallel for schedule(dynamic, OMP_VIEW_CONE_BATCH_SIZE)
-	for (int64 viewConeIdx = 0; viewConeIdx < viewConeCount; ++viewConeIdx)
+	// evaluate each cam to sample cone kernel for dataType PDF
+	int64 linkCount = (chosenSamples ? samples.getMaxCamerasPerSample() * chosenSampleCount : samples.getMaxParentLinkCount());
+	#pragma omp parallel for schedule(dynamic, OMP_LINKED_PAIR_BATCH_SIZE)
+	for (int64 camToSampleLink = 0; camToSampleLink < linkCount; ++camToSampleLink)
 	{
-		Vector3 viewWS;
+		Vector3 camWS;
 		uint32 sampleIdx;
-		if (!getViewConeData(viewWS, sampleIdx, (uint32) viewConeIdx, chosenSamples))
+		if (!getCameraToSampleLinkData(camWS, sampleIdx, (uint32) camToSampleLink, chosenSamples))
 			continue;
 
 		// get sample data for cone creation
@@ -187,16 +186,17 @@ void Occupancy::updateKernels(const bool forRemoval, const DataType dataType, co
 		Vector3 end = sampleWS;
 		if (SAMPLENESS == dataType)
 		{
-			const Vector3 viewToSample = sampleWS - viewWS;
-			const Real totalLength = viewToSample.getLength();
-			const Vector3 viewDir = viewToSample / totalLength;
+			// cone ends half cone length after sample center
+			const Vector3 camToSample = sampleWS - camWS;
+			const Real totalLength = camToSample.getLength();
+			const Vector3 coneDir = camToSample / totalLength;
 
 			coneLength = kernelR * mRelativeSampleConeLength;
-			end += viewDir * (coneLength * 0.5f);
+			end += coneDir * (coneLength * 0.5f);
 		}
 
 		// create & check cone
-		const ViewConeNodesChecker checker(viewWS, normal, end, kernelR, coneLength, getMaxDepth(sampleIdx), getNodeStates(), flags);
+		const ConeNodesChecker checker(camWS, normal, end, kernelR, coneLength, getMaxDepth(sampleIdx), getNodeStates(), flags);
 		if (checker.isDegenerated())
 			continue;
 		
@@ -247,58 +247,58 @@ void Occupancy::updateKernels(const bool forRemoval, const DataType dataType, co
 	//forwardAnyChildStateFlag(0, NODE_FLAG_EMPTINESS);
 }
 
-bool Occupancy::getViewConeData(Vector3 &viewPosWS, uint32 &sampleIdx,
-	const uint32 viewConeIdx, const uint32 *chosenSamples)
+bool Occupancy::getCameraToSampleLinkData(Vector3 &cameraPosWS, uint32 &sampleIdx,
+	const uint32 camToSampleLink, const uint32 *chosenSamples)
 {
 	// get scene data
 	const Scene &scene = Scene::getSingleton();
-	const vector<View *> &views = scene.getViews();
+	const Cameras &cameras = scene.getCameras();
 	const Samples &samples = scene.getSamples();
-	const uint32 viewsPerSample = samples.getViewsPerSample();
+	const uint32 maxCamerasPerSample = samples.getMaxCamerasPerSample();
 
 	// sample data
-	uint32 viewIdx;
+	uint32 cameraIdx;
 	if (chosenSamples)
 	{
-		sampleIdx = chosenSamples[viewConeIdx / viewsPerSample];
-		viewIdx = samples.getViewIdx(viewConeIdx % viewsPerSample, sampleIdx);
+		sampleIdx = chosenSamples[camToSampleLink / maxCamerasPerSample];
+		cameraIdx = samples.getCameraIdx(camToSampleLink % maxCamerasPerSample, sampleIdx);
 	}
 	else
 	{
-		sampleIdx = samples.getSampleIdx(viewConeIdx);
-		viewIdx = samples.getViewIdx(viewConeIdx);
+		sampleIdx = samples.getSampleIdx(camToSampleLink);
+		cameraIdx = samples.getCameraIdx(camToSampleLink);
 	}
-	if (!Scene::getSingleton().isValidView(viewIdx))
+	if (!cameras.isValid(cameraIdx))
 		return false;
 		
-	// get sample confidence & view world space position
-	viewPosWS = views[viewIdx]->getPositionWS();
+	// get sample confidence & camera world space position
+	cameraPosWS = cameras.getPositionWS(cameraIdx);
 	return true;
 }
 
 bool Occupancy::addKernel(Real &targetKernelSum,
-	const Vector3 &evaluationPos, const ObliqueCircularCone &viewCone,
+	const Vector3 &evaluationPos, const ObliqueCircularCone &cone,
 	const DataType dataType, const Real sampleConfidence, const bool negative) const
 {
 	// add kernel value to target evaluation position based on
-	// 1. a function along view ray from view center to sample center
+	// 1. a function along ray from camera center to sample center
 	// 2. a function within a projective circular sample disc (PCD) through leaf center
 
-	// where does the plane <x - evaluationPos, sampleNormal> = 0 intersect the view line?
-	const Real tCompleteCone = viewCone.getTCompleteCone(evaluationPos);
-	const Real tCutCone = viewCone.getTCutCone(tCompleteCone);
+	// where does the plane <x - evaluationPos, sampleNormal> = 0 intersect the ray line?
+	const Real tCompleteCone = cone.getTCompleteCone(evaluationPos);
+	const Real tCutCone = cone.getTCutCone(tCompleteCone);
 
-	// is positionWS in front of or behind the view cone?
+	// is positionWS in front of or behind the cam to sample cone?
 	if (tCutCone < 0.0f|| tCutCone >= 1.0f)
 		return false;
 
-	// => via z: get the projective circular disc (PCD) around the view ray which is parallel to the sample normal and goes through positionWS
+	// => via z: get the projective circular disc (PCD) around the center ray which is parallel to the sample normal and goes through positionWS
 	// (PCD = projection of the circular sample disc (CSD) (CSD: centered at sample, orthogonal to sample normal, size = maxEndConeRadius)
-	const Vector3 &viewToEnd = viewCone.getApexToEnd();
-	const Vector3 PCDCenter = viewCone.getApex() + viewToEnd * tCompleteCone;
-	const Real PCDRadius = viewCone.getEndRadius() * tCompleteCone;
+	const Vector3 &camToEnd = cone.getApexToEnd();
+	const Vector3 PCDCenter = cone.getApex() + camToEnd * tCompleteCone;
+	const Real PCDRadius = cone.getEndRadius() * tCompleteCone;
 
-	// is positionWS within PCD and view cone?
+	// is positionWS within PCD and cam to sample cone?
 	const Real radialDistanceSq = (evaluationPos - PCDCenter).getLengthSquared();
 	const Real PCDRadiusSq = PCDRadius * PCDRadius;
 	if (radialDistanceSq >= PCDRadiusSq)
@@ -311,19 +311,19 @@ bool Occupancy::addKernel(Real &targetKernelSum,
 	Real normFactor;
 	if (EMPTINESS == dataType)
 	{
-		Z = viewCone.getLength();
+		Z = cone.getLength();
 		z = tCutCone * Z;
 		normFactor = 1.0f;
 	}
 	else if (SAMPLENESS == dataType)
 	{
 		const Real tCentered = fabsr(tCutCone - 0.5f) * 2.0f;
-		Z = 0.5f * viewCone.getLength();
+		Z = 0.5f * cone.getLength();
 		z = tCentered * Z;
 		normFactor = 0.5f;
 	}
 
-	// 3D view cone kernel value consists of
+	// 3D camera to sample cone kernel value consists of
 	// kernel along ray & kernel within PCD (projective circular disc) 
 	const Real rayKernelValue = computeRayKernel(z, Z) * normFactor;
 	const Real PCDKernelValue = computeCircularDiscKernelFromSquared(radialDistanceSq, PCDRadius);

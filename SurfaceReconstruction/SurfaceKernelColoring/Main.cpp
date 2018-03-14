@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -7,8 +7,8 @@
  * of the BSD 3-Clause license. See the License.txt file for details.
  */
 #include "Platform/ResourceManagement/MemoryManager.h"
+#include "Platform/Utilities/HelperFunctions.h"
 #include "SurfaceKernelColoring/SurfaceKernelColoring.h"
-#include "Utilities/HelperFunctions.h"
 
 using namespace Platform;
 using namespace std;

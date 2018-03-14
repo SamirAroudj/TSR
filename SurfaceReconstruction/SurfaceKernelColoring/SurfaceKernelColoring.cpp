@@ -1,22 +1,24 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
  * This software may be modified and distributed under the terms
  * of the BSD 3-Clause license. See the License.txt file for details.
  */
+
 #ifdef _WINDOWS
 	#include <Windows.h>
 #endif // _WINDOWS
 #include "Git.h"
+#include "Graphics/ColorMap.h"
 #include "Graphics/GraphicsManager.h"
 #include "Graphics/MagicConstants.h"
 #include "Math/MathCore.h"
 #include "Math/MathHelper.h"
-#include "Platform/ApplicationTimer.h"
 #include "Platform/Input/InputManager.h"
-#include "Platform/ParametersManager.h"
+#include "Platform/Timing/ApplicationTimer.h"
+#include "Platform/Utilities/ParametersManager.h"
 #include "SurfaceKernelColoring/SurfaceKernelColoring.h"
 #include "SurfaceReconstruction/Refinement/MeshDijkstra.h"
 
@@ -27,6 +29,7 @@ using namespace Math;
 using namespace Platform;
 using namespace Storage;
 using namespace SurfaceReconstruction;
+using namespace Timing;
 using namespace Utilities;
 
 SurfaceKernelColoring::SurfaceKernelColoring
@@ -97,10 +100,13 @@ SurfaceKernelColoring::SurfaceKernelColoring
 	mMesh->computeNormalsOfTriangles(mMeshTriangleNormals);
 
 	// scale mesh
-	const Real scale = 5.0f;
+	const Real scale = 0.5f;
 	const uint32 vertexCount = mMesh->getVertexCount();
 	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
 		mMesh->setPosition(mMesh->getPosition(vertexIdx) * scale, vertexIdx);
+
+	// set base color
+	clearMeshColors();
 
 	// get mesh name
 	Path path(arguments[2]);
@@ -296,7 +302,7 @@ void SurfaceKernelColoring::createKernel(const Vector2 &mouseCoords)
 void SurfaceKernelColoring::spreadKernel(const Surfel &startSurfel)
 {	
 	const uint32 *hitTriangle = mMesh->getTriangle(startSurfel.mTriangleIdx);
-	const Real maxCosts = 0.25f;
+	const Real maxCosts = 1.5f;
 
 	// spread kernel
 	MeshDijkstra dijkstra;
@@ -324,23 +330,24 @@ void SurfaceKernelColoring::spreadKernel(const Surfel &startSurfel)
 	}
 
 	// color vertices within range according to weights
-	const Real minColor = 0.5f;
-	Vector3 color;
+	const Real factor = 255.0f / maximum;
+	Color color;
 
 	for (uint32 localIdx = 0; localIdx < neighborhoodSize; ++localIdx)
 	{
 		const RangedVertexIdx &v = vertices[localIdx];
-		const Real extra = (1.0f - minColor) * v.getCosts() / maximum;
-		color.set(minColor + extra, minColor + 0.5f * extra, minColor + extra);
+		const Real x = v.getCosts() * factor;
+		color = ColorMap::getViridisColorLinearly(x);
 
-		mMesh->setColor(color, v.getGlobalVertexIdx());
+		mMesh->setColor(Vector3(color.getRed(), color.getGreen(), color.getBlue()), v.getGlobalVertexIdx());
 	}	
 }
 
 void SurfaceKernelColoring::clearMeshColors()
 {
 	// default color for all vertices = grey
-	Vector3 color(0.5f, 0.5f, 0.5f);
+	const Color &baseColor = ColorMap::VIRIDIS[0];
+	Vector3 color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue());
 	const uint32 vertexCount = mMesh->getVertexCount();
 	for (uint32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
 		mMesh->setColor(color, vertexIdx);
@@ -349,8 +356,9 @@ void SurfaceKernelColoring::clearMeshColors()
 void SurfaceKernelColoring::saveMesh()
 {
 	// output mesh name
-	char buffer[1000];
-	sprintf(buffer, "%.4u", mOutputMeshCounter);
+	const uint32 BUFFER_SIZE = 100;
+	char buffer[BUFFER_SIZE];
+	snprintf(buffer, BUFFER_SIZE, "%.4u", mOutputMeshCounter);
 	const string counter = buffer;
 	const string name = counter + mMeshName;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -23,9 +23,6 @@
 
 namespace SurfaceReconstruction
 {
-	// forward declarations
-	class StaticMesh;
-
 	class EdgeConflict
 	{
 	public:
@@ -50,17 +47,6 @@ namespace SurfaceReconstruction
 
 		static void findBorderRing(std::vector<uint32> &remainingEdges, std::vector<uint32> &borderEdges);
 		static void findBorderRings(std::vector<std::vector<uint32>> &holeBorderEdges, const uint32 *vertexOffsets = NULL);
-
-		template <class T>
-		static void filterData(std::vector<T> &buffer, const uint32 *offsets);
-
-		template <class T>
-		static void filterData(T *targetbuffer, const T *sourceBuffer,
-			const uint32 *offsets, const uint32 sourceCount);
-
-		template <class T>
-		static void filterData(T *targetbuffer, const T *sourceBuffer,
-			const uint32 *offsets, const uint32 sourceCount, const uint32 elementsPerBlock);
 
 		static void filterTriangles(uint32 *targetIndices, const uint32 *sourceIndices, const uint32 *triangleOffsets, const uint32 sourceIndexCount, const uint32 *vertexOffsets);		
 
@@ -100,8 +86,6 @@ namespace SurfaceReconstruction
 
 		Math::Vector3 computeUmbrellaSmoothingMovement(const uint32 vertexIdx, const Real lambda) const;
 
-		StaticMesh *createStaticMesh() const;
-
 		void deleteGeometry(const uint32 *vertexOffsets, const uint32 *edgeOffsets, const uint32 *triangleOffsets);
 		void deleteIsolatedGeometry(const uint32 triangleIslesMinSize);
 		void deleteUnsupportedGeometry(const IVertexChecker &vertexChecker);
@@ -114,8 +98,6 @@ namespace SurfaceReconstruction
 		/** Finds links of vertices to edges, edges &
 		their links to triangles & triangle neighbors / all used connectivity information. */
 		void findAdjacencies();
-
-		void findScaleExtrema();
 
 		bool getAdjacentTriangleNormals(Math::Vector3 &n0, Math::Vector3 &n1, const uint32 edgeVertexIdx0, const uint32 edgeVertexIdx1) const;
 		
@@ -199,8 +181,8 @@ namespace SurfaceReconstruction
 		void subdivideTriangles(std::vector<uint32> &doomedTriangles, std::vector<uint32> *possiblyDoomedTriangles = NULL);
 		
 		
-		inline void umbrellaSmooth(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda);
-		void umbrellaSmooth(Math::Vector3 *vectorField, const std::vector<uint32> &vertices, const Real lambda);
+		inline void smoothByUmbrellaOp(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda);
+		void smoothByUmbrellaOp(Math::Vector3 *vectorField, const std::vector<uint32> &vertices, const Real lambda);
 
 		inline void zeroColors();
 
@@ -223,7 +205,6 @@ namespace SurfaceReconstruction
 		void addEdgeConflict(const uint32 globalEdgeIdx, const uint32 newTriangleIdx);
 		
 		void addNewEdgeSplitTriangles(uint32 oldTriangleIndices[3], const uint32 newIdx, const uint32 replacedIdx);
-		void addTriangleToEdge(const uint32 globalEdgeIdx, const uint32 triangleIdx);
 
 		void allocateMemory(const uint32 vertexCount, const uint32 indexCount);		
 
@@ -348,55 +329,6 @@ namespace SurfaceReconstruction
 		Mesh::computeNormalsWeightedByArea(getNormals(), getPositions(), getVertexCount(), getIndices(), getIndexCount());
 	}
 
-	template <class T>
-	void FlexibleMesh::filterData(std::vector<T> &buffer, const uint32 *offsets)
-	{
-		const uint32 oldCount = (uint32) buffer.size();
-		const uint32 newCount = oldCount - offsets[oldCount];
-		
-		std::vector<T> newBuffer(newCount);
-		FlexibleMesh::filterData<T>(newBuffer.data(), buffer.data(), offsets, oldCount);
-		buffer.swap(newBuffer);
-	}
-
-	template <class T>
-	void FlexibleMesh::filterData(T *targetBuffer, const T *sourceBuffer, const uint32 *offsets, const uint32 sourceCount)
-	{	
-		#pragma omp parallel for
-		for (int64 i = 0; i < sourceCount; ++i)
-		{
-			// discard this one?
-			const uint32 oldIdx = (uint32) i;
-			if (offsets[oldIdx] != offsets[oldIdx + 1])
-				continue;
-
-			// keep & copy it
-			const uint32 newIdx = oldIdx - offsets[oldIdx];
-			targetBuffer[newIdx] = sourceBuffer[oldIdx];
-		}
-	}
-
-	template <class T>
-	void FlexibleMesh::filterData(T *targetBuffer, const T *sourceBuffer, const uint32 *offsets, const uint32 sourceCount, const uint32 elementsPerBlock)
-	{	
-		#pragma omp parallel for
-		for (int64 i = 0; i < sourceCount; ++i)
-		{
-			// discard this one?
-			const uint32 oldIdx = (uint32) i;
-			if (offsets[oldIdx] != offsets[oldIdx + 1])
-				continue;
-
-			// copy  data for a complete memory block of elementsPerBlock elements
-			const uint32 newIdx = oldIdx - offsets[oldIdx];
-			const T *const sourceStart = sourceBuffer + oldIdx * elementsPerBlock;
-			T *const targetStart = targetBuffer + newIdx * elementsPerBlock;
-
-			for (uint32 relativeIdx = 0; relativeIdx < elementsPerBlock; ++relativeIdx)
-				targetStart[relativeIdx] = sourceStart[relativeIdx];
-		}
-	}
-
 	inline Math::Vector3 &FlexibleMesh::getColor(const uint32 vertexIdx)
 	{
 		return mColors[vertexIdx];
@@ -425,7 +357,7 @@ namespace SurfaceReconstruction
 	inline const Edge *FlexibleMesh::getEdge(const uint32 edgeVertexIdx0, const uint32 edgeVertexIdx1) const
 	{
 		const uint32 edgeIdx = getEdgeIndex(edgeVertexIdx0, edgeVertexIdx1);
-		if (Edge::INVALID_IDX == edgeIdx)
+		if (Edge::INVALID_INDEX == edgeIdx)
 			return NULL;
 		return mEdges.data() + edgeIdx;
 	}
@@ -560,9 +492,9 @@ namespace SurfaceReconstruction
 		mScales[vertexIdx] = scale;
 	}
 
-	inline void FlexibleMesh::umbrellaSmooth(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda)
+	inline void FlexibleMesh::smoothByUmbrellaOp(Math::Vector3 *movementField, Real *weightField, const Real smoothingLambda)
 	{
-		Mesh::umbrellaSmooth(movementField, weightField, smoothingLambda);
+		Mesh::smoothByUmbrellaOp(movementField, weightField, smoothingLambda);
 	}
 
 	inline void FlexibleMesh::zeroColors()

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 by Author: Aroudj, Samir
+ * Copyright (C) 2018 by Author: Aroudj, Samir
  * TU Darmstadt - Graphics, Capture and Massively Parallel Computing
  * All rights reserved.
  *
@@ -10,7 +10,7 @@
 #define _FSSF_PARAMETERS_H_
 
 #include "Platform/DataTypes.h"
-#include "Utilities/Size2.h"
+#include "Platform/Utilities/Size2.h"
 
 // todo comments
 
@@ -22,28 +22,39 @@ namespace SurfaceReconstruction
 		FSSFParameters();
 
 	public:
+		// for minimum triangle edge lengths, relative to SVO
 		Real mEdgeMergeRelativeThreshold;
 
+		// detection of spiky geometry
 		Real mSpikyGeometryAngleThreshold;
 		Real mSpikyGeometryRelativeScaleThreshold;
 
+		// detection of error-based subdivisions
 		Real mSubdivisionRelativeErrorThreshold;
 		Real mSubdivisionRelativeScaleMinimum;
 
-		Real mSupportSampleDistanceBandwidth;
-		Real mSupportSampleMaxAngleDifference;
+		// projection confidence
+		Real mProjectionConfidenceDistanceBandwidth;
+		Real mProjectionConfidenceMaxAngleDifference;
 
+		// surface support function threshold
 		Real mSupportWeakThreshold;
 
-		Real mSurfaceErrorRelativeThreshold;
+		// convergence / divergence parameters
+		Real mSurfaceErrorRelativeThreshold; /// for detection of local refinement divergence (revert updates if they were bad as in new error >= relative threshold * old error)
 
-		Real mUmbrellaSmoothingLambdaHigh;
-		Real mUmbrellaSmoothingLambdaLow;
-	
-		uint32 mIterationCountInitialSmoothing;
+		// smoothing parameters
+		Real mSmoothingUmbrellaLambdaHigh;
+		Real mSmoothingUmbrellaLambdaLow;
+		uint32 mSmoothingInitialIterCount;
+		uint32 mSmoothingTaubinIterCount;
+
+		// handling of isles of outliers
 		uint32 mOutlierIsleMinKeepingSize;
-		Utilities::Size2<uint32> mRaysPerViewSamplePair;
-		bool mOrientSamplingPatternLikeView;
+
+		// super sampling pattern
+		Utilities::Size2<uint32> mRaysPerLinkedPair;
+		bool mOrientSamplingPattern;
 	};
 }
 
