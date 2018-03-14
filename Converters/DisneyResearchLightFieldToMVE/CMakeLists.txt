@@ -43,7 +43,7 @@ add_executable(${appName} ${sourceCode})
 set(requiredLibs ${requiredLibs}
 	${mathLibName}
 	Platform
-	Utilities
+    Graphics
 )
 
 # do platform specific things (link required libs, enable windows window support etc.)

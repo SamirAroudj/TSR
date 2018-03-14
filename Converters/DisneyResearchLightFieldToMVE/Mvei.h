@@ -14,7 +14,7 @@
 
 #include "Platform/Storage/Directory.h"
 #include "Platform/Storage/File.h"
-#include "Utilities/HelperFunctions.h"
+#include "Platform/Utilities/HelperFunctions.h"
 
 using namespace Platform;
 using namespace std;

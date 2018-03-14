@@ -6,14 +6,16 @@
  * This software may be modified and distributed under the terms
  * of the BSD 3-Clause license. See the License.txt file for details.
  */
+#include <fstream>
 #include <map>
 #include <filesystem>
 
 #include "Math/Vector3.h"
-#include "Platform/Storage/Directory.h"
+#include "Platform/Application.h"
 #include "Platform/Storage/File.h"
-#include "Utilities/HelperFunctions.h"
+#include "Platform/Utilities/HelperFunctions.h"
 #include "Mvei.h"
+#include "Image/Image.h"
 
 using namespace Math;
 using namespace Platform;
