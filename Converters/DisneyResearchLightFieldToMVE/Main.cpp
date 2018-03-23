@@ -14,8 +14,10 @@
 #include "Platform/Application.h"
 #include "Platform/Storage/File.h"
 #include "Platform/Utilities/HelperFunctions.h"
-#include "Mvei.h"
 #include "Image/Image.h"
+#include "Image/MVEIHeader.h"
+
+#include "Mvei.h"
 
 using namespace Math;
 using namespace Platform;
@@ -73,7 +75,7 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 		return 4;
 	}
 
-	cout << "starting images" << endl;
+	cout << "creating scene directory and meta data ... ";
 
 	// for each image:
 	// create folder
@@ -96,10 +98,10 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 
 		// create meta.ini
 		// TODO missing params
-		int width = 5616;
-		int height = 3744;
+		int width = 2676;
+		int height = 1752;
 
-		cout << "translation: " << (id * (width * cameraSeparationMM / CCD_WIDTH_MM)) / max(width, height) << endl;
+		//cout << "translation: " << (id * (width * cameraSeparationMM / CCD_WIDTH_MM)) / max(width, height) << endl;
 
 		MetaData meta;
 		meta.data["view.id"] = to_string(id);
@@ -118,44 +120,46 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 		dest << source.rdbuf();
 		source.close();
 		dest.close();
-
 	}
 
-	cout << "images done" << endl;
+	cout << " done." << endl;
 	cout << "starting depth maps" << endl;
 
 	for (string dm_fn : depthMaps) 
 	{
-		// read .dmaps
 		cout << "Reading in depth map " << dm_fn << " ...";
 
+		// read .dmaps
 		Encoding enc = ENCODING_BINARY_LITTLE_ENDIAN;
 		Path src = Path::appendChild(depthMapsDir, Path(dm_fn));
 		File dmf(src, File::FileMode::OPEN_READING, true);
 
-		unsigned int width = dmf.readUInt32(enc);
-		unsigned int height = dmf.readUInt32(enc);
+		// todo use this for images above as well
+		const Utilities::ImgSize size = { dmf.readUInt32(enc), dmf.readUInt32(enc) };
 
-		TypedImageBase<float>* dm = new TypedImageBase<float>();
-		
+		std::vector<Real> dm_data;
 		while (!dmf.endOfFileReached()) 
 		{
 			float d = dmf.readFloat(enc);
-			dm->get_data().push_back(focalLengthPixels * cameraSeparationMM / d);
+			//apply formula to retrieve depth values
+			dm_data.push_back(focalLengthPixels * cameraSeparationMM / d);
 		}
-		dm->resize(width, height, 1);
+
 		cout << " done." << endl;
 		cout << "Saving as .mvei ...";
 
+		// save dmap in .mvei format
 		string suffix(dm_fn.substr(dm_fn.rfind("_") + 1));
 		suffix = suffix.substr(0, suffix.find("."));
 		Path viewDir = Path::appendChild(viewsDir, Path("view_" + suffix + ".mve"));
-		save_mvei_file(dm, Path::appendChild(viewDir, Path("depth-L1.mvei")).getString(), IMAGE_TYPE_FLOAT);
+		SurfaceReconstruction::Image::saveAsMVEFloatImage(Path::appendChild(viewDir, Path("depth-L1.mvei")), false, size, &dm_data[0], false, false);
 
-		TypedImageBase<int32_t>* vm = new TypedImageBase<int32_t>();
-		vm->resize(width, height, 1);
-		vm->fill(stoi(suffix));
-		save_mvei_file(vm, Path::appendChild(viewDir, Path("view-L1.mvei")).getString(), IMAGE_TYPE_SINT32);
+		// save view map in .mvei format
+		std::vector<int32_t> vm_data;
+		vm_data.resize(size[0] * size[1]);
+		std::fill(vm_data.begin(), vm_data.end(), stoi(suffix));
+		const SurfaceReconstruction::MVEIHeader header(size, 1, SurfaceReconstruction::MVEIHeader::MVE_SINT32);
+		SurfaceReconstruction::Image::saveAsMVEI(Path::appendChild(viewDir, Path("views-L1.mvei")), false, header, &vm_data[0]);
 
 		cout << " done." << endl;
 	}
@@ -197,7 +201,8 @@ bool getArguments(float &focalLengthMM, uint32 &focalLengthPixels, float &camera
 	Utilities::getCommandLineArguments(arguments, unformattedArguments, argumentCount);
 	if (6 != arguments.size())
 	{
-		cout << "Format: <focal length in mm> <focal length in pixels> <camera separation in mm> <undistorted images dir> <depth maps dir> <output dir = MVE scene dir>";
+		cout << "\nUsage:\n" << unformattedArguments[0] << " <focal length in mm> <focal length in pixels> <camera separation in mm> <undistorted images dir> <depth maps dir> <output dir = MVE scene dir>\n";
+		cerr << "Error: invalid argument count.\n";
 		return false;
 	}
 
@@ -252,7 +257,7 @@ void outputDescription()
 	cout << "\n";
 
 	cout << "Output data:\n";
-	cout << "MVE – A Multi-View Reconstruction Environment\n";
+	cout << "MVE - A Multi-View Reconstruction Environment\n";
 	cout << "Simon Fuhrmann, Fabian Langguth and Michael Goesele\n"; 
 	cout << "In: Proceedings of the Eurographics Workshop on Graphics and Cultural Heritage, Darmstadt, Germany, 2014.\n";
 	cout << "Please see the project website for more information:\n";

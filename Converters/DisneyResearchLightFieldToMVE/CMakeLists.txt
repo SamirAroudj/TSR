@@ -9,7 +9,7 @@
 
 # executable for Disney Research light field to MVE converter
 set(componentName DisneyResearchLightFieldToMVE)
-set(appName ${componentName}.exe)
+set(appName ${componentName})
 set(componentPath ${PROJECT_SOURCE_DIR}/${componentName})
 
 # CMake files
@@ -44,6 +44,7 @@ set(requiredLibs ${requiredLibs}
 	${mathLibName}
 	Platform
     Graphics
+    SurfaceReconstruction
 )
 
 # do platform specific things (link required libs, enable windows window support etc.)
