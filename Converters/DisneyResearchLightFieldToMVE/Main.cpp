@@ -88,6 +88,8 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 	// output undistorted image
 	// output depth map
 
+	//std::cout << focalLengthMM << " " << focalLengthPixels << " " << cameraSeparationMM << endl;
+
 	for (string dm_fn : depthMaps) 
 	{
 		// create .mve folder
@@ -128,7 +130,7 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 		// save view map in .mvei format
 		std::vector<int32_t> vm_data;
 		vm_data.resize(size[0] * size[1]);
-		std::fill(vm_data.begin(), vm_data.end(), stoi(suffix));
+		std::fill(vm_data.begin(), vm_data.end(), id);
 		const SurfaceReconstruction::MVEIHeader header(size, 1, SurfaceReconstruction::MVEIHeader::MVE_SINT32);
 		SurfaceReconstruction::Image::saveAsMVEI(Path::appendChild(viewDir, Path("views-L1.mvei")), false, header, &vm_data[0]);
 
@@ -141,7 +143,7 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 		meta.data["camera.pixel_aspect"] = "1";
 		meta.data["camera.principal_point"] = "0.5 0.5";
 		meta.data["camera.rotation"] = "1 0 0 0 1 0 0 0 1";
-		meta.data["camera.translation"] = to_string((id * (size[0] * cameraSeparationMM / CCD_WIDTH_MM)) / max(size[0], size[1])) + " 0 0";
+		meta.data["camera.translation"] = to_string((id * (size[0] * cameraSeparationMM / CCD_WIDTH_MM))) + " 0 0";
 		writeMetaData(meta, viewDir);
 
 
