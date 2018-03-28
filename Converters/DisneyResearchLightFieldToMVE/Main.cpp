@@ -53,7 +53,6 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 	float cameraSeparationMM;
 
 	// input file names
-	vector<int> usedIds;
 	vector<string> images;
 	vector<string> depthMaps;
 
@@ -89,8 +88,6 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 	// output undistorted image
 	// output depth map
 
-	cout << "starting depth maps" << endl;
-
 	for (string dm_fn : depthMaps) 
 	{
 		// create .mve folder
@@ -104,9 +101,6 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 			return 3;
 		}
 
-
-		usedIds.push_back(id);
-
 		cout << "Reading in depth map " << dm_fn << " ...";
 
 		// read .dmaps
@@ -114,7 +108,6 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 		Path src = Path::appendChild(depthMapsDir, Path(dm_fn));
 		File dmf(src, File::FileMode::OPEN_READING, true);
 
-		// todo use this for images above as well
 		const Utilities::ImgSize size = { dmf.readUInt32(enc), dmf.readUInt32(enc) };
 
 		std::vector<Real> dm_data;
@@ -125,8 +118,7 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 			dm_data.push_back(focalLengthPixels * cameraSeparationMM / d);
 		}
 
-		cout << " done." << endl;
-		cout << "Saving as .mvei ...";
+		cout << " Saving as .mvei ...";
 
 		// save dmap in .mvei format
 		/*string suffix(dm_fn.substr(dm_fn.rfind("_") + 1));
@@ -145,7 +137,7 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 		MetaData meta;
 		meta.data["view.id"] = to_string(id);
 		meta.data["view.name"] = suffix;
-		meta.data["camera.focal_length"] = to_string((float)focalLengthPixels / max(size[0], size[1])); // TODO get dims of image 
+		meta.data["camera.focal_length"] = to_string((float)focalLengthPixels / max(size[0], size[1])); 
 		meta.data["camera.pixel_aspect"] = "1";
 		meta.data["camera.principal_point"] = "0.5 0.5";
 		meta.data["camera.rotation"] = "1 0 0 0 1 0 0 0 1";
@@ -160,16 +152,6 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 		source.close();
 		dest.close();
 	}
-
-	cout << "depth maps done" << endl;
-
-	for (int id : usedIds)
-	{
-		//cout << "translation: " << (id * (width * cameraSeparationMM / CCD_WIDTH_MM)) / max(width, height) << endl;
-
-	}
-
-	cout << " done." << endl;
 
 
 	return 0;
