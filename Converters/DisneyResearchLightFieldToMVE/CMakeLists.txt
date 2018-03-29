@@ -9,8 +9,12 @@
 
 # executable for Disney Research light field to MVE converter
 set(componentName DisneyResearchLightFieldToMVE)
-set(appName ${componentName}.exe)
+set(appName ${componentName})
 set(componentPath ${PROJECT_SOURCE_DIR}/${componentName})
+
+#include OpenGL, glut and glew headers
+include(${BASE_PROJECT_DIR}/CMake/LibPNG.h.cmake)
+include(${BASE_PROJECT_DIR}/CMake/OpenGL.h.cmake)
 
 # CMake files
 set(cmakeFiles
@@ -19,6 +23,7 @@ set(cmakeFiles
 
 # header files
 set(headerFiles
+	${componentPath}/Mvei.h
 )
 
 # source files
@@ -42,8 +47,11 @@ add_executable(${appName} ${sourceCode})
 set(requiredLibs ${requiredLibs}
 	${mathLibName}
 	Platform
-	Utilities
+    Graphics
+    SurfaceReconstruction
 )
+
+addOpenGLLibs(requiredLibs)
 
 # do platform specific things (link required libs, enable windows window support etc.)
 if (WIN32)

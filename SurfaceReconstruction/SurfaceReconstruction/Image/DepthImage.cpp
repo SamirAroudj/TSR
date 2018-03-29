@@ -89,8 +89,23 @@ DepthImage *DepthImage::request(const string &resourceName, const Path &relative
 	return new DepthImage(depths, header.mSize, resourceName);
 }
 
-DepthImage::DepthImage(Real *&depths, const ImgSize &size, const string &resourceName) :
-	Image(size, 1, resourceName), mDepths(depths), mDepthConvention(DEPTH_ALONG_RAY)
+DepthImage *DepthImage::createFromDisneyData(const string &resourceName, ImgSize size, Real* depthValues)
+{
+	// exists?
+	Image *image = Image::request(resourceName);
+	if (image)
+	{
+		DepthImage *depthImage = dynamic_cast<DepthImage *>(image);
+		if (depthImage)
+			return depthImage;
+		throw FileException("An image of another type than DepthImage but with the same resource name already exists!", resourceName);
+	}
+	
+	return new DepthImage(depthValues, size, resourceName, DEPTH_ALONG_Z_AXIS);
+}
+
+DepthImage::DepthImage(Real *&depths, const ImgSize &size, const string &resourceName, const DepthConvention &depthConvention) :
+	Image(size, 1, resourceName), mDepths(depths), mDepthConvention(depthConvention)
 {
 	depths = NULL;
 }
