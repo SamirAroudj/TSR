@@ -12,6 +12,10 @@ set(componentName DisneyResearchLightFieldToMVE)
 set(appName ${componentName})
 set(componentPath ${PROJECT_SOURCE_DIR}/${componentName})
 
+#include OpenGL, glut and glew headers
+include(${BASE_PROJECT_DIR}/CMake/LibPNG.h.cmake)
+include(${BASE_PROJECT_DIR}/CMake/OpenGL.h.cmake)
+
 # CMake files
 set(cmakeFiles
 	${componentPath}/CMakeLists.txt
@@ -46,6 +50,8 @@ set(requiredLibs ${requiredLibs}
     Graphics
     SurfaceReconstruction
 )
+
+addOpenGLLibs(requiredLibs)
 
 # do platform specific things (link required libs, enable windows window support etc.)
 if (WIN32)

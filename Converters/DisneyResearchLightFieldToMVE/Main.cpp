@@ -14,8 +14,12 @@
 #include "Platform/Application.h"
 #include "Platform/Storage/File.h"
 #include "Platform/Utilities/HelperFunctions.h"
-#include "Image/Image.h"
-#include "Image/MVEIHeader.h"
+#include "Graphics/PinholeCamera.h"
+
+#include "SurfaceReconstruction/Scene/Camera/CameraData.h"
+#include "SurfaceReconstruction/Image/Image.h"
+#include "SurfaceReconstruction/Image/MVEIHeader.h"
+#include "SurfaceReconstruction/Image/DepthImage.h"
 
 #include "Mvei.h"
 
@@ -32,12 +36,12 @@ using namespace Storage;
 bool findSourceData(vector<string> &images, vector<string> &depthMaps, const Path &undistortedDir, const Path &depthMapsDir);
 bool getArguments(Path &undistortedDir, Path &depthMapsDir, Path &metaParamsFilePath, Path &targetDir,
 	const char **unformattedArguments, const int32 argumentCount);
-bool getMetaParams(Path metaParamsFilePath, float &focalLengthMM, uint32 &focalLengthPixels, float &cameraSeparationMM);
+bool getMetaParams(Path metaParamsFilePath, float &focalLengthMM, uint32 &focalLengthPixels, float &cameraSeparationMM, int &rawWidth, int &rawHeight);
 bool handleExistingTargetDirectory(const Path &targetDir);
 void writeMetaData(MetaData metaData, Path dir);
 void outputDescription();
 
-
+using namespace SurfaceReconstruction;
 
 int32 main(int32 argumentCount, const char **unformattedArguments)
 {
@@ -51,6 +55,8 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 	float focalLengthMM;
 	uint32 focalLengthPixels;
 	float cameraSeparationMM;
+	int rawWidth;
+	int rawHeight;
 
 	// input file names
 	vector<string> images;
@@ -63,7 +69,7 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 		unformattedArguments, argumentCount);
 	if (!findSourceData(images, depthMaps, undistortedDir, depthMapsDir))
 		return 1;
-	getMetaParams(metaParamsFilePath, focalLengthMM, focalLengthPixels, cameraSeparationMM);
+	getMetaParams(metaParamsFilePath, focalLengthMM, focalLengthPixels, cameraSeparationMM, rawWidth, rawHeight);
 
 	// create scene & views directory
 	if (!handleExistingTargetDirectory(targetDir))
@@ -82,14 +88,6 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 
 	cout << "creating scene directory and meta data ... ";
 
-	// for each image:
-	// create folder
-	// output .ini
-	// output undistorted image
-	// output depth map
-
-	//std::cout << focalLengthMM << " " << focalLengthPixels << " " << cameraSeparationMM << endl;
-
 	for (string dm_fn : depthMaps) 
 	{
 		// create .mve folder
@@ -102,7 +100,7 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 			cerr << "Could not create target directory: " << viewDir << endl;
 			return 3;
 		}
-
+		Image::setPathToImages(viewDir);
 		cout << "Reading in depth map " << dm_fn << " ...";
 
 		// read .dmaps
@@ -110,40 +108,54 @@ int32 main(int32 argumentCount, const char **unformattedArguments)
 		Path src = Path::appendChild(depthMapsDir, Path(dm_fn));
 		File dmf(src, File::FileMode::OPEN_READING, true);
 
+		// first two values denote the dimensions of the dmap
 		const Utilities::ImgSize size = { dmf.readUInt32(enc), dmf.readUInt32(enc) };
 
-		std::vector<Real> dm_data;
-		while (!dmf.endOfFileReached()) 
-		{
-			float d = dmf.readFloat(enc);
-			//apply formula to retrieve depth values
-			dm_data.push_back(focalLengthPixels * cameraSeparationMM / d);
-		}
+		uint32 count = size.getElementCount();
+		std::vector<float> disparities(count);
+		std::vector<Real> depths(count);
+		dmf.read(disparities.data(), sizeof(float) * count, sizeof(float), count);
+		for (uint32 i = 0; i < count; ++i)
+			depths[i] = focalLengthPixels * cameraSeparationMM / disparities[i];
+
+		DepthImage *depthImage = DepthImage::createFromDisneyData(suffix, size, depths.data());
+
+		CameraData camera = CameraData::CameraData();
+		Real distortion[] = { 0.0f, 0.0f };
+		float aspectRatio = ((float)rawWidth) / rawHeight;
+		Math::Vector2 principalPoint(0.5f, 0.5f);
+		Math::Vector4 posHWS(id * cameraSeparationMM, 0.0f, 0.0f, 1.0f);
+		Math::Vector3 posWS(posHWS.x, posHWS.y, posHWS.z);
+
+		Graphics::PinholeCamera pinholeCamera = Graphics::PinholeCamera(Math::Quaternion(), posHWS,
+			(float)focalLengthPixels / 5616.0f, principalPoint, aspectRatio, distortion);
+		pinholeCamera.lookAt(posWS, posWS + Vector3(0.0f, 0.0f, 1.0f), Vector3(0.0f, 1.0f, 0.0f));
+		camera.set(id, pinholeCamera);
+		
+
+		depthImage->setDepthConvention(pinholeCamera, DepthImage::DepthConvention::DEPTH_ALONG_RAY);
+		depthImage->saveAsMVEFloatImage(Path("depth-L1.mvei"), false, false);
 
 		cout << " Saving as .mvei ...";
-
-		// save dmap in .mvei format
-		/*string suffix(dm_fn.substr(dm_fn.rfind("_") + 1));
-		suffix = suffix.substr(0, suffix.find("."));*/
-		SurfaceReconstruction::Image::saveAsMVEFloatImage(Path::appendChild(viewDir, Path("depth-L1.mvei")), false, size, &dm_data[0], false, false);
-
-		// save view map in .mvei format
+	
+		// create views map with view id at every pixel
 		std::vector<int32_t> vm_data;
 		vm_data.resize(size[0] * size[1]);
 		std::fill(vm_data.begin(), vm_data.end(), id);
-		const SurfaceReconstruction::MVEIHeader header(size, 1, SurfaceReconstruction::MVEIHeader::MVE_SINT32);
-		SurfaceReconstruction::Image::saveAsMVEI(Path::appendChild(viewDir, Path("views-L1.mvei")), false, header, &vm_data[0]);
+
+		const MVEIHeader header(size, 1, MVEIHeader::MVE_SINT32);
+		Image::saveAsMVEI(Path::appendChild(viewDir, Path("views-L1.mvei")), false, header, &vm_data[0]);
 
 		cout << " done." << endl;
 
 		MetaData meta;
 		meta.data["view.id"] = to_string(id);
 		meta.data["view.name"] = suffix;
-		meta.data["camera.focal_length"] = to_string((float)focalLengthPixels / max(size[0], size[1])); 
+		meta.data["camera.focal_length"] = to_string((float)focalLengthPixels / rawWidth);
 		meta.data["camera.pixel_aspect"] = "1";
 		meta.data["camera.principal_point"] = "0.5 0.5";
 		meta.data["camera.rotation"] = "1 0 0 0 1 0 0 0 1";
-		meta.data["camera.translation"] = to_string((id * (size[0] * cameraSeparationMM / CCD_WIDTH_MM))) + " 0 0";
+		meta.data["camera.translation"] = to_string(id * cameraSeparationMM) + " 0 0";
 		writeMetaData(meta, viewDir);
 
 
@@ -169,14 +181,6 @@ bool findSourceData(vector<string> &images, vector<string> &depthMaps, const Pat
 		cerr << "Found zero source images. JPG format is required (.jpg)! Aborting.\n";
 		return false;
 	}
-	
-
-	/*if (images.size() != depthMaps.size())
-	{
-		cerr << "Number of undistorted images is not equal to the number of depth maps.\n";
-		cerr << "Only depth maps from author C. Kim in original format (.dmap) are supported! Aborting.\n";
-		return false;
-	}*/
 
 	return true;
 }
@@ -204,9 +208,8 @@ bool getArguments(Path &undistortedDir, Path &depthMapsDir, Path &metaParamsFile
 	return true;
 }
 
-bool getMetaParams(Path metaParamsFilePath, float &focalLengthMM, uint32 &focalLengthPixels, float &cameraSeparationMM) {
+bool getMetaParams(Path metaParamsFilePath, float &focalLengthMM, uint32 &focalLengthPixels, float &cameraSeparationMM, int &rawWidth, int &rawHeight) {
 	File metaFile(metaParamsFilePath, File::FileMode::OPEN_READING, true);
-
 
 	while (!metaFile.endOfFileReached())
 	{
@@ -214,9 +217,9 @@ bool getMetaParams(Path metaParamsFilePath, float &focalLengthMM, uint32 &focalL
 		metaFile.readTextLine(line);
 		string key = line.substr(0, line.find("="));
 		string val = line.substr(line.find("=")+1, line.size());
-		if (key != "flen_mm" && key != "flen_px" && key != "baseline") {
+		if (key != "flen_mm" && key != "flen_px" && key != "baseline" && key != "raw_width" && key != "raw_height") {
 			cerr << "Incorrect meta.txt file format. Only flen_mm, flen_pix and baseline are allowed parameters." << endl;
-			return 4;
+			return false;
 		}
 		
 		if (key == "flen_mm")
@@ -225,6 +228,11 @@ bool getMetaParams(Path metaParamsFilePath, float &focalLengthMM, uint32 &focalL
 			focalLengthPixels = stoi(val);
 		else if (key == "baseline")
 			cameraSeparationMM = stof(val);
+		else if (key == "raw_width")
+			rawWidth = stoi(val);
+		else if (key == "raw_height")
+			rawHeight = stoi(val);
+
 	}
 
 	return true;
