@@ -48,8 +48,7 @@ set(requiredLibs ${requiredLibs}
 	CollisionDetection
 	${mathLibName}	
 	Patterns
-	debug "${TINYXML2_DEBUG_LIBRARY}"
-	optimized "${TINYXML2_RELEASE_LIBRARY}"
+	${TINYXML2_LIBRARIES}
 )
 
 target_link_libraries(${appName} ${requiredLibs})

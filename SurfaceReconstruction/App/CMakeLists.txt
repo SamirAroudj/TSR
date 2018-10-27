@@ -47,17 +47,18 @@ set(sourceCode
 # define executable
 add_executable(${appName} ${sourceCode})
 
+addEmbreeLibs(embreeLibs)
+
 # required libs
 set(requiredLibs ${requiredLibs}
 	SurfaceReconstruction
-	embree
+	${embreeLibs}
 	Graphics
 	Platform
 	CollisionDetection
 	${mathLibName}	
 	Patterns
-	debug "${TINYXML2_DEBUG_LIBRARY}"
-	optimized "${TINYXML2_RELEASE_LIBRARY}"
+	${TINYXML2_LIBRARIES}
 )
 
 # required 3rd party libs
