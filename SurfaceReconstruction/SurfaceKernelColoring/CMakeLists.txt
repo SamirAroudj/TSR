@@ -16,9 +16,6 @@ set(componentPath ${PROJECT_SOURCE_DIR}/${componentName})
 include(${BASE_PROJECT_DIR}/CMake/LibPNG.h.cmake)
 include(${BASE_PROJECT_DIR}/CMake/OpenGL.h.cmake)
 
-# external include directories
-link_directories(${EMBREE_BUILD_DIR}/${CMAKE_BUILD_TYPE})
-
 # CMake files
 set(cmakeFiles
 	${componentPath}/CMakeLists.txt
