@@ -47,7 +47,8 @@ add_executable(${appName} ${sourceCode})
 # required libs
 set(requiredLibs ${requiredLibs}
 	SurfaceReconstruction
-	embree
+	debug ${EMBREE_LIBRARY_DEBUG}
+	optimized ${EMBREE_LIBRARY_RELEASE}
 	Graphics
 	Platform
 	CollisionDetection
