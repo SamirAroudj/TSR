@@ -4,3 +4,4 @@ SurfaceReconstruction/WorkingDirectory/Data/Window.cfg
 *.log
 *.dll
 SurfaceReconstruction/.vscode/settings.json
+SurfaceReconstruction/.vscode/launch.json
