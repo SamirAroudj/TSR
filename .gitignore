@@ -5,3 +5,4 @@ SurfaceReconstruction/WorkingDirectory/Data/Window.cfg
 *.dll
 SurfaceReconstruction/.vscode/settings.json
 SurfaceReconstruction/.vscode/launch.json
+SurfaceReconstruction/TSR.*
