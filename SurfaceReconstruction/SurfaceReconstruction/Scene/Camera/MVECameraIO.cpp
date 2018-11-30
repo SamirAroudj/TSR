@@ -42,6 +42,7 @@ using namespace Utilities;
 #define PRINCIPAL_POINT_FORMAT "principal_point = " REAL_IT " " REAL_IT "\n"
 #define ROTATION_FORMAT "rotation = " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT " " REAL_IT "\n"
 #define TRANSLATION_FORMAT "translation = " REAL_IT " " REAL_IT " " REAL_IT "\n"
+#define TIME_STAMP_FORMAT "time_stamp = %ld\n"
 #define VIEW_ID_FORMAT "id = %d\n"
 
 MVECameraIO::MVECameraIO(const Path &path) :
@@ -247,6 +248,11 @@ void MVECameraIO::readExtrinsics(CameraData &data, File &file,
 	// transform camera into the coordinate system dataBasis
 	data.mOrientation = Math::createQuaternionFromMatrix(rotation * inverseInputRotation);
 	pos = pos * inverseInputRotation + inverseInputTranslation;
+
+    // when was the image taken?
+    uint64 timeStamp = numeric_limits<uint64>::max();
+    if (1 != file.scanf(TIME_STAMP_FORMAT, &timeStamp))
+        throw FileCorruptionException("Camera capture time tamp is not provided in the correct camera file format.", file.getName());
 }
 
 Real MVECameraIO::readFocalLength(File &file)
