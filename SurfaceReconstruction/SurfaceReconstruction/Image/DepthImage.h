@@ -39,6 +39,7 @@ namespace SurfaceReconstruction
 		static void findExtrema(Real &minimum, Real &maximum, const Real *depths, const uint32 elementCount);
 		static bool isDepthDiscontinuity(const Real footprints[4], const Real blockDepths[4], const uint32 i1, const uint32 i2);
 		static DepthImage *request(const std::string &resourceName, const Storage::Path &imageFileName);
+		static DepthImage *createFromDisneyData(const std::string &resourceName, Utilities::ImgSize size, Real* depthValues);
 
 	public:
 		/** Standard image erosion applied to depth images.
@@ -65,7 +66,7 @@ namespace SurfaceReconstruction
 		static Real *loadDepths(MVEIHeader &header, const Storage::Path &relativeImageFileName);
 
 	protected:
-		DepthImage(Real *&depths, const Utilities::ImgSize &size, const std::string &resourceName);
+		DepthImage(Real *&depths, const Utilities::ImgSize &size, const std::string &resourceName, const DepthConvention &depthConvention = DEPTH_ALONG_RAY);
 		virtual ~DepthImage();
 
 		virtual void clear();
